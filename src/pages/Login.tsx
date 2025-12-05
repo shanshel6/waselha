@@ -10,8 +10,14 @@ function Login() {
   const { t } = useTranslation();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-violet-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+    <div
+      className="relative min-h-screen flex flex-col items-center justify-center p-4 bg-cover bg-center"
+      style={{ backgroundImage: `url('https://images.unsplash.com/photo-1520250400481-be63a6124444?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')` }}
+    >
+      {/* Dark overlay for better text readability */}
+      <div className="absolute inset-0 bg-black opacity-60"></div> 
+
+      <div className="relative z-10 w-full max-w-md bg-white/80 dark:bg-gray-800/80 p-8 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
         <h1 className="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{t('login')}</h1>
         <Auth
           supabaseClient={supabase}
@@ -70,7 +76,9 @@ function Login() {
           }}
         />
       </div>
-      <MadeWithDyad />
+      <div className="relative z-10">
+        <MadeWithDyad />
+      </div>
     </div>
   );
 }
