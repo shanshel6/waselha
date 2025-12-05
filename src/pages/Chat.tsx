@@ -38,8 +38,11 @@ const Chat = () => {
         .from('requests')
         .select(`
           *,
-          trip:trips(*, traveler:profiles(first_name, last_name)),
-          sender:profiles(first_name, last_name)
+          trip:trips(
+            *, 
+            traveler:profiles(id, first_name, last_name)
+          ),
+          sender:profiles(id, first_name, last_name)
         `)
         .eq('id', requestId)
         .single();
@@ -89,10 +92,8 @@ const Chat = () => {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatId}` },
-        (payload) => {
-          queryClient.setQueryData(['messages', chatId], (oldData: any) => {
-            return oldData ? [...oldData, payload.new] : [payload.new];
-          });
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['messages', chatId] });
         }
       )
       .subscribe();
@@ -129,7 +130,8 @@ const Chat = () => {
     },
   });
 
-  const otherUser = requestData?.trip.traveler.id === user?.id ? requestData?.sender : requestData?.trip.traveler;
+  const isUserTheTraveler = user?.id === requestData?.trip?.user_id;
+  const otherUser = isUserTheTraveler ? requestData?.sender : requestData?.trip?.traveler;
 
   if (isLoadingRequest || isLoadingMessages) {
     return <div className="container p-4">{t('loading')}...</div>;

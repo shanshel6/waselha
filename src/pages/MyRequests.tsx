@@ -35,7 +35,7 @@ const MyRequests = () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('requests')
-        .select(`*, trips(*, profiles(first_name, last_name))`)
+        .select(`*, trips(*, profiles(id, first_name, last_name))`)
         .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
@@ -69,7 +69,7 @@ const MyRequests = () => {
       // 2. Fetch requests that are for one of the user's trips
       const { data, error } = await supabase
         .from('requests')
-        .select(`*, trips(*), profiles:sender_id(first_name, last_name)`)
+        .select(`*, trips(*), profiles:sender_id(id, first_name, last_name)`)
         .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
 
