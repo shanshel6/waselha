@@ -177,11 +177,28 @@ const Chat = () => {
           ) : messages && messages.length > 0 ? (
             <div className="space-y-4 mt-auto">
               {messages.map((message) => (
-                <div key={message.id} className={cn('flex flex-col', message.sender_id === user?.id ? 'items-end' : 'items-start')}>
-                  <div className={cn('max-w-xs md:max-w-md p-3 rounded-lg', message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                    <p>{message.content}</p>
+                <div
+                  key={message.id}
+                  className={cn(
+                    'flex w-full',
+                    message.sender_id === user?.id ? 'justify-end' : 'justify-start'
+                  )}
+                >
+                  <div className={cn("flex flex-col", message.sender_id === user?.id ? 'items-end' : 'items-start')}>
+                    <div
+                      className={cn(
+                        'max-w-xs md:max-w-md p-3 rounded-lg',
+                        message.sender_id === user?.id
+                          ? 'bg-primary text-primary-foreground rounded-br-none'
+                          : 'bg-muted rounded-bl-none'
+                      )}
+                    >
+                      <p className="break-words">{message.content}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1 px-1">
+                      {format(new Date(message.created_at), 'p')}
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground mt-1">{format(new Date(message.created_at), 'p')}</span>
                 </div>
               ))}
               <div ref={messagesEndRef} />
