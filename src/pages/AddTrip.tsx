@@ -41,7 +41,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { countries } from '@/lib/countries';
 import { useProfile } from '@/hooks/use-profile';
 import VerificationModal from '@/components/VerificationModal';
-import { calculateShippingCost } from '@/lib/pricing';
+import { calculateTravelerProfit } from '@/lib/pricing';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -76,7 +76,7 @@ const AddTrip = () => {
 
   const estimatedProfit = useMemo(() => {
     if (from_country && to_country && free_kg > 0) {
-      return calculateShippingCost(from_country, to_country, free_kg);
+      return calculateTravelerProfit(from_country, to_country, free_kg);
     }
     return null;
   }, [from_country, to_country, free_kg]);

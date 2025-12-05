@@ -37,41 +37,54 @@ const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {
   return 'B'; // Default to Zone B if country is not listed
 };
 
-const getPricePerKg = (zone: keyof typeof PRICING_TIERS_USD, weight: number): number => {
+// Tiered pricing logic for Senders
+const getTieredPricePerKg = (zone: keyof typeof PRICING_TIERS_USD, weight: number): number => {
   const tiers = PRICING_TIERS_USD[zone];
-  // Always use the base price for 1-2kg, regardless of the total weight.
-  if (weight > 0) {
-    return tiers["1-2"];
-  }
+  if (weight >= 1 && weight <= 2) return tiers["1-2"];
+  if (weight >= 3 && weight <= 5) return tiers["3-5"];
+  if (weight >= 6 && weight <= 10) return tiers["6-10"];
+  if (weight > 10) return tiers[">10"];
   return 0;
 };
 
+// Non-tiered (base price) logic for Traveler profit estimation
+const getBasePricePerKg = (zone: keyof typeof PRICING_TIERS_USD): number => {
+  const tiers = PRICING_TIERS_USD[zone];
+  return tiers["1-2"];
+};
+
+// Function for Senders (Price Calculator, Trip Details)
 export const calculateShippingCost = (originCountry: string, destinationCountry: string, weight: number) => {
   if (weight <= 0) {
-    return {
-      pricePerKgUSD: 0,
-      totalPriceUSD: 0,
-      totalPriceIQD: 0,
-      error: null,
-    };
+    return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: null };
   }
 
   const zoneOrigin = getZone(originCountry);
   const zoneDestination = getZone(destinationCountry);
-
-  // Direction doesn't matter, so we pick the more expensive zone for calculation
   const finalZone = zoneOrigin > zoneDestination ? zoneOrigin : zoneDestination;
 
-  const pricePerKgUSD = getPricePerKg(finalZone, weight);
+  const pricePerKgUSD = getTieredPricePerKg(finalZone, weight);
   const totalPriceUSD = weight * pricePerKgUSD;
   const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE;
 
-  return {
-    pricePerKgUSD,
-    totalPriceUSD,
-    totalPriceIQD,
-    error: null,
-  };
+  return { pricePerKgUSD, totalPriceUSD, totalPriceIQD, error: null };
+};
+
+// Function for Travelers (Add Trip)
+export const calculateTravelerProfit = (originCountry: string, destinationCountry: string, weight: number) => {
+  if (weight <= 0) {
+    return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: null };
+  }
+
+  const zoneOrigin = getZone(originCountry);
+  const zoneDestination = getZone(destinationCountry);
+  const finalZone = zoneOrigin > zoneDestination ? zoneOrigin : zoneDestination;
+
+  const pricePerKgUSD = getBasePricePerKg(finalZone);
+  const totalPriceUSD = weight * pricePerKgUSD;
+  const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE;
+
+  return { pricePerKgUSD, totalPriceUSD, totalPriceIQD, error: null };
 };
 
 export const zonedCountries = [...new Set([...ZONES.A, ...ZONES.B, ...ZONES.C, ...ZONES.D])].sort();
