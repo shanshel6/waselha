@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -11,18 +11,19 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
+import { calculateShippingCost } from '@/lib/pricing';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Plane, Package, DollarSign, User, MapPin, Calendar, Info } from 'lucide-react';
+import { Plane, Package, User, MapPin, Calendar, Info, DollarSign } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import VerificationModal from '@/components/VerificationModal';
 
 const requestSchema = z.object({
-  weight_kg: z.coerce.number().min(0.1, { message: "positiveNumber" }),
+  weight_kg: z.coerce.number().min(1, { message: "positiveNumber" }).max(30, { message: "maxWeight" }),
   description: z.string().min(10, { message: "descriptionTooShort" }),
   destination_city: z.string().min(2, { message: "requiredField" }),
   receiver_details: z.string().min(10, { message: "requiredField" }),
@@ -66,6 +67,13 @@ const TripDetails = () => {
       receiver_details: "",
     },
   });
+
+  const weight = form.watch('weight_kg');
+
+  const priceCalculation = useMemo(() => {
+    if (!trip) return null;
+    return calculateShippingCost(trip.from_country, trip.to_country, weight || 0);
+  }, [weight, trip]);
 
   const onSubmit = async (values: z.infer<typeof requestSchema>) => {
     if (!user) {
@@ -120,7 +128,6 @@ const TripDetails = () => {
             <CardContent className="space-y-4">
               <p className="flex items-center gap-2"><User className="h-5 w-5 text-gray-500" /> {t('traveler')}: {trip.profiles?.first_name || 'N/A'} {trip.profiles?.last_name || ''}</p>
               <p className="flex items-center gap-2"><Package className="h-5 w-5 text-gray-500" /> {t('availableWeight')}: {trip.free_kg} kg</p>
-              <p className="flex items-center gap-2"><DollarSign className="h-5 w-5 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg}</p>
               {trip.traveler_location && <p className="flex items-center gap-2"><MapPin className="h-5 w-5 text-gray-500" /> {t('travelerLocation')}: {trip.traveler_location}</p>}
               {trip.notes && (
                 <div className="pt-2">
@@ -146,11 +153,29 @@ const TripDetails = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('packageWeightKg')}</FormLabel>
-                        <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                        <FormControl><Input type="number" step="0.1" min="1" max="30" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  {priceCalculation && priceCalculation.totalPriceUSD > 0 && (
+                    <Card className="bg-primary/10 p-4">
+                      <CardTitle className="text-lg mb-2 text-center">{t('estimatedCost')}</CardTitle>
+                      <div className="flex justify-around text-center">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total (USD)</p>
+                          <p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total (IQD)</p>
+                          <p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-2">{t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}</p>
+                    </Card>
+                  )}
+
                   <FormField
                     control={form.control}
                     name="description"

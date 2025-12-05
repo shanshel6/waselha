@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, DollarSign } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { countries } from '@/lib/countries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProfile } from '@/hooks/use-profile';
 import VerificationModal from '@/components/VerificationModal';
 
@@ -49,7 +48,6 @@ const formSchema = z.object({
     required_error: "dateRequired",
   }),
   free_kg: z.coerce.number().min(0, { message: "positiveNumber" }),
-  charge_per_kg: z.coerce.number().min(0, { message: "positiveNumber" }),
   traveler_location: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -60,7 +58,6 @@ const AddTrip = () => {
   const { user } = useSession();
   const { data: profile } = useProfile();
   const [isVerificationModalOpen, setVerificationModalOpen] = useState(false);
-  const [estimatedProfit, setEstimatedProfit] = useState(0);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -68,25 +65,10 @@ const AddTrip = () => {
       from_country: "",
       to_country: "",
       free_kg: 0,
-      charge_per_kg: 0,
       traveler_location: "",
       notes: "",
     },
   });
-
-  const freeKg = form.watch('free_kg');
-  const chargePerKg = form.watch('charge_per_kg');
-
-  useEffect(() => {
-    const kg = Number(freeKg);
-    const charge = Number(chargePerKg);
-
-    if (!isNaN(kg) && !isNaN(charge) && kg > 0 && charge > 0) {
-      setEstimatedProfit(kg * charge);
-    } else {
-      setEstimatedProfit(0);
-    }
-  }, [freeKg, chargePerKg]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
@@ -100,7 +82,7 @@ const AddTrip = () => {
       return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('trips')
       .insert({
         user_id: user.id,
@@ -108,7 +90,6 @@ const AddTrip = () => {
         to_country: values.to_country,
         trip_date: format(values.trip_date, 'yyyy-MM-dd'),
         free_kg: values.free_kg,
-        charge_per_kg: values.charge_per_kg,
         traveler_location: values.traveler_location,
         notes: values.notes,
       });
@@ -231,19 +212,6 @@ const AddTrip = () => {
             />
             <FormField
               control={form.control}
-              name="charge_per_kg"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('chargePerKg')}</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="traveler_location"
               render={({ field }) => (
                 <FormItem>
@@ -268,20 +236,6 @@ const AddTrip = () => {
                 </FormItem>
               )}
             />
-
-            {estimatedProfit > 0 && (
-              <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-green-800 dark:text-green-300">{t('estimatedProfit')}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <p className="text-4xl font-bold text-green-600 dark:text-green-400 flex items-center justify-center">
-                    <DollarSign className="h-8 w-8 mr-2" />
-                    {estimatedProfit.toFixed(2)}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
 
             <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
               {t('createTrip')}

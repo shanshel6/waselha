@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plane, Package, DollarSign, User, MapPin, Search, PlusCircle, BadgeCheck } from 'lucide-react';
+import { Plane, Package, User, MapPin, Search, PlusCircle, BadgeCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -107,20 +107,11 @@ const Trips = () => {
                   <span>{trip.profiles?.first_name || 'N/A'}</span>
                   {trip.profiles?.is_verified && <Badge variant="secondary" className="text-green-600 border-green-600"><BadgeCheck className="h-3 w-3 mr-1" /> Verified</Badge>}
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-5 w-5 text-primary/80" />
-                    <div>
-                      <p className="font-semibold">{trip.free_kg} kg</p>
-                      <p className="text-xs text-muted-foreground">{t('availableWeight')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-primary/80" />
-                    <div>
-                      <p className="font-semibold">${trip.charge_per_kg}</p>
-                      <p className="text-xs text-muted-foreground">{t('pricePerKg')}</p>
-                    </div>
+                <div className="border-t pt-4 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary/80" />
+                  <div>
+                    <p className="font-semibold">{trip.free_kg} kg</p>
+                    <p className="text-xs text-muted-foreground">{t('availableWeight')}</p>
                   </div>
                 </div>
                 {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}

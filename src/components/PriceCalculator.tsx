@@ -14,20 +14,6 @@ const PriceCalculator = () => {
   const [destination, setDestination] = useState<string>('Turkey');
   const [weight, setWeight] = useState<number>(1);
 
-  const handleOriginChange = (newOrigin: string) => {
-    setOrigin(newOrigin);
-    if (newOrigin !== 'Iraq') {
-      setDestination('Iraq');
-    }
-  };
-
-  const handleDestinationChange = (newDestination: string) => {
-    setDestination(newDestination);
-    if (newDestination !== 'Iraq') {
-      setOrigin('Iraq');
-    }
-  };
-
   const calculation = useMemo(() => {
     return calculateShippingCost(origin, destination, weight);
   }, [origin, destination, weight]);
@@ -48,7 +34,7 @@ const PriceCalculator = () => {
           <div className="space-y-6 md:col-span-3">
             <div>
               <Label htmlFor="origin-country" className="font-semibold">{t('fromCountry')}</Label>
-              <Select onValueChange={handleOriginChange} value={origin}>
+              <Select onValueChange={setOrigin} value={origin}>
                 <SelectTrigger id="origin-country" className="mt-2">
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
@@ -59,7 +45,7 @@ const PriceCalculator = () => {
             </div>
             <div>
               <Label htmlFor="destination-country" className="font-semibold">{t('toCountry')}</Label>
-              <Select onValueChange={handleDestinationChange} value={destination}>
+              <Select onValueChange={setDestination} value={destination}>
                 <SelectTrigger id="destination-country" className="mt-2">
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
@@ -86,14 +72,20 @@ const PriceCalculator = () => {
           <div className="bg-primary/10 dark:bg-primary/20 p-6 rounded-lg space-y-4 border border-primary/20 md:col-span-2 flex flex-col justify-center h-full">
             <h3 className="text-xl font-semibold text-center text-primary">{t('estimatedCost')}</h3>
             {calculation.error ? (
-              <p className="text-red-500 text-center font-medium">{t(calculation.error)}</p>
+              <p className="text-red-500 text-center font-medium">{calculation.error}</p>
             ) : (
               <>
                 <div className="text-center">
-                  <span className="text-sm text-muted-foreground">{t('totalPriceUSD')}</span>
+                  <span className="text-sm text-muted-foreground">Total (USD)</span>
                   <p className="text-4xl font-bold text-foreground flex items-center justify-center">
                     <DollarSign className="h-7 w-7 mr-1 text-primary" />
                     {calculation.totalPriceUSD.toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm text-muted-foreground">Total (IQD)</span>
+                  <p className="text-2xl font-bold text-foreground">
+                    {calculation.totalPriceIQD.toLocaleString('en-US')} IQD
                   </p>
                 </div>
                 <div className="text-center border-t pt-2 mt-2">

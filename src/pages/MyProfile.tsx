@@ -6,7 +6,7 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plane, Package, DollarSign, CalendarDays, User, Mail, Phone, Briefcase } from 'lucide-react';
+import { Plane, Package, CalendarDays, User, Mail, Phone, Briefcase } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +54,6 @@ const MyTrips = () => {
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-2 text-sm">
                   <p className="flex items-center gap-2"><Package className="h-4 w-4" />{trip.free_kg} kg</p>
-                  <p className="flex items-center gap-2"><DollarSign className="h-4 w-4" />${trip.charge_per_kg}/kg</p>
                 </CardContent>
               </Card>
             ))}

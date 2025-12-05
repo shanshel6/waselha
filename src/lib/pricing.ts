@@ -1,88 +1,77 @@
-// Define zones for pricing
-const zones = {
-  A: ["Iraq", "Turkey", "Iran", "Jordan", "United Arab Emirates", "Qatar", "Saudi Arabia", "Kuwait"],
-  B: [
-    // Europe
-    "United Kingdom", "Germany", "Italy", "France", "Spain", "Netherlands", "Belgium", "Sweden", "Switzerland", "Austria", "Norway", "Denmark", "Finland", "Ireland", "Portugal", "Greece", "Poland", "Czech Republic", "Hungary", "Romania",
-    // Asia
-    "Malaysia", "Thailand"
+const ZONES = {
+  A: [ // Near
+    "Iraq", "Turkey", "Iran", "Jordan", "Syria", "Lebanon", "United Arab Emirates", 
+    "Qatar", "Bahrain", "Kuwait", "Saudi Arabia", "Oman", "Cyprus", "Armenia", 
+    "Georgia", "Azerbaijan", "Egypt"
   ],
-  C: ["China", "Japan", "United States", "Canada", "Australia"]
+  B: [ // Medium
+    "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands", "Belgium", 
+    "Switzerland", "Sweden", "Norway", "Denmark", "Poland", "Czech Republic", "Austria", 
+    "Greece", "Romania", "Bulgaria", "Hungary", "Croatia", "Morocco", "Algeria", 
+    "Tunisia", "India", "Pakistan", "Kazakhstan", "Uzbekistan", "Malaysia", 
+    "Thailand", "Singapore", "Indonesia", "South Korea"
+  ],
+  C: [ // Far
+    "China", "Hong Kong", "Japan", "Philippines", "Vietnam", "Taiwan", 
+    "Australia", "New Zealand"
+  ],
+  D: [ // Very Far
+    "United States", "Canada", "Mexico", "Brazil", "Argentina", "Chile", "Colombia"
+  ]
 };
 
-// Define pricing tiers in USD per kg
-const pricingTiers = {
-  A: { // Near
-    "1-2": 5.0,
-    "3-5": 4.5,
-    "6-10": 4.0,
-    ">10": 3.5,
-  },
-  B: { // Medium
-    "1-2": 5.5,
-    "3-5": 5.0,
-    "6-10": 4.5,
-    ">10": 4.0,
-  },
-  C: { // Far
-    "1-2": 6.0,
-    "3-5": 5.5,
-    "6-10": 5.0,
-    ">10": 4.5,
-  }
+const PRICING_TIERS_USD = {
+  A: { "1-2": 5.0, "3-5": 4.5, "6-10": 4.0, ">10": 3.5 },
+  B: { "1-2": 6.0, "3-5": 5.5, "6-10": 5.0, ">10": 4.5 },
+  C: { "1-2": 8.0, "3-5": 7.5, "6-10": 7.0, ">10": 6.5 },
+  D: { "1-2": 9.0, "3-5": 8.5, "6-10": 8.0, ">10": 7.5 }
 };
 
-// Function to determine the zone of a given country
-const getZone = (country: string): keyof typeof pricingTiers | null => {
-  if (zones.A.includes(country)) return 'A';
-  if (zones.B.includes(country)) return 'B';
-  if (zones.C.includes(country)) return 'C';
-  return null; // Country not in a defined zone
+const USD_TO_IQD_RATE = 1400;
+
+const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {
+  if (ZONES.A.includes(country)) return 'A';
+  if (ZONES.B.includes(country)) return 'B';
+  if (ZONES.C.includes(country)) return 'C';
+  if (ZONES.D.includes(country)) return 'D';
+  return 'B'; // Default to Zone B if country is not listed
 };
 
-// Function to get the price per kg based on the zone and weight
-const getPricePerKg = (zone: keyof typeof pricingTiers, weight: number): number => {
-  const tiers = pricingTiers[zone];
+const getPricePerKg = (zone: keyof typeof PRICING_TIERS_USD, weight: number): number => {
+  const tiers = PRICING_TIERS_USD[zone];
   if (weight >= 1 && weight <= 2) return tiers["1-2"];
   if (weight >= 3 && weight <= 5) return tiers["3-5"];
   if (weight >= 6 && weight <= 10) return tiers["6-10"];
   if (weight > 10) return tiers[">10"];
-  return 0; // Default case if weight is out of expected range
+  return 0;
 };
 
-// Main function to calculate the total shipping cost
 export const calculateShippingCost = (originCountry: string, destinationCountry: string, weight: number) => {
-  const zoneOrigin = getZone(originCountry);
-  const zoneDestination = getZone(destinationCountry);
-
-  if (!zoneOrigin || !zoneDestination) {
-    return {
-      pricePerKgUSD: 0,
-      totalPriceUSD: 0,
-      error: "Route not supported for calculation.",
-    };
-  }
-  
   if (weight <= 0) {
     return {
       pricePerKgUSD: 0,
       totalPriceUSD: 0,
+      totalPriceIQD: 0,
       error: null,
     };
   }
 
-  // Use the more expensive zone for the calculation to ensure symmetrical pricing
+  const zoneOrigin = getZone(originCountry);
+  const zoneDestination = getZone(destinationCountry);
+
+  // Direction doesn't matter, so we pick the more expensive zone for calculation
   const finalZone = zoneOrigin > zoneDestination ? zoneOrigin : zoneDestination;
 
   const pricePerKgUSD = getPricePerKg(finalZone, weight);
   const totalPriceUSD = weight * pricePerKgUSD;
+  const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE;
 
   return {
     pricePerKgUSD,
     totalPriceUSD,
+    totalPriceIQD,
     error: null,
   };
 };
 
-// Export a sorted list of countries that have pricing zones
-export const zonedCountries = [...new Set([...zones.A, ...zones.B, ...zones.C])].sort();
+export const zonedCountries = [...new Set([...ZONES.A, ...ZONES.B, ...ZONES.C, ...ZONES.D])].sort();
