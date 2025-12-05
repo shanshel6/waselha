@@ -137,7 +137,7 @@ const Trips = () => {
                     <FormLabel>{t('fromCountry')}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectValue>
+                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -154,7 +154,7 @@ const Trips = () => {
                     <FormLabel>{t('toCountry')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectValue>
+                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
