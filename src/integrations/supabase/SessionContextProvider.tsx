@@ -27,7 +27,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         setIsLoading(false);
 
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          if (currentSession && location.pathname === '/login') {
+          if (currentSession && window.location.pathname === '/login') { // Changed location.pathname to window.location.pathname
             navigate('/');
           }
         } else if (event === 'SIGNED_OUT') {
@@ -41,7 +41,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       setSession(session);
       setUser(session?.user || null);
       setIsLoading(false);
-      if (!session && location.pathname !== '/login') {
+      if (!session && window.location.pathname !== '/login') { // Changed location.pathname to window.location.pathname
         navigate('/login');
       }
     });
