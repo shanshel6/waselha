@@ -6,37 +6,59 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
-import Trips from "./pages/Trips"; // New: Import Trips page
-import Search from "./pages/Search"; // New: Import Search page
-import MyProfile from "./pages/MyProfile"; // New: Import MyProfile page
-import Verification from "./pages/Verification"; // New: Import Verification page
-import Navbar from "./components/Navbar"; // New: Import Navbar
-import { SessionContextProvider } from "./integrations/supabase/SessionContextProvider";
+import Trips from "./pages/Trips";
+import Search from "./pages/Search";
+import MyProfile from "./pages/MyProfile";
+import Verification from "./pages/Verification";
+import Navbar from "./components/Navbar";
+import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SessionContextProvider>
-          <Navbar /> {/* Navbar is now part of the main layout */}
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/trips" element={<Trips />} /> {/* New: Trips route */}
-            <Route path="/search" element={<Search />} /> {/* New: Search route */}
-            <Route path="/my-profile" element={<MyProfile />} /> {/* New: My Profile route */}
-            <Route path="/verify" element={<Verification />} /> {/* New: Verification route */}
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </SessionContextProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// A component to wrap the main application content, dependent on session loading
+const AppContent = () => {
+  const { isLoading } = useSession(); // Access loading state from context
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-xl text-gray-700 dark:text-gray-300">
+        Loading application...
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/trips" element={<Trips />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/my-profile" element={<MyProfile />} />
+        <Route path="/verify" element={<Verification />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+};
+
+const App = () => {
+  console.log("App component rendering...");
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SessionContextProvider>
+            <AppContent /> {/* Render AppContent inside SessionContextProvider */}
+          </SessionContextProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

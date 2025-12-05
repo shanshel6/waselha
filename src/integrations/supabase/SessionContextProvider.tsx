@@ -19,15 +19,20 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const navigate = useNavigate();
   const { t } = useTranslation();
 
+  console.log("SessionContextProvider rendering. Current isLoading:", isLoading); // Debug log
+
   useEffect(() => {
+    console.log("SessionContextProvider useEffect running..."); // Debug log
+
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log("Auth state change event:", event, "Session:", currentSession); // Debug log
         setSession(currentSession);
         setUser(currentSession?.user || null);
         setIsLoading(false);
 
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          if (currentSession && window.location.pathname === '/login') { // Changed location.pathname to window.location.pathname
+          if (currentSession && window.location.pathname === '/login') {
             navigate('/');
           }
         } else if (event === 'SIGNED_OUT') {
@@ -38,15 +43,20 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
     // Fetch initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Initial session fetched:", session); // Debug log
       setSession(session);
       setUser(session?.user || null);
       setIsLoading(false);
-      if (!session && window.location.pathname !== '/login') { // Changed location.pathname to window.location.pathname
+      if (!session && window.location.pathname !== '/login') {
         navigate('/login');
       }
+    }).catch(error => {
+      console.error("Error fetching initial session:", error); // Catch potential errors
+      setIsLoading(false); // Ensure loading state is cleared even on error
     });
 
     return () => {
+      console.log("SessionContextProvider useEffect cleanup."); // Debug log
       authListener.subscription.unsubscribe();
     };
   }, [navigate]);
