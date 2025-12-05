@@ -25,7 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { Plane, Package, DollarSign, CalendarDays } from 'lucide-react';
 
 const profileFormSchema = z.object({
   first_name: z.string().min(1, { message: "requiredField" }).optional(),
@@ -35,6 +38,62 @@ const profileFormSchema = z.object({
     required_error: "requiredField",
   }),
 });
+
+const MyTrips = () => {
+  const { t } = useTranslation();
+  const { user } = useSession();
+
+  const { data: trips, isLoading, error } = useQuery({
+    queryKey: ['userTrips', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('trip_date', { ascending: true });
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  if (isLoading) return <p>{t('loadingTrips')}</p>;
+  if (error) return <p className="text-red-500">{t('errorLoadingTrips')}: {error.message}</p>;
+
+  return (
+    <Card className="max-w-2xl mx-auto mt-8">
+      <CardHeader>
+        <CardTitle>{t('myTrips')}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {trips && trips.length > 0 ? (
+          <div className="space-y-4">
+            {trips.map((trip) => (
+              <Card key={trip.id} className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-md">
+                    <Plane className="h-5 w-5" /> {trip.from_country} → {trip.to_country}
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-2 text-sm">
+                    <CalendarDays className="h-4 w-4" /> {format(new Date(trip.trip_date), 'PPP')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-2 text-sm">
+                  <p className="flex items-center gap-2"><Package className="h-4 w-4" />{trip.free_kg} kg</p>
+                  <p className="flex items-center gap-2"><DollarSign className="h-4 w-4" />${trip.charge_per_kg}/kg</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p>{t('noTripsYet')}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const MyProfile = () => {
   const { t } = useTranslation();
@@ -181,6 +240,7 @@ const MyProfile = () => {
           </Form>
         </CardContent>
       </Card>
+      <MyTrips />
     </div>
   );
 };

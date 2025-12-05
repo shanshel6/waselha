@@ -22,7 +22,6 @@ const Navbar = () => {
   const navItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
-    { name: t('search'), path: '/search' },
     { name: t('myProfile'), path: '/my-profile' },
   ];
 

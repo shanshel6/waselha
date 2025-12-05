@@ -7,11 +7,10 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Trips from "./pages/Trips";
-import Search from "./pages/Search";
 import MyProfile from "./pages/MyProfile";
 import Verification from "./pages/Verification";
 import AddTrip from "./pages/AddTrip";
-import RequestPackage from "./pages/RequestPackage"; // Import the new component
+import RequestPackage from "./pages/RequestPackage";
 import Navbar from "./components/Navbar";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 
@@ -36,11 +35,10 @@ const AppContent = () => {
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/trips" element={<Trips />} />
-        <Route path="/search" element={<Search />} />
         <Route path="/my-profile" element={<MyProfile />} />
         <Route path="/verify" element={<Verification />} />
         <Route path="/add-trip" element={<AddTrip />} />
-        <Route path="/request-package/:tripId" element={<RequestPackage />} /> {/* New route */}
+        <Route path="/request-package/:tripId" element={<RequestPackage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
