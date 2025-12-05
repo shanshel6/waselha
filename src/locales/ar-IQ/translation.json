@@ -124,5 +124,6 @@
   "areYouSureCancel": "هل أنت متأكد؟",
   "cannotBeUndone": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف طلبك نهائيًا.",
   "cancel": "إلغاء",
-  "confirmDelete": "نعم، احذف الطلب"
+  "confirmDelete": "نعم، احذف الطلب",
+  "estimatedProfit": "الربح التقديري"
 }

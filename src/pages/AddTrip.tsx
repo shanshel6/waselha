@@ -1,13 +1,13 @@
 "use client";
 
-import React from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i-next';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, DollarSign } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,41 +37,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
-
-const countries = [
-  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola",
-  "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria",
-  "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus",
-  "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina",
-  "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-  "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic",
-  "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Brazzaville)",
-  "Congo (Kinshasa)", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic",
-  "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt",
-  "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
-  "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana",
-  "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
-  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq",
-  "Ireland", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan",
-  "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia",
-  "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
-  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
-  "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova",
-  "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia",
-  "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria",
-  "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau",
-  "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines",
-  "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino",
-  "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles",
-  "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan",
-  "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania",
-  "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia",
-  "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates",
-  "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu",
-  "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
-];
+import { countries } from '@/lib/countries';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -89,6 +56,7 @@ const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
+  const [estimatedProfit, setEstimatedProfit] = useState(0);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -101,6 +69,20 @@ const AddTrip = () => {
       notes: "",
     },
   });
+
+  const freeKg = form.watch('free_kg');
+  const chargePerKg = form.watch('charge_per_kg');
+
+  useEffect(() => {
+    const kg = Number(freeKg);
+    const charge = Number(chargePerKg);
+
+    if (!isNaN(kg) && !isNaN(charge) && kg > 0 && charge > 0) {
+      setEstimatedProfit(kg * charge);
+    } else {
+      setEstimatedProfit(0);
+    }
+  }, [freeKg, chargePerKg]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
@@ -275,6 +257,21 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
+
+          {estimatedProfit > 0 && (
+            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+              <CardHeader className="text-center">
+                <CardTitle className="text-green-800 dark:text-green-300">{t('estimatedProfit')}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-4xl font-bold text-green-600 dark:text-green-400 flex items-center justify-center">
+                  <DollarSign className="h-8 w-8 mr-2" />
+                  {estimatedProfit.toFixed(2)}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
             {t('createTrip')}
           </Button>
