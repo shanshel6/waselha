@@ -25,5 +25,9 @@
   "uploadPhotoId": "تحميل صورة لك وأنت تحمل هويتك",
   "uploadIdSides": "تحميل جانبي الهوية",
   "uploadResidentialCard": "تحميل بطاقة الإقامة",
-  "submitVerification": "إرسال للتحقق"
+  "submitVerification": "إرسال للتحقق",
+  "noTripsYet": "لا توجد رحلات متاحة بعد. كن أول من يضيف رحلة!",
+  "searchDescription": "ابحث عن الرحلات المتاحة بناءً على الوجهة، التاريخ، أو الوزن.",
+  "profileDetailsPlaceholder": "هنا ستظهر تفاصيل ملفك الشخصي.",
+  "verificationInstructions": "يرجى تحميل المستندات المطلوبة للتحقق من هويتك."
 }
