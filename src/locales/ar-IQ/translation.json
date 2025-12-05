@@ -146,5 +146,6 @@
   "verificationSubmitted": "تم إرسال طلب التحقق بنجاح! ستتم مراجعته قريبًا.",
   "verificationRequiredTitle": "التحقق مطلوب",
   "verificationRequiredDescription": "للمتابعة، يرجى إكمال عملية التحقق من هويتك أولاً. هذا يساعدنا في الحفاظ على أمان المنصة لجميع المستخدمين.",
-  "verifyNow": "التحقق الآن"
+  "verifyNow": "التحقق الآن",
+  "basedOnWeightAndDestination": "بناءً على الوزن المتاح والوجهة."
 }

@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, DollarSign } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,12 +34,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { countries } from '@/lib/countries';
 import { useProfile } from '@/hooks/use-profile';
 import VerificationModal from '@/components/VerificationModal';
+import { calculateShippingCost } from '@/lib/pricing';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -69,6 +71,15 @@ const AddTrip = () => {
       notes: "",
     },
   });
+
+  const { from_country, to_country, free_kg } = form.watch();
+
+  const estimatedProfit = useMemo(() => {
+    if (from_country && to_country && free_kg > 0) {
+      return calculateShippingCost(from_country, to_country, free_kg);
+    }
+    return null;
+  }, [from_country, to_country, free_kg]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
@@ -210,6 +221,26 @@ const AddTrip = () => {
                 </FormItem>
               )}
             />
+
+            {estimatedProfit && (
+              <Card className="bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 p-4">
+                <CardHeader className="p-0">
+                  <CardTitle className="text-lg flex items-center gap-2 text-green-800 dark:text-green-300">
+                    <DollarSign className="h-5 w-5" />
+                    {t('estimatedProfit')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 pt-2">
+                  <p className="text-2xl font-bold text-green-900 dark:text-green-200">
+                    ${estimatedProfit.totalPriceUSD.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('basedOnWeightAndDestination')}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <FormField
               control={form.control}
               name="traveler_location"
