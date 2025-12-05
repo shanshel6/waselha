@@ -15,7 +15,7 @@ function Login() {
         <h1 className="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{t('login')}</h1>
         <Auth
           supabaseClient={supabase}
-          providers={['google']} {/* Added 'google' provider */}
+          providers={['google']}
           appearance={{
             theme: ThemeSupa,
             variables: {
