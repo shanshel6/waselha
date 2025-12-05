@@ -62,8 +62,6 @@ const Chat = () => {
         .select('id')
         .eq('request_id', requestId)
         .single();
-      // PGRST116 means no rows found, which is a valid state if chat hasn't been created.
-      // We don't throw an error for that, we just return null.
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     },
@@ -125,8 +123,31 @@ const Chat = () => {
       });
       if (error) throw error;
     },
-    onSuccess: () => form.reset(),
-    onError: (err: any) => showError(err.message),
+    onMutate: async (newMessage) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', chatId] });
+      const previousMessages = queryClient.getQueryData(['messages', chatId]);
+      queryClient.setQueryData(['messages', chatId], (old: any[] | undefined) => {
+        const optimisticMessage = {
+          id: Date.now(),
+          chat_id: chatId,
+          sender_id: user?.id,
+          content: newMessage.content,
+          created_at: new Date().toISOString(),
+        };
+        return old ? [...old, optimisticMessage] : [optimisticMessage];
+      });
+      return { previousMessages };
+    },
+    onError: (err: any, newMessage, context) => {
+      showError(err.message);
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', chatId], context.previousMessages);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', chatId] });
+      form.reset();
+    },
   });
 
   const isUserTheTraveler = user?.id === requestData?.trip?.user_id;
