@@ -125,5 +125,12 @@
   "cannotBeUndone": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف طلبك نهائيًا.",
   "cancel": "إلغاء",
   "confirmDelete": "نعم، احذف الطلب",
-  "estimatedProfit": "الربح التقديري"
+  "estimatedProfit": "الربح التقديري",
+  "invalidEmail": "البريد الإلكتروني غير صالح",
+  "passwordTooShort": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
+  "signUpSuccessCheckEmail": "تم التسجيل بنجاح! يرجى التحقق من بريدك الإلكتروني للتفعيل.",
+  "createAccountToStart": "أنشئ حسابك للبدء.",
+  "signingUp": "جاري إنشاء الحساب...",
+  "profileDetails": "تفاصيل ملفك الشخصي.",
+  "noPhoneProvided": "لم يتم تقديم رقم هاتف"
 }

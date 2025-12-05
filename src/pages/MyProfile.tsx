@@ -1,44 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import { showSuccess, showError } from '@/utils/toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plane, Package, DollarSign, CalendarDays } from 'lucide-react';
+import { Plane, Package, DollarSign, CalendarDays, User, Mail, Phone, Briefcase } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
-
-const profileFormSchema = z.object({
-  first_name: z.string().min(1, { message: "requiredField" }).optional(),
-  last_name: z.string().min(1, { message: "requiredField" }).optional(),
-  phone: z.string().optional(),
-  role: z.enum(["traveler", "sender", "both"], {
-    required_error: "requiredField",
-  }),
-});
+import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 
 const MyTrips = () => {
   const { t } = useTranslation();
@@ -100,44 +71,6 @@ const MyProfile = () => {
   const { t } = useTranslation();
   const { user, isLoading: isSessionLoading } = useSession();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
-  const queryClient = useQueryClient();
-
-  const form = useForm<z.infer<typeof profileFormSchema>>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      first_name: "",
-      last_name: "",
-      phone: "",
-      role: "both",
-    },
-  });
-
-  useEffect(() => {
-    if (!isSessionLoading && profile) {
-      form.reset(profile);
-    }
-  }, [profile, isSessionLoading, form]);
-
-  const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
-    if (!user) {
-      showError(t('profileUpdatedError'));
-      return;
-    }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update(values)
-      .eq('id', user.id);
-
-    if (error) {
-      console.error('Error updating profile:', error);
-      showError(t('profileUpdatedError'));
-    } else {
-      showSuccess(t('profileUpdatedSuccess'));
-      // Invalidate profile query to refresh data everywhere
-      queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
-    }
-  };
 
   if (isSessionLoading || isLoadingProfile) {
     return (
@@ -147,85 +80,39 @@ const MyProfile = () => {
     );
   }
 
+  const roleText = (role: string | null | undefined) => {
+    if (role === 'traveler') return t('roleTraveler');
+    if (role === 'sender') return t('roleSender');
+    if (role === 'both') return t('roleBoth');
+    return 'N/A';
+  };
+
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myProfile')}</h1>
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>{t('updateProfile')}</CardTitle>
+          <CardTitle className="flex items-center gap-3">
+            <User className="h-8 w-8 text-primary" />
+            <span>{profile?.first_name} {profile?.last_name}</span>
+          </CardTitle>
           <CardDescription>
-            {user?.email}
+            {t('profileDetails')}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="first_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('firstName')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="last_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('lastName')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('phone')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('role')}</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('selectRole')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="traveler">{t('roleTraveler')}</SelectItem>
-                        <SelectItem value="sender">{t('roleSender')}</SelectItem>
-                        <SelectItem value="both">{t('roleBoth')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                {t('updateProfile')}
-              </Button>
-            </form>
-          </Form>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+            <Mail className="h-5 w-5 text-gray-500" />
+            <span className="text-gray-800 dark:text-gray-200">{user?.email}</span>
+          </div>
+          <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+            <Phone className="h-5 w-5 text-gray-500" />
+            <span className="text-gray-800 dark:text-gray-200">{profile?.phone || t('noPhoneProvided')}</span>
+          </div>
+          <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+            <Briefcase className="h-5 w-5 text-gray-500" />
+            <Badge variant="outline">{roleText(profile?.role)}</Badge>
+          </div>
         </CardContent>
       </Card>
       <MyTrips />
