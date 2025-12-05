@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, Send } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
@@ -14,33 +14,32 @@ const Navbar = () => {
   const { t } = useTranslation();
   const { session } = useSession();
 
-  // Only include links that should appear in the main navigation bar
   const navItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
   ];
 
-  // Mobile navigation items (including profile/requests for logged-in users)
   const mobileNavItems = [
     ...navItems,
     ...(session ? [
       { name: t('myProfile'), path: '/my-profile' },
       { name: t('myRequests'), path: '/my-requests' },
-      { name: t('myFlights'), path: '/trips' }, // Link to user's trips
+      { name: t('myFlights'), path: '/trips' },
     ] : []),
   ];
 
   return (
-    <nav className="bg-white text-foreground p-4 shadow-md border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-primary">
+    <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-primary">
+          <Send className="h-6 w-6" />
           Waselha
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
           {navItems.map((item) => (
-            <Link key={item.name} to={item.path} className="text-gray-700 hover:text-primary transition-colors font-medium dark:text-gray-300 dark:hover:text-primary">
+            <Link key={item.name} to={item.path} className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
               {item.name}
             </Link>
           ))}
@@ -58,15 +57,10 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center">
-          {session ? (
+          {session && (
             <div className="flex items-center gap-1">
               <Notifications />
-              <UserNav />
             </div>
-          ) : (
-            <Link to="/login">
-              <Button variant="ghost">{t('login')}</Button>
-            </Link>
           )}
           <Sheet>
             <SheetTrigger asChild>
@@ -81,6 +75,15 @@ const Navbar = () => {
                     {item.name}
                   </Link>
                 ))}
+                <div className="pt-4 border-t">
+                  {session ? (
+                    <UserNav />
+                  ) : (
+                    <Link to="/login">
+                      <Button className="w-full">{t('login')}</Button>
+                    </Link>
+                  )}
+                </div>
               </div>
             </SheetContent>
           </Sheet>

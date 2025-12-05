@@ -9,13 +9,14 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plane, Package, DollarSign, User, MapPin } from 'lucide-react';
+import { Plane, Package, DollarSign, User, MapPin, Search, PlusCircle, BadgeCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { countries } from '@/lib/countries';
+import { Badge } from '@/components/ui/badge';
 
 const searchSchema = z.object({
   from_country: z.string().optional(),
@@ -45,7 +46,8 @@ const Trips = () => {
           `*,
           profiles (
             first_name,
-            last_name
+            last_name,
+            is_verified
           )`
         )
         .gte('trip_date', format(new Date(), 'yyyy-MM-dd'));
@@ -88,20 +90,42 @@ const Trips = () => {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {trips.map((trip) => (
-            <Card key={trip.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 flex flex-col">
+            <Card key={trip.id} className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-primary">
-                  <Plane className="h-5 w-5" /> {trip.from_country} → {trip.to_country}
-                </CardTitle>
-                <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <Plane className="h-5 w-5 text-primary" /> {trip.from_country} → {trip.to_country}
+                    </CardTitle>
+                    <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="flex-grow space-y-3">
-                <p className="flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> {t('traveler')}: {trip.profiles?.first_name || 'N/A'}</p>
-                <p className="flex items-center gap-2"><Package className="h-4 w-4 text-gray-500" /> {t('availableWeight')}: {trip.free_kg} kg</p>
-                <p className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg}</p>
-                {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}
+              <CardContent className="flex-grow space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span>{trip.profiles?.first_name || 'N/A'}</span>
+                  {trip.profiles?.is_verified && <Badge variant="secondary" className="text-green-600 border-green-600"><BadgeCheck className="h-3 w-3 mr-1" /> Verified</Badge>}
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary/80" />
+                    <div>
+                      <p className="font-semibold">{trip.free_kg} kg</p>
+                      <p className="text-xs text-muted-foreground">{t('availableWeight')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-primary/80" />
+                    <div>
+                      <p className="font-semibold">${trip.charge_per_kg}</p>
+                      <p className="text-xs text-muted-foreground">{t('pricePerKg')}</p>
+                    </div>
+                  </div>
+                </div>
+                {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}
               </CardContent>
-              <div className="p-4 pt-0">
+              <div className="p-4 pt-0 mt-auto">
                 <Link to={`/trips/${trip.id}`} className="w-full">
                   <Button className="w-full">{t('viewTripAndRequest')}</Button>
                 </Link>
@@ -112,22 +136,30 @@ const Trips = () => {
       );
     }
 
-    return <p>{t('noTripsFound')}</p>;
+    return (
+      <Card className="text-center p-12">
+        <h3 className="text-xl font-semibold">{t('noTripsFound')}</h3>
+        <p className="text-muted-foreground mt-2">Try adjusting your search filters or be the first to add a trip!</p>
+      </Card>
+    );
   };
 
   return (
-    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('trips')}</h1>
+    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-4xl font-bold">{t('trips')}</h1>
+          <p className="text-muted-foreground">Find travelers who can carry your packages.</p>
+        </div>
         <Link to="/add-trip">
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">{t('addTrip')}</Button>
+          <Button size="lg"><PlusCircle className="mr-2 h-5 w-5" />{t('addTrip')}</Button>
         </Link>
       </div>
       
       <Card className="mb-8">
         <CardContent className="p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
               <FormField
                 control={form.control}
                 name="from_country"
@@ -162,8 +194,8 @@ const Trips = () => {
                   </FormItem>
                 )}
               />
-              <div className="flex gap-2">
-                <Button type="submit" className="w-full">{t('searchNow')}</Button>
+              <div className="flex gap-2 col-span-1 md:col-span-1 lg:col-span-2">
+                <Button type="submit" className="w-full"><Search className="mr-2 h-4 w-4" />{t('searchNow')}</Button>
                 <Button type="button" variant="outline" onClick={resetFilters} className="w-full">{t('resetFilters')}</Button>
               </div>
             </form>

@@ -3,59 +3,60 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Plane, Package, DollarSign, Handshake } from 'lucide-react';
 import PriceCalculator from '@/components/PriceCalculator';
+import { Card } from '@/components/ui/card';
 
 const Index = () => {
   const { t } = useTranslation();
 
   const howItWorksSteps = [
     {
-      icon: <Plane className="h-8 w-8 text-primary mb-2" />,
+      icon: <Plane className="h-10 w-10 text-primary" />,
       title: t('step1Title'),
       description: t('step1Description'),
     },
     {
-      icon: <Package className="h-8 w-8 text-primary mb-2" />,
+      icon: <Package className="h-10 w-10 text-primary" />,
       title: t('step2Title'),
       description: t('step2Description'),
     },
     {
-      icon: <Handshake className="h-8 w-8 text-primary mb-2" />,
+      icon: <Handshake className="h-10 w-10 text-primary" />,
       title: t('step3Title'),
       description: t('step3Description'),
     },
     {
-      icon: <DollarSign className="h-8 w-8 text-primary mb-2" />,
+      icon: <DollarSign className="h-10 w-10 text-primary" />,
       title: t('step4Title'),
       description: t('step4Description'),
     },
   ];
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center bg-gradient-to-br from-violet-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4">
+    <div className="flex flex-col items-center bg-background">
       {/* Hero Section */}
-      <section className="text-center max-w-4xl py-16 md:py-24">
-        <h1 className="text-5xl md:text-6xl font-extrabold mb-6 text-gray-900 dark:text-white leading-tight">
-          {t('welcome')}
-        </h1>
-        <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-8">
-          {t('startBuilding')}
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg flex flex-col items-center justify-center">
-            <Plane className="h-12 w-12 text-primary mb-4" />
-            <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{t('travelersEarnMoney')}</h2>
-            <Link to="/add-trip" className="w-full">
-              <Button size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                {t('imATraveler')}
+      <section className="relative w-full h-[60vh] md:h-[70vh] flex items-center justify-center text-center text-white">
+        <div className="absolute inset-0 bg-black/50 z-10"></div>
+        <img 
+          src="https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+          alt="Modern airport terminal" 
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="relative z-20 max-w-4xl p-4">
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+            {t('welcome')}
+          </h1>
+          <p className="text-lg md:text-xl text-neutral-200 mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}>
+            {t('startBuilding')}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+            <Link to="/add-trip">
+              <Button size="lg" className="w-full text-lg py-6">
+                <Plane className="mr-2 h-5 w-5" /> {t('imATraveler')}
               </Button>
             </Link>
-          </div>
-          <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg flex flex-col items-center justify-center">
-            <Package className="h-12 w-12 text-accent-foreground mb-4" />
-            <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">{t('sendersCheaperShipping')}</h2>
-            <Link to="/search" className="w-full">
-              <Button size="lg" variant="outline" className="w-full border-primary text-primary hover:bg-primary/10">
-                {t('iWantToSendPackage')}
+            <Link to="/trips">
+              <Button size="lg" variant="secondary" className="w-full text-lg py-6">
+                <Package className="mr-2 h-5 w-5" /> {t('iWantToSendPackage')}
               </Button>
             </Link>
           </div>
@@ -63,21 +64,25 @@ const Index = () => {
       </section>
 
       {/* How it works section */}
-      <section className="w-full max-w-4xl py-16 md:py-24 bg-white dark:bg-gray-800 rounded-lg shadow-xl mb-12">
-        <h2 className="text-4xl font-bold text-center mb-12 text-gray-900 dark:text-white">{t('howItWorks')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 px-4">
+      <section className="w-full max-w-5xl py-16 md:py-24 px-4">
+        <h2 className="text-4xl font-bold text-center mb-12">{t('howItWorks')}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {howItWorksSteps.map((step, index) => (
             <div key={index} className="flex flex-col items-center text-center p-4">
-              {step.icon}
-              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">{step.title}</h3>
-              <p className="text-gray-600 dark:text-gray-400">{step.description}</p>
+              <div className="bg-primary/10 rounded-full p-4 mb-4">
+                {step.icon}
+              </div>
+              <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+              <p className="text-muted-foreground">{step.description}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Pricing Calculator Section */}
-      <PriceCalculator />
+      <div className="w-full bg-muted/50 py-16 md:py-24">
+        <PriceCalculator />
+      </div>
     </div>
   );
 };
