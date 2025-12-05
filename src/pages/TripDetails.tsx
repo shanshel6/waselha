@@ -85,8 +85,19 @@ const TripDetails = () => {
       showError(t('requestFailed'));
     } else {
       showSuccess(t('requestSentSuccess'));
-      // Optionally navigate to a "my requests" page
-      navigate('/trips');
+      
+      // Create a notification for the traveler
+      const { error: notificationError } = await supabase.from('notifications').insert({
+        user_id: trip.user_id, // The traveler
+        message: `You have a new package request for your trip from ${trip.from_country} to ${trip.to_country}.`,
+        link: '/my-requests'
+      });
+
+      if (notificationError) {
+        console.error("Error creating notification:", notificationError);
+      }
+
+      navigate('/my-requests');
     }
   };
 
@@ -95,7 +106,7 @@ const TripDetails = () => {
   if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
 
   return (
-    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
+    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark-bg-gray-900">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Trip Details Section */}
         <Card>
