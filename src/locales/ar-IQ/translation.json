@@ -78,5 +78,22 @@
   "pricePerKg": "السعر للكيلوغرام",
   "requestToSend": "اطلب إرسال طرد",
   "approxIQD": "تقريباً",
-  "resetFilters": "إعادة تعيين"
+  "resetFilters": "إعادة تعيين",
+  "viewTripAndRequest": "عرض الرحلة والطلب",
+  "tripNotFound": "لم يتم العثور على الرحلة.",
+  "notesFromTraveler": "ملاحظات من المسافر",
+  "sendRequestToTraveler": "أرسل طلبًا إلى المسافر",
+  "fillFormToSend": "املأ النموذج أدناه لإرسال طردك.",
+  "packageWeightKg": "وزن الطرد (كجم)",
+  "packageContents": "محتويات الطرد",
+  "packageContentsPlaceholder": "على سبيل المثال: ملابس، إلكترونيات، مستندات...",
+  "destinationCity": "مدينة التسليم",
+  "destinationCityPlaceholder": "أدخل المدينة في {{country}}",
+  "receiverDetails": "تفاصيل المستلم",
+  "receiverDetailsPlaceholder": "اسم ورقم هاتف الشخص الذي سيستلم الطرد.",
+  "sendRequest": "إرسال الطلب",
+  "mustBeLoggedIn": "يجب عليك تسجيل الدخول لإرسال طلب.",
+  "requestFailed": "فشل إرسال الطلب. الرجاء المحاولة مرة أخرى.",
+  "requestSentSuccess": "تم إرسال طلبك بنجاح!",
+  "descriptionTooShort": "يجب أن يكون الوصف 10 أحرف على الأقل."
 }

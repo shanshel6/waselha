@@ -97,7 +97,7 @@ const Trips = () => {
                     <FormLabel>{t('fromCountry')}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectValue>
                       </FormControl>
                       <SelectContent>
                         {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -114,7 +114,7 @@ const Trips = () => {
                     <FormLabel>{t('toCountry')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectValue>
                       </FormControl>
                       <SelectContent>
                         {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -152,8 +152,8 @@ const Trips = () => {
                 {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}
               </CardContent>
               <div className="p-4 pt-0">
-                <Link to={`/request-package/${trip.id}`} className="w-full">
-                  <Button className="w-full">{t('requestToSend')}</Button>
+                <Link to={`/trips/${trip.id}`} className="w-full">
+                  <Button className="w-full">{t('viewTripAndRequest')}</Button>
                 </Link>
               </div>
             </Card>
