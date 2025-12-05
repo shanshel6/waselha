@@ -25,7 +25,6 @@ function Login() {
               },
             },
           }}
-          theme="light" // Use light theme as default
           localization={{
             variables: {
               sign_in: {
