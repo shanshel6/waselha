@@ -115,5 +115,7 @@
   "requestUpdatedSuccess": "تم تحديث حالة الطلب بنجاح!",
   "noReceivedRequests": "ليس لديك أي طلبات مستلمة.",
   "noSentRequests": "لم تقم بإرسال أي طلبات بعد.",
-  "loading": "جاري التحميل..."
+  "loading": "جاري التحميل...",
+  "notifications": "الإشعارات",
+  "noNotifications": "لا توجد إشعارات جديدة."
 }

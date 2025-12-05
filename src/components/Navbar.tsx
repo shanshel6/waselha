@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import UserNav from './UserNav'; // Import UserNav
+import UserNav from './UserNav';
+import Notifications from './Notifications';
 
 const Navbar = () => {
   const { t } = useTranslation();
@@ -43,9 +44,12 @@ const Navbar = () => {
               {item.name}
             </Link>
           ))}
-          {/* User Profile/Logout handled by UserNav */}
-          {session && <UserNav />}
-          {!session && (
+          {session ? (
+            <div className="flex items-center gap-2">
+              <Notifications />
+              <UserNav />
+            </div>
+          ) : (
             <Link to="/login">
               <Button variant="ghost">{t('login')}</Button>
             </Link>
@@ -54,8 +58,12 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center">
-          {session && <UserNav />}
-          {!session && (
+          {session ? (
+            <div className="flex items-center gap-1">
+              <Notifications />
+              <UserNav />
+            </div>
+          ) : (
             <Link to="/login">
               <Button variant="ghost">{t('login')}</Button>
             </Link>
