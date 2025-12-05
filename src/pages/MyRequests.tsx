@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { Plane, Package, Trash2, MapPin, User, Weight } from 'lucide-react';
+import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Link } from 'react-router-dom';
 
 const MyRequests = () => {
   const { t } = useTranslation();
@@ -173,12 +174,22 @@ const MyRequests = () => {
                       <p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p>
                       <p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p>
                     </div>
-                    {req.status === 'pending' && (
-                      <div className="flex gap-2 pt-2">
-                        <Button size="sm" onClick={() => handleUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 pt-2">
+                      {req.status === 'pending' && (
+                        <>
+                          <Button size="sm" onClick={() => handleUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
+                        </>
+                      )}
+                      {req.status === 'accepted' && (
+                        <Link to={`/chat/${req.id}`}>
+                          <Button size="sm" variant="outline">
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            {t('viewChat')}
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )) : <p>{t('noReceivedRequests')}</p>}
@@ -203,18 +214,27 @@ const MyRequests = () => {
                   </CardHeader>
                   <CardContent>
                     <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-                    {req.status === 'pending' && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="mt-4"
-                        onClick={() => setRequestToCancel(req)}
-                        disabled={deleteRequestMutation.isPending}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {t('cancelRequest')}
-                      </Button>
-                    )}
+                    <div className="flex gap-2 mt-4">
+                      {req.status === 'pending' && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setRequestToCancel(req)}
+                          disabled={deleteRequestMutation.isPending}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {t('cancelRequest')}
+                        </Button>
+                      )}
+                      {req.status === 'accepted' && (
+                        <Link to={`/chat/${req.id}`}>
+                          <Button size="sm" variant="outline">
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            {t('viewChat')}
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )) : <p>{t('noSentRequests')}</p>}

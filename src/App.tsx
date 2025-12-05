@@ -13,6 +13,7 @@ import Verification from "./pages/Verification";
 import AddTrip from "./pages/AddTrip";
 import TripDetails from "./pages/TripDetails";
 import MyRequests from "./pages/MyRequests";
+import Chat from "./pages/Chat";
 import Navbar from "./components/Navbar";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 
@@ -29,6 +30,7 @@ const MainLayout = () => (
       <Route path="/verification" element={<Verification />} />
       <Route path="/add-trip" element={<AddTrip />} />
       <Route path="/my-requests" element={<MyRequests />} />
+      <Route path="/chat/:requestId" element={<Chat />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </>
