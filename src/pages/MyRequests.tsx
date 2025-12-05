@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { Plane, Package, Trash2 } from 'lucide-react';
+import { Plane, Package, Trash2, MapPin, User, Weight } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -131,14 +131,23 @@ const MyRequests = () => {
                       <Plane className="h-4 w-4" /> {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="font-semibold">{t('packageContents')}:</p>
-                    <p className="text-sm text-muted-foreground mb-2">{req.description}</p>
-                    <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p>
+                      <p className="text-sm text-muted-foreground pl-6">{req.description}</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <p className="flex items-center gap-2"><Weight className="h-4 w-4" /> <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                      <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p>
+                      <p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p>
+                    </div>
                     {req.status === 'pending' && (
-                      <div className="flex gap-2 mt-4">
-                        <Button onClick={() => handleUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
-                        <Button variant="destructive" onClick={() => handleUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" onClick={() => handleUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
                       </div>
                     )}
                   </CardContent>
