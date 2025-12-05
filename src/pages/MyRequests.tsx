@@ -196,7 +196,7 @@ const MyRequests = () => {
                     <CardTitle className="flex items-center justify-between">
                       <span>{t('requestTo')} {req.trips.profiles?.first_name || 'Traveler'}</span>
                       <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
-                    </Title>
+                    </CardTitle>
                     <CardDescription className="flex items-center gap-2 pt-2">
                       <Plane className="h-4 w-4" /> {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
                     </CardDescription>
