@@ -102,7 +102,7 @@
   "priceCalculatorDescription": "احسب تكلفة شحن طردك بناءً على الوجهة والوزن.",
   "estimatedCost": "التكلفة التقديرية",
   "totalPriceUSD": "السعر الإجمالي (دولار)",
-  "priceCalculatorNote": "السعر يعتمد على منطقة الوجهة والوزن الإجمالي. كلما زاد الوزن، انخفض سعر الكيلوغرام الواحد.",
+  "priceCalculatorNote": "السعر يعتمد على منطقة الوجهة والوزن الإجمالي.",
   "sentRequests": "الطلبات المرسلة",
   "receivedRequests": "الطلبات المستلمة",
   "requestFrom": "طلب من",

@@ -39,10 +39,10 @@ const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {
 
 const getPricePerKg = (zone: keyof typeof PRICING_TIERS_USD, weight: number): number => {
   const tiers = PRICING_TIERS_USD[zone];
-  if (weight >= 1 && weight <= 2) return tiers["1-2"];
-  if (weight >= 3 && weight <= 5) return tiers["3-5"];
-  if (weight >= 6 && weight <= 10) return tiers["6-10"];
-  if (weight > 10) return tiers[">10"];
+  // Always use the base price for 1-2kg, regardless of the total weight.
+  if (weight > 0) {
+    return tiers["1-2"];
+  }
   return 0;
 };
 
