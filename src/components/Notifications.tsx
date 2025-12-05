@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { showSuccess } from '@/utils/toast';
 
 const Notifications = () => {
   const { t } = useTranslation();
@@ -52,8 +53,15 @@ const Notifications = () => {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => {
+        (payload) => {
+          // Invalidate the query to update the list in the popover
           queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+          
+          // Show a real-time toast alert to the user
+          const newNotification = payload.new as { message: string };
+          if (newNotification.message) {
+            showSuccess(newNotification.message);
+          }
         }
       )
       .subscribe();
