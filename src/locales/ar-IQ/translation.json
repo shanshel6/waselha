@@ -38,5 +38,7 @@
   "requiredField": "هذا الحقل مطلوب",
   "invalidNumber": "يجب أن يكون رقمًا صالحًا",
   "positiveNumber": "يجب أن يكون رقمًا موجبًا",
-  "dateRequired": "تاريخ الرحلة مطلوب"
+  "dateRequired": "تاريخ الرحلة مطلوب",
+  "loadingTrips": "جاري تحميل الرحلات...",
+  "errorLoadingTrips": "حدث خطأ أثناء تحميل الرحلات"
 }
