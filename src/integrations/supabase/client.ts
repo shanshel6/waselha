@@ -3,9 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase URL or Anon Key is not defined in environment variables.');
-  // You might want to throw an error or handle this more gracefully in a production app
+if (!supabaseUrl) {
+  throw new Error('VITE_SUPABASE_URL is not defined in environment variables. Please ensure it is set in your .env.local file.');
+}
+if (!supabaseAnonKey) {
+  throw new Error('VITE_SUPABASE_ANON_KEY is not defined in environment variables. Please ensure it is set in your .env.local file.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
