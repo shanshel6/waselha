@@ -76,6 +76,46 @@ const Trips = () => {
     setFilters({ from_country: "Iraq" });
   };
 
+  const renderContent = () => {
+    if (isLoading) {
+      return <p>{t('loadingTrips')}</p>;
+    }
+
+    if (error) {
+      return <p className="text-red-500">{t('errorLoadingTrips')}: {error.message}</p>;
+    }
+
+    if (trips && trips.length > 0) {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {trips.map((trip) => (
+            <Card key={trip.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 flex flex-col">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <Plane className="h-5 w-5" /> {trip.from_country} → {trip.to_country}
+                </CardTitle>
+                <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow space-y-3">
+                <p className="flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> {t('traveler')}: {trip.profiles?.first_name || 'N/A'}</p>
+                <p className="flex items-center gap-2"><Package className="h-4 w-4 text-gray-500" /> {t('availableWeight')}: {trip.free_kg} kg</p>
+                <p className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg} <span className="text-xs text-gray-500">({t('approxIQD')} {new Intl.NumberFormat().format(trip.charge_per_kg * exchangeRateUSDToIQD)} IQD)</span></p>
+                {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}
+              </CardContent>
+              <div className="p-4 pt-0">
+                <Link to={`/trips/${trip.id}`} className="w-full">
+                  <Button className="w-full">{t('viewTripAndRequest')}</Button>
+                </Link>
+              </div>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    return <p>{t('noTripsFound')}</p>;
+  };
+
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <div className="flex justify-between items-center mb-6">
@@ -132,36 +172,7 @@ const Trips = () => {
         </CardContent>
       </Card>
 
-      {isLoading && <p>{t('loadingTrips')}</p>}
-      {error && <p className="text-red-500">{t('errorLoadingTrips')}: {error.message}</p>}
-      
-      {!isLoading && !error && trips && trips.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {trips.map((trip) => (
-            <Card key={trip.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-primary">
-                  <Plane className="h-5 w-5" /> {trip.from_country} → {trip.to_country}
-                </CardTitle>
-                <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow space-y-3">
-                <p className="flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> {t('traveler')}: {trip.profiles?.first_name || 'N/A'}</p>
-                <p className="flex items-center gap-2"><Package className="h-4 w-4 text-gray-500" /> {t('availableWeight')}: {trip.free_kg} kg</p>
-                <p className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg} <span className="text-xs text-gray-500">({t('approxIQD')} {new Intl.NumberFormat().format(trip.charge_per_kg * exchangeRateUSDToIQD)} IQD)</span></p>
-                {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}
-              </CardContent>
-              <div className="p-4 pt-0">
-                <Link to={`/trips/${trip.id}`} className="w-full">
-                  <Button className="w-full">{t('viewTripAndRequest')}</Button>
-                </Link>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        !isLoading && <p>{t('noTripsFound')}</p>
-      )}
+      {renderContent()}
     </div>
   );
 };
