@@ -68,5 +68,14 @@
   "roleSender": "مرسل",
   "roleBoth": "كلاهما",
   "loadingProfile": "جاري تحميل الملف الشخصي...",
-  "errorLoadingProfile": "حدث خطأ أثناء تحميل الملف الشخصي."
+  "errorLoadingProfile": "حدث خطأ أثناء تحميل الملف الشخصي.",
+  "searchTrips": "ابحث عن رحلات",
+  "searchNow": "ابحث الآن",
+  "noTripsFound": "لم يتم العثور على رحلات تطابق بحثك. حاول تغيير الفلاتر.",
+  "traveler": "المسافر",
+  "availableWeight": "الوزن المتاح",
+  "pricePerKg": "السعر للكيلوغرام",
+  "requestToSend": "اطلب إرسال طرد",
+  "approxIQD": "تقريباً",
+  "resetFilters": "إعادة تعيين"
 }
