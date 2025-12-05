@@ -27,7 +27,7 @@ type SearchFilters = z.infer<typeof searchSchema>;
 const Trips = () => {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
-  const exchangeRateUSDToIQD = 1500;
+  const exchangeRateUSDToIQD = 1400;
 
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),

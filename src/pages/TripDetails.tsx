@@ -31,7 +31,7 @@ const TripDetails = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const { user } = useSession();
-  const exchangeRateUSDToIQD = 1500;
+  const exchangeRateUSDToIQD = 1400;
 
   const { data: trip, isLoading, error } = useQuery({
     queryKey: ['trip', tripId],

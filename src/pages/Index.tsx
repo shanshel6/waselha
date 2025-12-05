@@ -1,13 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Plane, Package, DollarSign, Handshake } from 'lucide-react'; // Icons for 'How it works'
+import { Plane, Package, DollarSign, Handshake } from 'lucide-react';
+import PriceCalculator from '@/components/PriceCalculator';
 
 const Index = () => {
   const { t } = useTranslation();
-  const exchangeRateUSDToIQD = 1500; // Example fixed rate
-  const defaultPricePerKgUSD = 5;
-  const defaultPricePerKgIQD = defaultPricePerKgUSD * exchangeRateUSDToIQD;
 
   const howItWorksSteps = [
     {
@@ -78,13 +76,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing Logic Section */}
-      <section className="w-full max-w-4xl py-12 md:py-16 bg-white dark:bg-gray-800 rounded-lg shadow-xl mb-12 px-4">
-        <h2 className="text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">{t('pricingLogic')}</h2>
-        <p className="text-lg text-gray-700 dark:text-gray-300 text-center">
-          {t('pricingInfo').replace('$5', `$${defaultPricePerKgUSD}`).replace('7500', `${defaultPricePerKgIQD}`)}
-        </p>
-      </section>
+      {/* Pricing Calculator Section */}
+      <PriceCalculator />
     </div>
   );
 };
