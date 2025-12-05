@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,8 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import { Send, Plane, User, MessageSquare } from 'lucide-react';
+import { Send, Plane, User, MessageSquare, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calculateShippingCost } from '@/lib/pricing';
 
 const messageSchema = z.object({
   content: z.string().min(1),
@@ -39,7 +40,9 @@ const Chat = () => {
         .select(`
           *,
           trip:trips(
-            *, 
+            from_country,
+            to_country,
+            user_id,
             traveler:profiles(id, first_name, last_name)
           ),
           sender:profiles(id, first_name, last_name)
@@ -84,6 +87,16 @@ const Chat = () => {
     },
     enabled: !!chatId,
   });
+
+  // Calculate Price
+  const priceCalculation = useMemo(() => {
+    if (!requestData || !requestData.trip) return null;
+    return calculateShippingCost(
+      requestData.trip.from_country, 
+      requestData.trip.to_country, 
+      requestData.weight_kg
+    );
+  }, [requestData]);
 
   // Real-time subscription for new messages
   useEffect(() => {
@@ -158,16 +171,29 @@ const Chat = () => {
     return <div className="container p-4 flex items-center justify-center h-full">{t('loading')}...</div>;
   }
 
+  const otherUserName = otherUser?.first_name || t('user');
+  const tripRoute = `${requestData?.trip.from_country} → ${requestData?.trip.to_country}`;
+  const priceDisplay = priceCalculation 
+    ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)`
+    : t('calculatingPrice');
+
   return (
     <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
       <Card className="h-full flex flex-col">
-        <CardHeader className="border-b">
+        <CardHeader className="border-b p-4">
           <CardTitle className="text-xl">
-            {t('chattingWith')}: {otherUser?.first_name} {otherUser?.last_name}
+            {t('chattingWith')}: {otherUserName}
           </CardTitle>
-          <CardDescription>
-            {t('tripRoute')}: {requestData?.trip.from_country} → {requestData?.trip.to_country}
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-1">
+            <p className="flex items-center gap-1">
+              <Plane className="h-4 w-4 text-primary/80" />
+              {tripRoute}
+            </p>
+            <p className="flex items-center gap-1 font-semibold mt-1 sm:mt-0">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              {t('estimatedCost')}: {priceDisplay}
+            </p>
+          </div>
         </CardHeader>
         <CardContent className="flex-grow overflow-y-auto p-4 flex flex-col">
           {isLoadingMessages ? (
