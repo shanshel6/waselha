@@ -37,7 +37,7 @@ const Chat = () => {
         .from('requests')
         .select(`
           *,
-          chats(id),
+          chats!request_id(id),
           trip:trips(
             *, 
             traveler:profiles(id, first_name, last_name)
