@@ -52,7 +52,7 @@ const MyRequests = () => {
       // We join profiles on the sender_id to get the sender's name.
       const { data, error } = await supabase
         .from('requests')
-        .select(`*, trips(*), profiles:sender_id(first_name, last_name)`)
+        .select(`*, trips(*), profiles!sender_id(first_name, last_name)`)
         .order('created_at', { ascending: false });
 
       if (error) throw new Error(error.message);
