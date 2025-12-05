@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Plane, Package, DollarSign, Handshake } from 'lucide-react';
 import PriceCalculator from '@/components/PriceCalculator';
-import { Card } from '@/components/ui/card';
 
 const Index = () => {
   const { t } = useTranslation();
@@ -37,7 +36,7 @@ const Index = () => {
       <section className="relative w-full h-[60vh] md:h-[70vh] flex items-center justify-center text-center text-white">
         <div className="absolute inset-0 bg-black/50 z-10"></div>
         <img 
-          src="https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+          src="https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixlib=id=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
           alt="Modern airport terminal" 
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -80,9 +79,7 @@ const Index = () => {
       </section>
 
       {/* Pricing Calculator Section */}
-      <div className="w-full bg-muted/50 py-16 md:py-24">
-        <PriceCalculator />
-      </div>
+      <PriceCalculator />
     </div>
   );
 };
