@@ -162,13 +162,11 @@ const Chat = () => {
     <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
       <Card className="h-full flex flex-col">
         <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {otherUser?.first_name} {otherUser?.last_name}
+          <CardTitle className="text-xl">
+            {t('chattingWith')}: {otherUser?.first_name} {otherUser?.last_name}
           </CardTitle>
-          <CardDescription className="flex items-center gap-2">
-            <Plane className="h-4 w-4" />
-            {requestData?.trip.from_country} → {requestData?.trip.to_country}
+          <CardDescription>
+            {t('tripRoute')}: {requestData?.trip.from_country} → {requestData?.trip.to_country}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-grow overflow-y-auto p-4 flex flex-col">

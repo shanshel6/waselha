@@ -151,5 +151,7 @@
   "viewChat": "عرض المحادثة",
   "typeMessage": "اكتب رسالة...",
   "noMessagesYet": "لا توجد رسائل بعد",
-  "startTheConversation": "ابدأ المحادثة!"
+  "startTheConversation": "ابدأ المحادثة!",
+  "chattingWith": "تتحدث مع",
+  "tripRoute": "مسار الرحلة"
 }
