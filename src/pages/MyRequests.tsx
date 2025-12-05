@@ -48,17 +48,16 @@ const MyRequests = () => {
     queryKey: ['receivedRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data: userTrips, error: tripsError } = await supabase.from('trips').select('id').eq('user_id', user.id);
-      if (tripsError) throw new Error(tripsError.message);
-      if (userTrips.length === 0) return [];
-      
-      const tripIds = userTrips.map(trip => trip.id);
+      // RLS policy now handles filtering, so we can query directly.
+      // We join profiles on the sender_id to get the sender's name.
       const { data, error } = await supabase
         .from('requests')
         .select(`*, trips(*), profiles:sender_id(first_name, last_name)`)
-        .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
+
       if (error) throw new Error(error.message);
+      
+      // The new RLS policy ensures we only get requests for our trips.
       return data;
     },
     enabled: !!user,
