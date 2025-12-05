@@ -117,5 +117,12 @@
   "noSentRequests": "لم تقم بإرسال أي طلبات بعد.",
   "loading": "جاري التحميل...",
   "notifications": "الإشعارات",
-  "noNotifications": "لا توجد إشعارات جديدة."
+  "noNotifications": "لا توجد إشعارات جديدة.",
+  "cancelRequest": "إلغاء الطلب",
+  "requestCancelledSuccess": "تم إلغاء الطلب بنجاح!",
+  "requestCancelledError": "فشل إلغاء الطلب.",
+  "areYouSureCancel": "هل أنت متأكد؟",
+  "cannotBeUndone": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف طلبك نهائيًا.",
+  "cancel": "إلغاء",
+  "confirmDelete": "نعم، احذف الطلب"
 }

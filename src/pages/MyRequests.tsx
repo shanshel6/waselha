@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,12 +9,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { Plane, Package, User, Calendar } from 'lucide-react';
+import { Plane, Package, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MyRequests = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const queryClient = useQueryClient();
+  const [requestToCancel, setRequestToCancel] = useState<any | null>(null);
 
   // Fetch requests sent by the current user
   const { data: sentRequests, isLoading: isLoadingSent } = useQuery({
@@ -68,6 +79,25 @@ const MyRequests = () => {
       showSuccess(t('requestUpdatedSuccess'));
     },
     onError: (err) => showError(err.message),
+  });
+
+  const deleteRequestMutation = useMutation({
+    mutationFn: async (request: any) => {
+      const { error } = await supabase.from('requests').delete().eq('id', request.id);
+      if (error) throw error;
+
+      // Notify the traveler that the request was cancelled
+      const message = `A request for your trip from ${request.trips.from_country} to ${request.trips.to_country} has been cancelled.`;
+      await supabase.from('notifications').insert({ user_id: request.trips.user_id, message, link: '/my-requests' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      showSuccess(t('requestCancelledSuccess'));
+    },
+    onError: (err: any) => {
+      console.error("Error deleting request:", err);
+      showError(t('requestCancelledError'));
+    },
   });
 
   const handleUpdateRequest = (request, status) => {
@@ -145,6 +175,18 @@ const MyRequests = () => {
                   </CardHeader>
                   <CardContent>
                     <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                    {req.status === 'pending' && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="mt-4"
+                        onClick={() => setRequestToCancel(req)}
+                        disabled={deleteRequestMutation.isPending}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t('cancelRequest')}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )) : <p>{t('noSentRequests')}</p>}
@@ -152,6 +194,30 @@ const MyRequests = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!requestToCancel} onOpenChange={(open) => !open && setRequestToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('areYouSureCancel')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('cannotBeUndone')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRequestToCancel(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (requestToCancel) {
+                  deleteRequestMutation.mutate(requestToCancel);
+                }
+                setRequestToCancel(null);
+              }}
+              disabled={deleteRequestMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('confirmDelete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
