@@ -27,21 +27,21 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="bg-primary text-primary-foreground p-4 shadow-md">
+    <nav className="bg-white text-foreground p-4 shadow-md border-b border-gray-200">
       <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold">
+        <Link to="/" className="text-2xl font-bold text-primary">
           Waselha
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
           {navItems.map((item) => (
-            <Link key={item.name} to={item.path} className="hover:text-accent-foreground transition-colors">
+            <Link key={item.name} to={item.path} className="text-gray-700 hover:text-primary transition-colors font-medium">
               {item.name}
             </Link>
           ))}
           {session && (
-            <Button onClick={handleLogout} variant="secondary" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <Button onClick={handleLogout} variant="outline" className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
               {t('logout')}
             </Button>
           )}
@@ -50,13 +50,13 @@ const Navbar = () => {
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center">
           {session && (
-            <Button onClick={handleLogout} variant="secondary" className="bg-destructive text-destructive-foreground hover:bg-destructive/90 mr-4">
+            <Button onClick={handleLogout} variant="outline" className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground mr-4">
               {t('logout')}
             </Button>
           )}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-primary-foreground">
+              <Button variant="ghost" size="icon" className="text-foreground">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>

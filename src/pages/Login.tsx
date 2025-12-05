@@ -8,19 +8,26 @@ function Login() {
   const { t } = useTranslation();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-violet-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
         <h1 className="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{t('login')}</h1>
         <Auth
           supabaseClient={supabase}
-          providers={[]} // Only email/password for now, as per instructions
+          providers={[]}
           appearance={{
             theme: ThemeSupa,
             variables: {
               default: {
                 colors: {
-                  brand: 'hsl(var(--primary))',
-                  brandAccent: 'hsl(var(--primary-foreground))',
+                  brand: 'hsl(var(--primary))', // Use the new primary color
+                  brandAccent: 'hsl(var(--primary-foreground))', // Use the new primary-foreground color
+                  defaultButtonBackground: 'hsl(var(--primary))',
+                  defaultButtonBackgroundHover: 'hsl(var(--primary)/0.9)',
+                  inputBackground: 'hsl(var(--background))',
+                  inputBorder: 'hsl(var(--border))',
+                  inputBorderHover: 'hsl(var(--ring))',
+                  inputBorderFocus: 'hsl(var(--ring))',
+                  inputText: 'hsl(var(--foreground))',
                 },
               },
             },
