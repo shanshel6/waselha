@@ -13,9 +13,9 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showError } from '@/utils/toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import { Send, Plane, User, MessageSquare, DollarSign } from 'lucide-react';
+import { Send, Plane, MessageSquare, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 
@@ -90,10 +90,12 @@ const Chat = () => {
 
   // Calculate Price
   const priceCalculation = useMemo(() => {
-    if (!requestData || !requestData.trip) return null;
+    const trip = requestData?.trip;
+    if (!trip || !requestData?.weight_kg) return null;
+    
     return calculateShippingCost(
-      requestData.trip.from_country, 
-      requestData.trip.to_country, 
+      trip.from_country, 
+      trip.to_country, 
       requestData.weight_kg
     );
   }, [requestData]);
@@ -172,7 +174,10 @@ const Chat = () => {
   }
 
   const otherUserName = otherUser?.first_name || t('user');
-  const tripRoute = `${requestData?.trip.from_country} → ${requestData?.trip.to_country}`;
+  const tripRoute = requestData?.trip 
+    ? `${requestData.trip.from_country} → ${requestData.trip.to_country}`
+    : t('tripRoute');
+  
   const priceDisplay = priceCalculation 
     ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)`
     : t('calculatingPrice');
