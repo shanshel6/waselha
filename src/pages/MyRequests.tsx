@@ -68,12 +68,24 @@ const MyRequests = () => {
       // 2. Fetch requests that are for one of the user's trips
       const { data, error } = await supabase
         .from('requests')
-        .select(`*, trips(*), profiles!sender_id(first_name, last_name)`)
+        .select(`*, trips(*), profiles:sender_id(first_name, last_name)`)
         .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw new Error(error.message);
+        // Log the error for debugging but don't throw, to avoid crashing the UI
+        console.error("Error fetching received requests:", error);
+        // Try a simpler query without the profile join as a fallback
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('requests')
+          .select(`*, trips(*)`)
+          .in('trip_id', tripIds)
+          .order('created_at', { ascending: false });
+        
+        if (fallbackError) {
+          throw new Error(fallbackError.message);
+        }
+        return fallbackData;
       }
       
       return data;
@@ -184,7 +196,7 @@ const MyRequests = () => {
                     <CardTitle className="flex items-center justify-between">
                       <span>{t('requestTo')} {req.trips.profiles?.first_name || 'Traveler'}</span>
                       <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
-                    </CardTitle>
+                    </Title>
                     <CardDescription className="flex items-center gap-2 pt-2">
                       <Plane className="h-4 w-4" /> {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
                     </CardDescription>
