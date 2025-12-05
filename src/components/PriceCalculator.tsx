@@ -14,6 +14,20 @@ const PriceCalculator = () => {
   const [destination, setDestination] = useState<string>('Turkey');
   const [weight, setWeight] = useState<number>(1);
 
+  const handleOriginChange = (newOrigin: string) => {
+    setOrigin(newOrigin);
+    if (newOrigin !== 'Iraq') {
+      setDestination('Iraq');
+    }
+  };
+
+  const handleDestinationChange = (newDestination: string) => {
+    setDestination(newDestination);
+    if (newDestination !== 'Iraq') {
+      setOrigin('Iraq');
+    }
+  };
+
   const calculation = useMemo(() => {
     return calculateShippingCost(origin, destination, weight);
   }, [origin, destination, weight]);
@@ -34,7 +48,7 @@ const PriceCalculator = () => {
           <div className="space-y-6">
             <div>
               <Label htmlFor="origin-country" className="font-semibold">{t('fromCountry')}</Label>
-              <Select onValueChange={setOrigin} defaultValue={origin}>
+              <Select onValueChange={handleOriginChange} value={origin}>
                 <SelectTrigger id="origin-country" className="mt-2">
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
@@ -45,7 +59,7 @@ const PriceCalculator = () => {
             </div>
             <div>
               <Label htmlFor="destination-country" className="font-semibold">{t('toCountry')}</Label>
-              <Select onValueChange={setDestination} defaultValue={destination}>
+              <Select onValueChange={handleDestinationChange} value={destination}>
                 <SelectTrigger id="destination-country" className="mt-2">
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
