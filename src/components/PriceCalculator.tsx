@@ -84,10 +84,6 @@ const PriceCalculator = () => {
                   <span className="text-gray-600 dark:text-gray-400">{t('totalPriceUSD')}</span>
                   <span className="text-2xl font-bold text-gray-900 dark:text-white">${calculation.totalPriceUSD.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-gray-600 dark:text-gray-400">{t('totalPriceIQD')}</span>
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">{new Intl.NumberFormat('ar-IQ').format(calculation.totalPriceIQD)} {t('iqd')}</span>
-                </div>
               </>
             )}
             <p className="text-xs text-center text-gray-500 dark:text-gray-400 pt-4">

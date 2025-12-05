@@ -27,7 +27,6 @@ type SearchFilters = z.infer<typeof searchSchema>;
 const Trips = () => {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
-  const exchangeRateUSDToIQD = 1400;
 
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),
@@ -99,7 +98,7 @@ const Trips = () => {
               <CardContent className="flex-grow space-y-3">
                 <p className="flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> {t('traveler')}: {trip.profiles?.first_name || 'N/A'}</p>
                 <p className="flex items-center gap-2"><Package className="h-4 w-4 text-gray-500" /> {t('availableWeight')}: {trip.free_kg} kg</p>
-                <p className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg} <span className="text-xs text-gray-500">({t('approxIQD')} {new Intl.NumberFormat().format(trip.charge_per_kg * exchangeRateUSDToIQD)} IQD)</span></p>
+                <p className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg}</p>
                 {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}
               </CardContent>
               <div className="p-4 pt-0">

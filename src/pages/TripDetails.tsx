@@ -31,7 +31,6 @@ const TripDetails = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const { user } = useSession();
-  const exchangeRateUSDToIQD = 1400;
 
   const { data: trip, isLoading, error } = useQuery({
     queryKey: ['trip', tripId],
@@ -111,7 +110,7 @@ const TripDetails = () => {
           <CardContent className="space-y-4">
             <p className="flex items-center gap-2"><User className="h-5 w-5 text-gray-500" /> {t('traveler')}: {trip.profiles?.first_name || 'N/A'} {trip.profiles?.last_name || ''}</p>
             <p className="flex items-center gap-2"><Package className="h-5 w-5 text-gray-500" /> {t('availableWeight')}: {trip.free_kg} kg</p>
-            <p className="flex items-center gap-2"><DollarSign className="h-5 w-5 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg} <span className="text-xs text-gray-500">({t('approxIQD')} {new Intl.NumberFormat().format(trip.charge_per_kg * exchangeRateUSDToIQD)} IQD)</span></p>
+            <p className="flex items-center gap-2"><DollarSign className="h-5 w-5 text-gray-500" /> {t('pricePerKg')}: ${trip.charge_per_kg}</p>
             {trip.traveler_location && <p className="flex items-center gap-2"><MapPin className="h-5 w-5 text-gray-500" /> {t('travelerLocation')}: {trip.traveler_location}</p>}
             {trip.notes && (
               <div className="pt-2">

@@ -75,7 +75,6 @@
   "availableWeight": "الوزن المتاح",
   "pricePerKg": "السعر للكيلوغرام",
   "requestToSend": "اطلب إرسال طرد",
-  "approxIQD": "تقريباً",
   "resetFilters": "إعادة تعيين",
   "viewTripAndRequest": "عرض الرحلة والطلب",
   "tripNotFound": "لم يتم العثور على الرحلة.",
@@ -103,7 +102,5 @@
   "priceCalculatorDescription": "احسب تكلفة شحن طردك بناءً على الوجهة والوزن.",
   "estimatedCost": "التكلفة التقديرية",
   "totalPriceUSD": "السعر الإجمالي (دولار)",
-  "totalPriceIQD": "السعر الإجمالي (دينار)",
-  "iqd": "دينار",
   "priceCalculatorNote": "السعر يعتمد على منطقة الوجهة والوزن الإجمالي. كلما زاد الوزن، انخفض سعر الكيلوغرام الواحد."
 }

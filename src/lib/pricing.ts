@@ -32,8 +32,6 @@ const pricingTiers = {
   }
 };
 
-const IQD_EXCHANGE_RATE = 1400;
-
 // Function to determine the zone of a given country
 const getZone = (country: string): keyof typeof pricingTiers | null => {
   if (zones.A.includes(country)) return 'A';
@@ -60,7 +58,6 @@ export const calculateShippingCost = (destinationCountry: string, weight: number
     return {
       pricePerKgUSD: 0,
       totalPriceUSD: 0,
-      totalPriceIQD: 0,
       error: "Destination country is not supported for calculation.",
     };
   }
@@ -69,19 +66,16 @@ export const calculateShippingCost = (destinationCountry: string, weight: number
     return {
       pricePerKgUSD: 0,
       totalPriceUSD: 0,
-      totalPriceIQD: 0,
       error: null,
     };
   }
 
   const pricePerKgUSD = getPricePerKg(zone, weight);
   const totalPriceUSD = weight * pricePerKgUSD;
-  const totalPriceIQD = totalPriceUSD * IQD_EXCHANGE_RATE;
 
   return {
     pricePerKgUSD,
     totalPriceUSD,
-    totalPriceIQD,
     error: null,
   };
 };
