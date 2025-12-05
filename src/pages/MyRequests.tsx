@@ -65,30 +65,22 @@ const MyRequests = () => {
   });
 
   const updateRequestMutation = useMutation({
-    mutationFn: async ({ requestId, status, senderId, tripDetails }) => {
+    mutationFn: async ({ requestId, status }: { requestId: string; status: string }) => {
       const { error: updateError } = await supabase.from('requests').update({ status }).eq('id', requestId);
       if (updateError) throw updateError;
-
-      const message = `Your request for the trip from ${tripDetails.from_country} to ${tripDetails.to_country} has been ${status}.`;
-      const { error: notificationError } = await supabase.from('notifications').insert({ user_id: senderId, message, link: '/my-requests' });
-      if (notificationError) console.error("Failed to create notification", notificationError);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       showSuccess(t('requestUpdatedSuccess'));
     },
-    onError: (err) => showError(err.message),
+    onError: (err: any) => showError(err.message),
   });
 
   const deleteRequestMutation = useMutation({
     mutationFn: async (request: any) => {
       const { error } = await supabase.from('requests').delete().eq('id', request.id);
       if (error) throw error;
-
-      // Notify the traveler that the request was cancelled
-      const message = `A request for your trip from ${request.trips.from_country} to ${request.trips.to_country} has been cancelled.`;
-      await supabase.from('notifications').insert({ user_id: request.trips.user_id, message, link: '/my-requests' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
@@ -100,16 +92,14 @@ const MyRequests = () => {
     },
   });
 
-  const handleUpdateRequest = (request, status) => {
+  const handleUpdateRequest = (request: any, status: string) => {
     updateRequestMutation.mutate({
       requestId: request.id,
       status,
-      senderId: request.sender_id,
-      tripDetails: request.trips,
     });
   };
 
-  const getStatusVariant = (status) => {
+  const getStatusVariant = (status: string) => {
     switch (status) {
       case 'accepted': return 'default';
       case 'rejected': return 'destructive';

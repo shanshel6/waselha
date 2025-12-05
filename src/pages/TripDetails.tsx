@@ -85,18 +85,6 @@ const TripDetails = () => {
       showError(t('requestFailed'));
     } else {
       showSuccess(t('requestSentSuccess'));
-      
-      // Create a notification for the traveler
-      const { error: notificationError } = await supabase.from('notifications').insert({
-        user_id: trip.user_id, // The traveler
-        message: `You have a new package request for your trip from ${trip.from_country} to ${trip.to_country}.`,
-        link: '/my-requests'
-      });
-
-      if (notificationError) {
-        console.error("Error creating notification:", notificationError);
-      }
-
       navigate('/my-requests');
     }
   };
