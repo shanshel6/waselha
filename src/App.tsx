@@ -26,7 +26,7 @@ const MainLayout = () => (
       <Route path="/trips" element={<Trips />} />
       <Route path="/trips/:tripId" element={<TripDetails />} />
       <Route path="/my-profile" element={<MyProfile />} />
-      <Route path="/verify" element={<Verification />} />
+      <Route path="/verification" element={<Verification />} />
       <Route path="/add-trip" element={<AddTrip />} />
       <Route path="/my-requests" element={<MyRequests />} />
       <Route path="*" element={<NotFound />} />

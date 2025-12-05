@@ -9,6 +9,8 @@ export interface Profile {
   avatar_url: string | null;
   phone: string | null;
   role: 'traveler' | 'sender' | 'both';
+  is_verified: boolean;
+  address: string | null;
 }
 
 export const useProfile = () => {
@@ -21,7 +23,7 @@ export const useProfile = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, phone, role')
+        .select('id, first_name, last_name, avatar_url, phone, role, is_verified, address')
         .eq('id', user.id)
         .single();
 
