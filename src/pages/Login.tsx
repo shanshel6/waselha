@@ -13,14 +13,14 @@ function Login() {
         <h1 className="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{t('login')}</h1>
         <Auth
           supabaseClient={supabase}
-          providers={[]}
+          providers={['google']} {/* Added 'google' provider */}
           appearance={{
             theme: ThemeSupa,
             variables: {
               default: {
                 colors: {
-                  brand: 'hsl(var(--primary))', // Use the new primary color
-                  brandAccent: 'hsl(var(--primary-foreground))', // Use the new primary-foreground color
+                  brand: 'hsl(var(--primary))',
+                  brandAccent: 'hsl(var(--primary-foreground))',
                   defaultButtonBackground: 'hsl(var(--primary))',
                   defaultButtonBackgroundHover: 'hsl(var(--primary)/0.9)',
                   inputBackground: 'hsl(var(--background))',
