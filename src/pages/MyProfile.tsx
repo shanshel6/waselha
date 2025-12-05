@@ -26,9 +26,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Plane, Package, DollarSign, CalendarDays } from 'lucide-react';
+import { useProfile } from '@/hooks/use-profile';
 
 const profileFormSchema = z.object({
   first_name: z.string().min(1, { message: "requiredField" }).optional(),
@@ -98,7 +99,8 @@ const MyTrips = () => {
 const MyProfile = () => {
   const { t } = useTranslation();
   const { user, isLoading: isSessionLoading } = useSession();
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
+  const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -111,29 +113,10 @@ const MyProfile = () => {
   });
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        setIsLoadingProfile(true);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, phone, role')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching profile:', error);
-          showError(t('errorLoadingProfile'));
-        } else if (data) {
-          form.reset(data);
-        }
-        setIsLoadingProfile(false);
-      }
-    };
-
-    if (!isSessionLoading) {
-      fetchProfile();
+    if (!isSessionLoading && profile) {
+      form.reset(profile);
     }
-  }, [user, isSessionLoading, form, t]);
+  }, [profile, isSessionLoading, form]);
 
   const onSubmit = async (values: z.infer<typeof profileFormSchema>) => {
     if (!user) {
@@ -151,6 +134,8 @@ const MyProfile = () => {
       showError(t('profileUpdatedError'));
     } else {
       showSuccess(t('profileUpdatedSuccess'));
+      // Invalidate profile query to refresh data everywhere
+      queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
     }
   };
 
@@ -168,6 +153,9 @@ const MyProfile = () => {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>{t('updateProfile')}</CardTitle>
+          <CardDescription>
+            {user?.email}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

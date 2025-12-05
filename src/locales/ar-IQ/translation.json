@@ -95,5 +95,10 @@
   "mustBeLoggedIn": "يجب عليك تسجيل الدخول لإرسال طلب.",
   "requestFailed": "فشل إرسال الطلب. الرجاء المحاولة مرة أخرى.",
   "requestSentSuccess": "تم إرسال طلبك بنجاح!",
-  "descriptionTooShort": "يجب أن يكون الوصف 10 أحرف على الأقل."
+  "descriptionTooShort": "يجب أن يكون الوصف 10 أحرف على الأقل.",
+  "myRequests": "طلباتي",
+  "pendingRequests": "الطلبات المعلقة",
+  "requestsPlaceholder": "هنا ستظهر قائمة بطلبات الإرسال التي أرسلتها أو الطلبات التي تلقيتها لرحلاتك.",
+  "myFlights": "رحلاتي المنشورة",
+  "settings": "الإعدادات"
 }
