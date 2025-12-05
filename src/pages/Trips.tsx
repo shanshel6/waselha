@@ -24,7 +24,7 @@ const searchSchema = z.object({
 
 type SearchFilters = z.infer<typeof searchSchema>;
 
-const Trips = () => {
+function Trips() {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
   const exchangeRateUSDToIQD = 1500;
@@ -42,13 +42,13 @@ const Trips = () => {
     queryFn: async () => {
       let query = supabase
         .from('trips')
-        .select(`
-          *,
+        .select(
+          `*,
           profiles (
             first_name,
             last_name
-          )
-        `)
+          )`
+        )
         .gte('trip_date', format(new Date(), 'yyyy-MM-dd'));
 
       if (filters.from_country) {
@@ -58,20 +58,20 @@ const Trips = () => {
         query = query.eq('to_country', filters.to_country);
       }
 
-      const { data, error } = await query.order('trip_date', { ascending: true });
+      const { data, error: queryError } = await query.order('trip_date', { ascending: true });
 
-      if (error) {
-        throw new Error(error.message);
+      if (queryError) {
+        throw new Error(queryError.message);
       }
       return data;
     },
   });
 
-  const onSubmit = (values: SearchFilters) => {
+  function onSubmit(values: SearchFilters) {
     setFilters(values);
-  };
+  }
   
-  const resetFilters = () => {
+  function resetFilters() {
     form.reset({ from_country: "Iraq", to_country: "" });
     setFilters({ from_country: "Iraq" });
   }
@@ -164,6 +164,6 @@ const Trips = () => {
       )}
     </div>
   );
-};
+}
 
 export default Trips;
