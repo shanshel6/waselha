@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -29,15 +29,15 @@ const Chat = () => {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [chatId, setChatId] = useState<string | null>(null);
-
   const { data: requestData, isLoading: isLoadingRequest } = useQuery({
     queryKey: ['chatRequest', requestId],
     queryFn: async () => {
+      if (!requestId) return null;
       const { data, error } = await supabase
         .from('requests')
         .select(`
           *,
+          chats(id),
           trip:trips(
             *, 
             traveler:profiles(id, first_name, last_name)
@@ -51,6 +51,8 @@ const Chat = () => {
     },
     enabled: !!requestId,
   });
+
+  const chatId = requestData?.chats?.[0]?.id;
 
   const { data: messages, isLoading: isLoadingMessages } = useQuery({
     queryKey: ['messages', chatId],
@@ -66,23 +68,6 @@ const Chat = () => {
     },
     enabled: !!chatId,
   });
-
-  useEffect(() => {
-    const fetchChatId = async () => {
-      if (!requestId) return;
-      const { data, error } = await supabase
-        .from('chats')
-        .select('id')
-        .eq('request_id', requestId)
-        .single();
-      if (error) {
-        console.error('Error fetching chat ID:', error);
-      } else if (data) {
-        setChatId(data.id);
-      }
-    };
-    fetchChatId();
-  }, [requestId]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -193,7 +178,7 @@ const Chat = () => {
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={sendMessageMutation.isPending}>
+              <Button type="submit" disabled={sendMessageMutation.isPending || !chatId}>
                 <Send className="h-4 w-4" />
               </Button>
             </form>
