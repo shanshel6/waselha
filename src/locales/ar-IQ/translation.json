@@ -29,5 +29,14 @@
   "noTripsYet": "لا توجد رحلات متاحة بعد. كن أول من يضيف رحلة!",
   "searchDescription": "ابحث عن الرحلات المتاحة بناءً على الوجهة، التاريخ، أو الوزن.",
   "profileDetailsPlaceholder": "هنا ستظهر تفاصيل ملفك الشخصي.",
-  "verificationInstructions": "يرجى تحميل المستندات المطلوبة للتحقق من هويتك."
+  "verificationInstructions": "يرجى تحميل المستندات المطلوبة للتحقق من هويتك.",
+  "createTrip": "إنشاء رحلة",
+  "tripAddedSuccess": "تمت إضافة الرحلة بنجاح!",
+  "tripAddedError": "فشل في إضافة الرحلة. الرجاء المحاولة مرة أخرى.",
+  "selectCountry": "اختر بلدًا",
+  "selectDate": "اختر تاريخًا",
+  "requiredField": "هذا الحقل مطلوب",
+  "invalidNumber": "يجب أن يكون رقمًا صالحًا",
+  "positiveNumber": "يجب أن يكون رقمًا موجبًا",
+  "dateRequired": "تاريخ الرحلة مطلوب"
 }

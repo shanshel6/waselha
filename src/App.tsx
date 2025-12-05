@@ -10,6 +10,7 @@ import Trips from "./pages/Trips";
 import Search from "./pages/Search";
 import MyProfile from "./pages/MyProfile";
 import Verification from "./pages/Verification";
+import AddTrip from "./pages/AddTrip"; // Import the new AddTrip component
 import Navbar from "./components/Navbar";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 
@@ -37,6 +38,7 @@ const AppContent = () => {
         <Route path="/search" element={<Search />} />
         <Route path="/my-profile" element={<MyProfile />} />
         <Route path="/verify" element={<Verification />} />
+        <Route path="/add-trip" element={<AddTrip />} /> {/* New route for adding trips */}
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
