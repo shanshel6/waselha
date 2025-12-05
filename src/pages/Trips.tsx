@@ -74,7 +74,7 @@ const Trips = () => {
   const resetFilters = () => {
     form.reset({ from_country: "Iraq", to_country: "" });
     setFilters({ from_country: "Iraq" });
-  };
+  }
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
