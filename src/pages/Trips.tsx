@@ -24,7 +24,7 @@ const searchSchema = z.object({
 
 type SearchFilters = z.infer<typeof searchSchema>;
 
-function Trips() {
+const Trips = () => {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
   const exchangeRateUSDToIQD = 1500;
@@ -67,14 +67,14 @@ function Trips() {
     },
   });
 
-  function onSubmit(values: SearchFilters) {
+  const onSubmit = (values: SearchFilters) => {
     setFilters(values);
-  }
+  };
   
-  function resetFilters() {
+  const resetFilters = () => {
     form.reset({ from_country: "Iraq", to_country: "" });
     setFilters({ from_country: "Iraq" });
-  }
+  };
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -164,6 +164,6 @@ function Trips() {
       )}
     </div>
   );
-}
+};
 
 export default Trips;
