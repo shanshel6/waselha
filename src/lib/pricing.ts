@@ -51,14 +51,15 @@ const getPricePerKg = (zone: keyof typeof pricingTiers, weight: number): number 
 };
 
 // Main function to calculate the total shipping cost
-export const calculateShippingCost = (destinationCountry: string, weight: number) => {
-  const zone = getZone(destinationCountry);
+export const calculateShippingCost = (originCountry: string, destinationCountry: string, weight: number) => {
+  const zoneOrigin = getZone(originCountry);
+  const zoneDestination = getZone(destinationCountry);
 
-  if (!zone) {
+  if (!zoneOrigin || !zoneDestination) {
     return {
       pricePerKgUSD: 0,
       totalPriceUSD: 0,
-      error: "Destination country is not supported for calculation.",
+      error: "Route not supported for calculation.",
     };
   }
   
@@ -70,7 +71,10 @@ export const calculateShippingCost = (destinationCountry: string, weight: number
     };
   }
 
-  const pricePerKgUSD = getPricePerKg(zone, weight);
+  // Use the more expensive zone for the calculation to ensure symmetrical pricing
+  const finalZone = zoneOrigin > zoneDestination ? zoneOrigin : zoneDestination;
+
+  const pricePerKgUSD = getPricePerKg(finalZone, weight);
   const totalPriceUSD = weight * pricePerKgUSD;
 
   return {

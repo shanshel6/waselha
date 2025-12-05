@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { calculateShippingCost, zonedCountries } from '@/lib/pricing';
-import { countries } from '@/lib/countries';
 
 const PriceCalculator = () => {
   const { t } = useTranslation();
@@ -16,8 +15,8 @@ const PriceCalculator = () => {
   const [weight, setWeight] = useState<number>(1);
 
   const calculation = useMemo(() => {
-    return calculateShippingCost(destination, weight);
-  }, [destination, weight]);
+    return calculateShippingCost(origin, destination, weight);
+  }, [origin, destination, weight]);
 
   const handleWeightChange = (value: number[]) => {
     setWeight(value[0]);
@@ -40,7 +39,7 @@ const PriceCalculator = () => {
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {zonedCountries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
