@@ -149,5 +149,7 @@
   "verifyNow": "التحقق الآن",
   "basedOnWeightAndDestination": "بناءً على الوزن المتاح والوجهة.",
   "viewChat": "عرض المحادثة",
-  "typeMessage": "اكتب رسالة..."
+  "typeMessage": "اكتب رسالة...",
+  "noMessagesYet": "لا توجد رسائل بعد",
+  "startTheConversation": "ابدأ المحادثة!"
 }

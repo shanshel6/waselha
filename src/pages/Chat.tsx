@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import { Send, Plane, User } from 'lucide-react';
+import { Send, Plane, User, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const messageSchema = z.object({
@@ -29,15 +29,15 @@ const Chat = () => {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Query 1: Get the request details (traveler, sender, trip)
   const { data: requestData, isLoading: isLoadingRequest } = useQuery({
-    queryKey: ['chatRequest', requestId],
+    queryKey: ['requestDetailsForChat', requestId],
     queryFn: async () => {
       if (!requestId) return null;
       const { data, error } = await supabase
         .from('requests')
         .select(`
           *,
-          chats!request_id(id),
           trip:trips(
             *, 
             traveler:profiles(id, first_name, last_name)
@@ -52,8 +52,26 @@ const Chat = () => {
     enabled: !!requestId,
   });
 
-  const chatId = requestData?.chats?.[0]?.id;
+  // Query 2: Get the chat ID
+  const { data: chatData, isLoading: isLoadingChat } = useQuery({
+    queryKey: ['chatIdForRequest', requestId],
+    queryFn: async () => {
+      if (!requestId) return null;
+      const { data, error } = await supabase
+        .from('chats')
+        .select('id')
+        .eq('request_id', requestId)
+        .single();
+      // PGRST116 means no rows found, which is a valid state if chat hasn't been created.
+      // We don't throw an error for that, we just return null.
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+    enabled: !!requestId,
+  });
+  const chatId = chatData?.id;
 
+  // Query 3: Get messages, only enabled when we have a chat ID
   const { data: messages, isLoading: isLoadingMessages } = useQuery({
     queryKey: ['messages', chatId],
     queryFn: async () => {
@@ -69,9 +87,9 @@ const Chat = () => {
     enabled: !!chatId,
   });
 
+  // Real-time subscription for new messages
   useEffect(() => {
     if (!chatId) return;
-
     const channel = supabase
       .channel(`public:chat_messages:chat_id=eq.${chatId}`)
       .on(
@@ -82,12 +100,12 @@ const Chat = () => {
         }
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [chatId, queryClient]);
 
+  // Scroll to the bottom of the messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -107,19 +125,16 @@ const Chat = () => {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      form.reset();
-    },
-    onError: (err: any) => {
-      showError(err.message);
-    },
+    onSuccess: () => form.reset(),
+    onError: (err: any) => showError(err.message),
   });
 
   const isUserTheTraveler = user?.id === requestData?.trip?.user_id;
   const otherUser = isUserTheTraveler ? requestData?.sender : requestData?.trip?.traveler;
+  const isLoading = isLoadingRequest || isLoadingChat;
 
-  if (isLoadingRequest || isLoadingMessages) {
-    return <div className="container p-4">{t('loading')}...</div>;
+  if (isLoading) {
+    return <div className="container p-4 flex items-center justify-center h-full">{t('loading')}...</div>;
   }
 
   return (
@@ -135,38 +150,32 @@ const Chat = () => {
             {requestData?.trip.from_country} → {requestData?.trip.to_country}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
-          {messages?.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                'flex flex-col',
-                message.sender_id === user?.id ? 'items-end' : 'items-start'
-              )}
-            >
-              <div
-                className={cn(
-                  'max-w-xs md:max-w-md p-3 rounded-lg',
-                  message.sender_id === user?.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                )}
-              >
-                <p>{message.content}</p>
-              </div>
-              <span className="text-xs text-muted-foreground mt-1">
-                {format(new Date(message.created_at), 'p')}
-              </span>
+        <CardContent className="flex-grow overflow-y-auto p-4 flex flex-col">
+          {isLoadingMessages ? (
+            <div className="m-auto text-center text-muted-foreground">{t('loading')}...</div>
+          ) : messages && messages.length > 0 ? (
+            <div className="space-y-4 mt-auto">
+              {messages.map((message) => (
+                <div key={message.id} className={cn('flex flex-col', message.sender_id === user?.id ? 'items-end' : 'items-start')}>
+                  <div className={cn('max-w-xs md:max-w-md p-3 rounded-lg', message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                    <p>{message.content}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-1">{format(new Date(message.created_at), 'p')}</span>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
             </div>
-          ))}
-          <div ref={messagesEndRef} />
+          ) : (
+            <div className="m-auto text-center text-muted-foreground">
+              <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-semibold">{t('noMessagesYet')}</p>
+              <p>{t('startTheConversation')}</p>
+            </div>
+          )}
         </CardContent>
-        <div className="p-4 border-t">
+        <div className="p-4 border-t bg-background">
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit((d) => sendMessageMutation.mutate(d))}
-              className="flex gap-2"
-            >
+            <form onSubmit={form.handleSubmit((d) => sendMessageMutation.mutate(d))} className="flex gap-2">
               <FormField
                 control={form.control}
                 name="content"
