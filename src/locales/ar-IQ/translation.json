@@ -252,5 +252,6 @@
   "contactInformation": "معلومات الاتصال",
   "editContactInfo": "تعديل معلومات الاتصال",
   "updatePhoneAndAddress": "قم بتحديث رقم هاتفك وعنوانك.",
-  "noAddressProvided": "لم يتم تقديم عنوان"
+  "noAddressProvided": "لم يتم تقديم عنوان",
+  "notEnoughWeightError": "لا يوجد وزن كافٍ متاح في هذه الرحلة لقبول هذا الطلب."
 }

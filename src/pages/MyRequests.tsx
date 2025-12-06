@@ -28,13 +28,26 @@ const MyRequests = () => {
 
   // --- Mutations ---
   const updateRequestMutation = useMutation({
-    mutationFn: async ({ requestId, status }: { requestId: string; status: string }) => {
-      const { error: updateError } = await supabase.from('requests').update({ status }).eq('id', requestId);
-      if (updateError) throw updateError;
+    mutationFn: async ({ request, status }: { request: Request; status: 'accepted' | 'rejected' }) => {
+      if (status === 'accepted') {
+        // Client-side check for immediate feedback
+        if (request.trips.free_kg < request.weight_kg) {
+          throw new Error(t('notEnoughWeightError'));
+        }
+        const { error } = await supabase.rpc('accept_request_and_update_trip_weight', {
+          request_id_param: request.id,
+        });
+        if (error) throw error;
+      } else { // For 'rejected' status
+        const { error: updateError } = await supabase.from('requests').update({ status }).eq('id', request.id);
+        if (updateError) throw updateError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list
+      queryClient.invalidateQueries({ queryKey: ['trip'] }); // Invalidate specific trip details
       showSuccess(t('requestUpdatedSuccess'));
     },
     onError: (err: any) => showError(err.message),
@@ -58,6 +71,8 @@ const MyRequests = () => {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list
+      queryClient.invalidateQueries({ queryKey: ['trip'] }); // Invalidate specific trip details
       if (result === 'deleted') showSuccess(t('requestCancelledSuccess'));
       else if (result === 'requested') showSuccess(t('cancellationRequestedSuccess'));
     },
@@ -105,7 +120,7 @@ const MyRequests = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  const handleUpdateRequest = (request: any, status: string) => updateRequestMutation.mutate({ requestId: request.id, status });
+  const handleUpdateRequest = (request: any, status: string) => updateRequestMutation.mutate({ request, status });
   const handleAcceptedRequestCancel = (request: Request) => setItemToCancel({ ...request, type: 'accepted_trip_request' });
   const handleConfirmCancellation = () => {
     if (!itemToCancel) return;
