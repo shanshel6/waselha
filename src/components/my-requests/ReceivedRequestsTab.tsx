@@ -108,7 +108,7 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
     const from_country = request.trips?.from_country;
     const to_country = request.trips?.to_country;
     const weight_kg = useProposed ? request.proposed_changes?.weight_kg : request.weight_kg;
-    if (!from_country || !to_country || !weight_kg || from_country === to_country || weight_kg <= 0) return null;
+    if (!from_country || !to_country || from_country === to_country || weight_kg <= 0) return null;
     const result = calculateShippingCost(from_country, to_country, weight_kg);
     if (result.error) return null;
     const totalPriceIQD = result.totalPriceUSD * 1400;
@@ -190,13 +190,38 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
       <CardContent className="space-y-4">
         {receivedRequests && receivedRequests.length > 0 ? receivedRequests.map(req => {
           const priceCalculation = calculatePriceDisplay(req);
-          const senderName = req.sender_profile?.first_name || 'User';
+          
+          // FIX: Calculate full sender name
+          const senderFirstName = req.sender_profile?.first_name || '';
+          const senderLastName = req.sender_profile?.last_name || '';
+          const senderName = `${senderFirstName} ${senderLastName}`.trim() || t('user');
+          
           const hasPendingChanges = !!req.proposed_changes;
+          
+          // Trip details for display
+          const fromCountry = req.trips?.from_country || 'N/A';
+          const toCountry = req.trips?.to_country || 'N/A';
+          const tripDate = req.trips?.trip_date;
+
           return (
             <Card key={req.id} className={getStatusCardClass(req.status)}>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between"><span className="flex items-center gap-2">{getStatusIcon(req.status)}{t('requestFrom')} {senderName}</span><Badge variant={getStatusVariant(req.status)}>{hasPendingChanges ? t('reviewChanges') : t(req.status)}</Badge></CardTitle>
-                {(req.status === 'pending' || req.status === 'rejected') && <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><Plane className="h-4 w-4" /><CountryFlag country={req.trips?.from_country || 'N/A'} showName /> → <CountryFlag country={req.trips?.to_country || 'N/A'} showName />{req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}</div>}
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    {getStatusIcon(req.status)}
+                    {t('requestFrom')} {senderName}
+                  </span>
+                  <Badge variant={getStatusVariant(req.status)}>{hasPendingChanges ? t('reviewChanges') : t(req.status)}</Badge>
+                </CardTitle>
+                {(req.status === 'pending' || req.status === 'rejected') && (
+                  <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
+                    <Plane className="h-4 w-4" />
+                    <CountryFlag country={fromCountry} showName />
+                    <span className="text-base">→</span>
+                    <CountryFlag country={toCountry} showName />
+                    {tripDate && ` on ${format(new Date(tripDate), 'PPP')}`}
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
                 {hasPendingChanges ? renderProposedChanges(req) : (
