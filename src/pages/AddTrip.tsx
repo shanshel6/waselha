@@ -20,7 +20,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { countries } from '@/lib/countries';
-import { arabicCountries } from '@/lib/countries-ar';
 import { calculateTravelerProfit } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 
@@ -28,7 +27,7 @@ const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
   to_country: z.string().min(1, { message: "requiredField" }),
   trip_date: z.date({ required_error: "dateRequired", }),
-  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }),
+  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(30, { message: "maxWeight" }), // Enforce max weight
   traveler_location: z.string().min(1, { message: "requiredField" }),
   notes: z.string().optional(),
 });
@@ -53,11 +52,11 @@ const AddTrip = () => {
   // Auto-manage Iraq selection
   React.useEffect(() => {
     // If from_country is changed and it's not Iraq, set to_country to Iraq
-    if (from_country && from_country !== "Iraq") {
+    if (from_country && from_country !== "Iraq" && to_country !== "Iraq") {
       form.setValue("to_country", "Iraq");
     }
     // If to_country is changed and it's not Iraq, set from_country to Iraq
-    else if (to_country && to_country !== "Iraq") {
+    else if (to_country && to_country !== "Iraq" && from_country !== "Iraq") {
       form.setValue("from_country", "Iraq");
     }
     // If both are Iraq (somehow), reset to_country
@@ -80,6 +79,12 @@ const AddTrip = () => {
       return;
     }
 
+    // Calculate charge_per_kg based on the base price of the destination zone
+    let charge_per_kg = 0;
+    if (estimatedProfit) {
+      charge_per_kg = estimatedProfit.pricePerKgUSD;
+    }
+
     const { error } = await supabase
       .from('trips')
       .insert({
@@ -90,6 +95,7 @@ const AddTrip = () => {
         free_kg: values.free_kg,
         traveler_location: values.traveler_location,
         notes: values.notes,
+        charge_per_kg: charge_per_kg, // Store the base price per kg for reference
       });
 
     if (error) {
@@ -207,7 +213,7 @@ const AddTrip = () => {
               <FormItem>
                 <FormLabel>{t('freeKg')}</FormLabel>
                 <FormControl>
-                  <Input type="number" min="1" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                  <Input type="number" min="1" max="30" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

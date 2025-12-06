@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { calculateShippingCost, zonedCountries } from '@/lib/pricing';
-import { arabicCountries } from '@/lib/countries-ar';
 import { DollarSign } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 
@@ -16,8 +15,12 @@ const PriceCalculator = () => {
   const [weight, setWeight] = useState<number>(1);
 
   const calculation = useMemo(() => {
+    // Ensure one of the countries is Iraq for a valid calculation based on business rules
+    if (origin !== 'Iraq' && destination !== 'Iraq') {
+      return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: t('eitherFromOrToIraq') };
+    }
     return calculateShippingCost(origin, destination, weight);
-  }, [origin, destination, weight]);
+  }, [origin, destination, weight, t]);
 
   const handleWeightChange = (value: number[]) => {
     setWeight(value[0]);
