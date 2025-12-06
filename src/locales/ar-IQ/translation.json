@@ -192,6 +192,8 @@
   "insuranceOption": "هل تريد تأمينًا؟ (يضاعف السعر)",
   "orderSubmittedSuccess": "تم إرسال طلب الشحن العام بنجاح! سنتواصل معك قريباً.",
   "orderSubmittedError": "فشل إرسال طلب الشحن.",
-  "cantFindTrip": "لم تجد رحلة؟",
-  "placeOrderLink": "اطلب شحنة الآن"
+  "cantFindTrip": "لم تجد الرحلة المطلوبة؟",
+  "placeOrderLink": "سوي طلب رحلة جديدة",
+  "packageDetails": "تفاصيل الطرد",
+  "maxWeightGeneralOrder": "الحد الأقصى للوزن هو 50 كجم"
 }
