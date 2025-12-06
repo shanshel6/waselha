@@ -262,7 +262,7 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
                   </span>
                   <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
                 </CardTitle>
-                {req.status === 'pending' && (
+                {(req.status === 'pending' || req.status === 'rejected') && (
                   <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
                     <Plane className="h-4 w-4" />
                     {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
@@ -271,7 +271,7 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
                 )}
               </CardHeader>
               <CardContent className="space-y-3">
-                {req.status === 'pending' && (
+                {(req.status === 'pending' || req.status === 'rejected') && (
                   <>
                     <div>
                       <p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p>
