@@ -14,10 +14,11 @@ import AddTrip from "./pages/AddTrip";
 import TripDetails from "./pages/TripDetails";
 import MyRequests from "./pages/MyRequests";
 import Chat from "./pages/Chat";
-import CompleteProfile from "./pages/CompleteProfile"; // Import new page
+import CompleteProfile from "./pages/CompleteProfile";
+import AdminDashboard from "./pages/AdminDashboard"; // Import AdminDashboard
 import Navbar from "./components/Navbar";
 import ChatNotificationListener from "./components/ChatNotificationListener";
-import ProfileCheckWrapper from "./components/ProfileCheckWrapper"; // Import new wrapper
+import ProfileCheckWrapper from "./components/ProfileCheckWrapper";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const MainLayout = () => (
         <Route path="/add-trip" element={<AddTrip />} />
         <Route path="/my-requests" element={<MyRequests />} />
         <Route path="/chat/:requestId" element={<Chat />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} /> {/* Add Admin Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </ProfileCheckWrapper>
@@ -57,7 +59,7 @@ const AppContent = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
-      <Route path="/complete-profile" element={<CompleteProfile />} /> {/* Add new route */}
+      <Route path="/complete-profile" element={<CompleteProfile />} />
       <Route path="/*" element={<MainLayout />} />
     </Routes>
   );

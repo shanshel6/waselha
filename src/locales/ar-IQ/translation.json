@@ -163,5 +163,18 @@
   "noChangesMade": "لم يتم إجراء أي تغييرات.",
   "verified": "مُتحقق منه",
   "important": "مهم",
-  "nameChangeWarning": "لأسباب أمنية، يمكنك تغيير اسمك مرة واحدة فقط كل 30 يومًا. يرجى التأكد من صحة البيانات قبل الحفظ."
+  "nameChangeWarning": "لأسباب أمنية، يمكنك تغيير اسمك مرة واحدة فقط كل 30 يومًا. يرجى التأكد من صحة البيانات قبل الحفظ.",
+  "adminDashboard": "لوحة تحكم المسؤول",
+  "pendingVerification": "طلبات التحقق المعلقة",
+  "reviewedRequests": "الطلبات التي تمت مراجعتها",
+  "noPendingRequests": "لا توجد طلبات تحقق معلقة حاليًا.",
+  "noReviewedRequests": "لا توجد طلبات تمت مراجعتها بعد.",
+  "verificationDocuments": "مستندات التحقق",
+  "residentCard": "بطاقة الإقامة",
+  "approve": "قبول",
+  "reject": "رفض",
+  "verificationApproved": "تم قبول طلب التحقق بنجاح. تم تحديث حالة المستخدم.",
+  "verificationRejected": "تم رفض طلب التحقق.",
+  "accessDenied": "تم رفض الوصول",
+  "adminAccessRequired": "أنت بحاجة إلى صلاحيات المسؤول للوصول إلى هذه الصفحة."
 }
