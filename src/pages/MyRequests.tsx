@@ -39,6 +39,12 @@ const MyRequests = () => {
                 last_name, 
                 phone
               )
+            ),
+            sender_profile: profiles!requests_sender_id_fkey(
+              id,
+              first_name,
+              last_name,
+              phone
             )
           `)
         .eq('trips.user_id', user.id)
@@ -109,6 +115,41 @@ const MyRequests = () => {
   const isLoadingSent = isLoadingTripRequests || isLoadingGeneralOrders;
   const sentRequestsError = tripRequestsError || generalOrdersError;
 
+  // --- Price Calculation Helper ---
+  const calculatePriceDisplay = (item: any) => {
+    const isGeneralOrder = item.type === 'general_order';
+    const from_country = isGeneralOrder ? item.from_country : item.trips?.from_country;
+    const to_country = isGeneralOrder ? item.to_country : item.trips?.to_country;
+    const weight_kg = item.weight_kg;
+    const has_insurance = isGeneralOrder ? item.has_insurance : false; // Insurance only applies to general orders
+
+    if (!from_country || !to_country || from_country === to_country || weight_kg <= 0) {
+        return null;
+    }
+
+    const result = calculateShippingCost(from_country, to_country, weight_kg);
+
+    if (result.error) return null;
+
+    let totalPriceUSD = result.totalPriceUSD;
+    
+    // Apply insurance multiplier if applicable (rate is 2x in PlaceOrder.tsx)
+    if (has_insurance) {
+      totalPriceUSD *= 2; 
+    }
+    
+    const USD_TO_IQD_RATE = 1400; // Defined in pricing.ts, hardcoding here for calculation consistency
+    const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE; 
+
+    return {
+      totalPriceUSD,
+      totalPriceIQD,
+      pricePerKgUSD: result.pricePerKgUSD,
+      hasInsurance: has_insurance
+    };
+  };
+  // --- End Price Calculation Helper ---
+
   // --- Mutations ---
 
   const updateRequestMutation = useMutation({
@@ -176,11 +217,41 @@ const MyRequests = () => {
     }
   };
 
+  const renderPriceBlock = (priceCalculation: ReturnType<typeof calculatePriceDisplay>) => {
+    if (!priceCalculation) return null;
+
+    return (
+      <div className="pt-3 border-t mt-3">
+        <p className="font-semibold text-sm flex items-center gap-2 text-green-700 dark:text-green-300">
+          <DollarSign className="h-4 w-4" />
+          {t('estimatedCost')}:
+        </p>
+        <div className="flex justify-between items-center pl-6">
+          <div>
+            <p className="text-lg font-bold text-green-800 dark:text-green-200">
+              ${priceCalculation.totalPriceUSD.toFixed(2)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD
+            </p>
+          </div>
+          {priceCalculation.hasInsurance && (
+            <Badge variant="default" className="bg-blue-600 hover:bg-blue-600/90">
+              {t('insuranceOption')}
+            </Badge>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderAcceptedDetails = (req: any, isReceived: boolean) => {
     // This function is only relevant for trip_requests
     if (req.type !== 'trip_request' || req.status !== 'accepted') return null;
     
-    const otherParty = isReceived ? req.profiles : req.trips?.profiles;
+    // For received requests, the sender profile is aliased as 'sender_profile' in the query
+    // For sent requests, the traveler profile is nested under req.trips.profiles
+    const otherParty = isReceived ? req.sender_profile : req.trips?.profiles;
     const trip = req.trips;
     
     if (!otherParty || !trip) return null;
@@ -230,6 +301,8 @@ const MyRequests = () => {
   };
   
   const renderSentItem = (item: any) => {
+    const priceCalculation = calculatePriceDisplay(item);
+
     if (item.type === 'trip_request') {
       const req = item;
       const travelerName = req.trips?.profiles?.first_name || t('traveler');
@@ -249,6 +322,9 @@ const MyRequests = () => {
           </CardHeader>
           <CardContent>
             <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+            
+            {renderPriceBlock(priceCalculation)}
+            
             {renderAcceptedDetails(req, false)}
             <div className="flex gap-2 mt-4">
               {req.status === 'pending' && (
@@ -272,26 +348,6 @@ const MyRequests = () => {
     } else if (item.type === 'general_order') {
       const order = item;
       const statusKey = order.status === 'new' ? 'statusNewOrder' : order.status;
-      
-      let priceCalculation = null;
-      const result = calculateShippingCost(order.from_country, order.to_country, order.weight_kg);
-      
-      if (!result.error) {
-        let totalPriceUSD = result.totalPriceUSD;
-        
-        // Apply insurance multiplier if applicable (as defined in PlaceOrder.tsx)
-        if (order.has_insurance) {
-          totalPriceUSD *= 2; 
-        }
-        
-        // Assuming 1400 IQD/USD rate (as defined in pricing.ts)
-        const totalPriceIQD = totalPriceUSD * 1400; 
-
-        priceCalculation = {
-          totalPriceUSD,
-          totalPriceIQD,
-        };
-      }
       
       return (
         <Card key={order.id} className="border-2 border-dashed border-primary/50 bg-primary/5">
@@ -323,23 +379,8 @@ const MyRequests = () => {
               )}
             </div>
             
-            {/* Display Price */}
-            {priceCalculation && (
-              <div className="pt-3 border-t">
-                <p className="font-semibold text-sm flex items-center gap-2 text-green-700 dark:text-green-300">
-                  <DollarSign className="h-4 w-4" />
-                  {t('estimatedCost')}:
-                </p>
-                <div className="flex justify-between items-center pl-6">
-                  <p className="text-lg font-bold text-green-800 dark:text-green-200">
-                    ${priceCalculation.totalPriceUSD.toFixed(2)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Display Price for General Order */}
+            {renderPriceBlock(priceCalculation)}
             
             {/* Cancellation button for 'new' status general orders */}
             {order.status === 'new' && (
@@ -381,54 +422,65 @@ const MyRequests = () => {
                   </p>
                 </div>
               )}
-              {receivedRequests && receivedRequests.length > 0 ? receivedRequests.map(req => (
-                <Card key={req.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{t('requestFrom')} {req.profiles?.first_name || 'User'}</span>
-                      <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-2 pt-2">
-                      <Plane className="h-4 w-4" />
-                      {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
-                      {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p>
-                      <p className="text-sm text-muted-foreground pl-6">{req.description}</p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                      <p className="flex items-center gap-2"><Weight className="h-4 w-4" />
-                        <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-                      <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />
-                        <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p>
-                      <p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p>
-                    </div>
-                    {renderAcceptedDetails(req, true)}
-                    <div className="flex gap-2 pt-2">
-                      {req.status === 'pending' && (
-                        <>
-                          <Button size="sm" onClick={() => handleUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
-                        </>
-                      )}
-                      {req.status === 'accepted' && (
-                        <Link to={`/chat/${req.id}`}>
-                          <Button size="sm" variant="outline">
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            {t('viewChat')}
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )) : !isLoadingReceived && !receivedRequestsError && (
+              {receivedRequests && receivedRequests.length > 0 ? receivedRequests.map(req => {
+                // Ensure req has a type for the helper function
+                const requestWithMetadata = { ...req, type: 'trip_request' };
+                const priceCalculation = calculatePriceDisplay(requestWithMetadata);
+                
+                const senderName = req.sender_profile?.first_name || 'User';
+
+                return (
+                  <Card key={req.id}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <span>{t('requestFrom')} {senderName}</span>
+                        <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-2 pt-2">
+                        <Plane className="h-4 w-4" />
+                        {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
+                        {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p>
+                        <p className="text-sm text-muted-foreground pl-6">{req.description}</p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <p className="flex items-center gap-2"><Weight className="h-4 w-4" />
+                          <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                        <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />
+                          <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p>
+                        <p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p>
+                      </div>
+                      
+                      {renderPriceBlock(priceCalculation)}
+                      
+                      {renderAcceptedDetails(requestWithMetadata, true)}
+                      <div className="flex gap-2 pt-2">
+                        {req.status === 'pending' && (
+                          <>
+                            <Button size="sm" onClick={() => handleUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
+                          </>
+                        )}
+                        {req.status === 'accepted' && (
+                          <Link to={`/chat/${req.id}`}>
+                            <Button size="sm" variant="outline">
+                              <MessageSquare className="mr-2 h-4 w-4" />
+                              {t('viewChat')}
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }) : !isLoadingReceived && !receivedRequestsError && (
                 <div>
                   <p>{t('noReceivedRequests')}</p>
                   {user && (
