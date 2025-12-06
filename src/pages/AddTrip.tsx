@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -8,31 +7,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, DollarSign } from 'lucide-react';
-
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger, } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,32 +25,34 @@ import { calculateTravelerProfit } from '@/lib/pricing';
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
   to_country: z.string().min(1, { message: "requiredField" }),
-  trip_date: z.date({
-    required_error: "dateRequired",
-  }),
-  free_kg: z.coerce.number().min(0, { message: "positiveNumber" }),
-  traveler_location: z.string().optional(),
+  trip_date: z.date({ required_error: "dateRequired", }),
+  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }),
+  traveler_location: z.string().min(1, { message: "requiredField" }),
   notes: z.string().optional(),
+}).refine((data) => {
+  // Ensure either from_country or to_country is Iraq
+  return data.from_country === "Iraq" || data.to_country === "Iraq";
+}, {
+  message: "Either departure or destination must be Iraq",
+  path: ["from_country"], // This will show the error on the from_country field
 });
 
 const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       from_country: "",
       to_country: "",
-      free_kg: 0,
+      free_kg: 1,
       traveler_location: "",
       notes: "",
     },
   });
 
   const { from_country, to_country, free_kg } = form.watch();
-
   const estimatedProfit = useMemo(() => {
     if (from_country && to_country && free_kg > 0) {
       return calculateTravelerProfit(from_country, to_country, free_kg);
@@ -83,14 +66,6 @@ const AddTrip = () => {
       navigate('/login');
       return;
     }
-
-    // Verification check disabled for testing
-    /*
-    if (!profile?.is_verified) {
-      setVerificationModalOpen(true);
-      return;
-    }
-    */
 
     const { error } = await supabase
       .from('trips')
@@ -142,6 +117,7 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
+          
           <FormField
             control={form.control}
             name="to_country"
@@ -166,6 +142,11 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
+          
+          <div className="text-sm text-muted-foreground p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+            {t('eitherFromOrToIraq')}
+          </div>
+          
           <FormField
             control={form.control}
             name="trip_date"
@@ -205,6 +186,7 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
+          
           <FormField
             control={form.control}
             name="free_kg"
@@ -212,13 +194,13 @@ const AddTrip = () => {
               <FormItem>
                 <FormLabel>{t('freeKg')}</FormLabel>
                 <FormControl>
-                  <Input type="number" {...field} />
+                  <Input type="number" min="1" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-
+          
           {estimatedProfit && (
             <Card className="bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 p-4">
               <CardHeader className="p-0">
@@ -237,7 +219,7 @@ const AddTrip = () => {
               </CardContent>
             </Card>
           )}
-
+          
           <FormField
             control={form.control}
             name="traveler_location"
@@ -245,12 +227,16 @@ const AddTrip = () => {
               <FormItem>
                 <FormLabel>{t('travelerLocation')}</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input {...field} placeholder={t('travelerLocationPlaceholder')} />
                 </FormControl>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t('travelerLocationDescription')}
+                </p>
                 <FormMessage />
               </FormItem>
             )}
           />
+          
           <FormField
             control={form.control}
             name="notes"
@@ -264,7 +250,7 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
-
+          
           <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
             {t('createTrip')}
           </Button>

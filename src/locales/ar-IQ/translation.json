@@ -22,6 +22,8 @@
   "tripDate": "تاريخ الرحلة",
   "chargePerKg": "كم تتقاضى للكيلوغرام الواحد؟",
   "travelerLocation": "موقع المسافر",
+  "travelerLocationPlaceholder": "أدخل عنوانك الكامل",
+  "travelerLocationDescription": "العنوان الذي ترغب في استلام البضائع من الآخرين فيه",
   "notes": "ملاحظات",
   "uploadPhotoId": "تحميل صورة لك وأنت تحمل هويتك",
   "uploadIdSides": "تحميل جانبي الهوية",
@@ -39,6 +41,7 @@
   "requiredField": "هذا الحقل مطلوب",
   "invalidNumber": "يجب أن يكون رقمًا صالحًا",
   "positiveNumber": "يجب أن يكون رقمًا موجبًا",
+  "minimumWeight": "يجب أن يكون على الأقل 1 كجم",
   "dateRequired": "تاريخ الرحلة مطلوب",
   "loadingTrips": "جاري تحميل الرحلات...",
   "errorLoadingTrips": "حدث خطأ أثناء تحميل الرحلات",
@@ -179,5 +182,7 @@
   "requestAcceptedTitle": "تم قبول الطلب! تفاصيل الاتصال:",
   "sender": "المرسل",
   "handoverLocation": "موقع التسليم",
-  "toBeDeterminedInChat": "سيتم تحديده في الدردشة"
+  "toBeDeterminedInChat": "سيتم تحديده في الدردشة",
+  "eitherFromOrToIraq": "يجب أن تكون إحدى الوجهتين هي العراق (إما نقطة المغادرة أو الوصول)",
+  "dateNotSet": "لم يتم تحديد التاريخ"
 }
