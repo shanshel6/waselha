@@ -220,5 +220,8 @@
   "confirmMutualCancellationDescription": "لقد طلب الطرف الآخر بالفعل إلغاء هذا الطلب. بالنقر على 'تأكيد الإلغاء'، سيتم إلغاء الطلب نهائيًا.",
   "cancellationRequestedSuccess": "تم إرسال طلب الإلغاء بنجاح. ننتظر موافقة الطرف الآخر.",
   "waitingForOtherPartyCancellation": "في انتظار موافقة الطرف الآخر على الإلغاء.",
-  "otherPartyRequestedCancellation": "لقد طلب الطرف الآخر إلغاء هذا الطلب. انقر على 'تأكيد الإلغاء' للموافقة."
+  "otherPartyRequestedCancellation": "لقد طلب الطرف الآخر إلغاء هذا الطلب. انقر على 'تأكيد الإلغاء' للموافقة.",
+  "clearAll": "مسح الكل",
+  "allNotificationsCleared": "تم مسح جميع الإشعارات.",
+  "notificationDeleteError": "فشل في حذف الإشعار."
 }
