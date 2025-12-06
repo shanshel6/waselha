@@ -17,8 +17,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Plane, Package, User, MapPin, Calendar, Info } from 'lucide-react';
+import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
+
+// Define the expected structure of the fetched trip data
+interface TripData {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  free_kg: number;
+  traveler_location: string | null;
+  notes: string | null;
+  profiles: {
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
+}
 
 const TripDetails = () => {
   const { t } = useTranslation();
@@ -26,7 +42,7 @@ const TripDetails = () => {
   const navigate = useNavigate();
   const { user } = useSession();
 
-  const { data: trip, isLoading, error } = useQuery({
+  const { data: trip, isLoading, error } = useQuery<TripData, Error>({
     queryKey: ['trip', tripId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -36,12 +52,12 @@ const TripDetails = () => {
         .single();
 
       if (error) throw new Error(error.message);
-      return data;
+      return data as TripData;
     },
     enabled: !!tripId,
   });
 
-  if (isLoading) return <div className="container p-4">{t('loadingTrips')}...</div>;
+  if (isLoading) return <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
   if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
 
@@ -99,9 +115,10 @@ const TripDetails = () => {
   };
 
   const isOwner = user?.id === trip.user_id;
+  const travelerName = `${trip.profiles?.first_name || 'N/A'} ${trip.profiles?.last_name || ''}`.trim();
 
   return (
-    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark-bg-gray-900">
+    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Trip Details Section */}
         <Card>
@@ -120,7 +137,7 @@ const TripDetails = () => {
           <CardContent className="space-y-4">
             <p className="flex items-center gap-2">
               <User className="h-5 w-5 text-gray-500" />
-              {t('traveler')}: {trip.profiles?.first_name || 'N/A'} {trip.profiles?.last_name || ''}
+              {t('traveler')}: {travelerName}
             </p>
             <p className="flex items-center gap-2">
               <Package className="h-5 w-5 text-gray-500" />
