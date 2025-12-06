@@ -1,23 +1,45 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plane, Package, CalendarDays, Link as LinkIcon, User, BadgeCheck } from 'lucide-react';
+import { Plane, Package, CalendarDays, Link as LinkIcon, User, BadgeCheck, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import CountryFlag from '@/components/CountryFlag';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { showSuccess, showError } from '@/utils/toast';
+
+interface Trip {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  free_kg: number;
+  charge_per_kg: number | null;
+  traveler_location: string | null;
+  notes: string | null;
+  created_at: string;
+  profiles: {
+    first_name: string | null;
+    last_name: string | null;
+    is_verified: boolean;
+  } | null;
+}
 
 const MyTripsPage = () => {
   const { t } = useTranslation();
   const { user } = useSession();
+  const queryClient = useQueryClient();
+  const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
 
-  const { data: trips, isLoading, error } = useQuery({
+  const { data: trips, isLoading, error } = useQuery<Trip[], Error>({
     queryKey: ['userTrips', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -42,6 +64,34 @@ const MyTripsPage = () => {
     },
     enabled: !!user?.id,
   });
+
+  const deleteTripMutation = useMutation({
+    mutationFn: async (tripId: string) => {
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId)
+        .eq('user_id', user?.id); // Ensure only the owner can delete
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      showSuccess(t('tripDeletedSuccess'));
+      queryClient.invalidateQueries({ queryKey: ['userTrips', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list too
+    },
+    onError: (err: any) => {
+      showError(t('tripDeletedError'));
+      console.error("Error deleting trip:", err);
+    },
+  });
+
+  const handleDeleteConfirm = () => {
+    if (tripToDelete) {
+      deleteTripMutation.mutate(tripToDelete.id);
+      setTripToDelete(null);
+    }
+  };
 
   if (!user) {
     return <div className="container p-4 text-center">{t('mustBeLoggedIn')}</div>;
@@ -101,12 +151,23 @@ const MyTripsPage = () => {
                       {trip.profiles?.is_verified && <Badge variant="secondary" className="text-green-600 border-green-600"><BadgeCheck className="h-3 w-3 mr-1" /> {t('verified')}</Badge>}
                     </div>
                   </div>
-                  <Link to={`/trips/${trip.id}`}>
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                      <LinkIcon className="h-4 w-4 mr-2" />
-                      {t('viewTripAndRequest')}
+                  <div className="flex gap-2">
+                    <Link to={`/trips/${trip.id}`}>
+                      <Button variant="outline" size="sm">
+                        <LinkIcon className="h-4 w-4 mr-2" />
+                        {t('viewTripAndRequest')}
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={() => setTripToDelete(trip)}
+                      disabled={deleteTripMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t('deleteTrip')}
                     </Button>
-                  </Link>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -130,6 +191,28 @@ const MyTripsPage = () => {
           </Card>
         )}
       </div>
+
+      {/* Deletion Confirmation Dialog */}
+      <AlertDialog open={!!tripToDelete} onOpenChange={(open) => !open && setTripToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('areYouSureDeleteTrip')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteTripWarning')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTripToDelete(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm} 
+              disabled={deleteTripMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('confirmDeleteTrip')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
