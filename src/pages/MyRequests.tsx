@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck } from 'lucide-react';
+import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from "@/components/ui/alert-dialog";
 import { Link } from 'react-router-dom';
+import { calculateShippingCost } from '@/lib/pricing'; // Import pricing utility
 
 const MyRequests = () => {
   const { t } = useTranslation();
@@ -272,6 +273,26 @@ const MyRequests = () => {
       const order = item;
       const statusKey = order.status === 'new' ? 'statusNewOrder' : order.status;
       
+      let priceCalculation = null;
+      const result = calculateShippingCost(order.from_country, order.to_country, order.weight_kg);
+      
+      if (!result.error) {
+        let totalPriceUSD = result.totalPriceUSD;
+        
+        // Apply insurance multiplier if applicable (as defined in PlaceOrder.tsx)
+        if (order.has_insurance) {
+          totalPriceUSD *= 2; 
+        }
+        
+        // Assuming 1400 IQD/USD rate (as defined in pricing.ts)
+        const totalPriceIQD = totalPriceUSD * 1400; 
+
+        priceCalculation = {
+          totalPriceUSD,
+          totalPriceIQD,
+        };
+      }
+      
       return (
         <Card key={order.id} className="border-2 border-dashed border-primary/50 bg-primary/5">
           <CardHeader>
@@ -301,6 +322,24 @@ const MyRequests = () => {
                 </p>
               )}
             </div>
+            
+            {/* Display Price */}
+            {priceCalculation && (
+              <div className="pt-3 border-t">
+                <p className="font-semibold text-sm flex items-center gap-2 text-green-700 dark:text-green-300">
+                  <DollarSign className="h-4 w-4" />
+                  {t('estimatedCost')}:
+                </p>
+                <div className="flex justify-between items-center pl-6">
+                  <p className="text-lg font-bold text-green-800 dark:text-green-200">
+                    ${priceCalculation.totalPriceUSD.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Cancellation button for 'new' status general orders */}
             {order.status === 'new' && (
