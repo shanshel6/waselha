@@ -12,8 +12,9 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { forbiddenItemsList, ForbiddenItemCategory } from '@/lib/forbidden-items';
-import { XCircle, ShieldAlert } from 'lucide-react';
+import { forbiddenItemsList } from '@/lib/forbidden-items';
+import { ShieldAlert } from 'lucide-react';
+import IconRenderer from './IconRenderer';
 
 interface ForbiddenItemsDialogProps {
   isOpen: boolean;
@@ -37,20 +38,15 @@ const ForbiddenItemsDialog: React.FC<ForbiddenItemsDialogProps> = ({ isOpen, onO
           </AlertDialogDescription>
         </AlertDialogHeader>
         
-        <div className="max-h-[40vh] overflow-y-auto pr-4 space-y-4">
-          {forbiddenItemsList.map((category: ForbiddenItemCategory) => (
-            <div key={category.title}>
-              <h3 className="font-semibold mb-2 text-foreground">{t(category.title)}</h3>
-              <ul className="space-y-1.5 text-sm text-muted-foreground">
-                {category.items.map((item) => (
-                  <li key={item} className="flex items-start gap-2">
-                    <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
-                    <span>{t(item)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <div className="max-h-[40vh] overflow-y-auto pr-4">
+          <ul className="space-y-2 text-sm">
+            {forbiddenItemsList.map((item) => (
+              <li key={item.key} className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                <IconRenderer name={item.icon} className="h-5 w-5 text-destructive flex-shrink-0" />
+                <span className="text-foreground">{t(item.key)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <AlertDialogFooter>
