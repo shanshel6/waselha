@@ -15,5 +15,4 @@ export const forbiddenItemsList: ForbiddenItem[] = [
   { key: "spareLithiumBatteries", icon: "Battery" },
   { key: "drones", icon: "CameraOff" },
   { key: "certainElectronics", icon: "CircuitBoard" },
-  { key: "politicallySensitive", icon: "FileLock" },
 ];
