@@ -53,23 +53,8 @@ const MyRequests = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      // 1. Get the IDs of trips belonging to the current user
-      const { data: userTrips, error: tripsError } = await supabase
-        .from('trips')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (tripsError) {
-        throw new Error(tripsError.message);
-      }
-
-      if (!userTrips || userTrips.length === 0) {
-        return []; // User has no trips, so no received requests.
-      }
-
-      const tripIds = userTrips.map(trip => trip.id);
-
-      // 2. Fetch requests that are for one of the user's trips
+      // Relying on RLS policy "Travelers can view requests for their trips" 
+      // which automatically filters requests based on the user's trip ownership.
       const { data, error } = await supabase
         .from('requests')
         .select(`
@@ -77,7 +62,6 @@ const MyRequests = () => {
           trips(*), 
           profiles:sender_id(id, first_name, last_name, phone)
         `)
-        .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
 
       if (error) {
