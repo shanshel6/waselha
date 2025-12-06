@@ -16,7 +16,6 @@ interface Profile { id: string; first_name: string | null; last_name: string | n
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
 interface Request { id: string; trip_id: string; sender_id: string; description: string; weight_kg: number; destination_city: string; receiver_details: string; handover_location: string | null; status: 'pending' | 'accepted' | 'rejected'; created_at: string; trips: Trip; cancellation_requested_by: string | null; proposed_changes: { weight_kg: number; description: string } | null; }
 interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
-interface GeneralOrder { id: string; user_id: string; traveler_id: string | null; from_country: string; to_country: string; description: string; weight_kg: number; is_valuable: boolean; has_insurance: boolean; status: 'new' | 'claimed' | 'in_transit' | 'delivered'; created_at: string; proposed_changes: { weight_kg: number; description: string } | null; }
 
 interface SentRequestsTabProps {
   user: any;
@@ -24,10 +23,9 @@ interface SentRequestsTabProps {
   deleteRequestMutation: any;
   onCancelAcceptedRequest: (request: Request) => void;
   onEditRequest: (request: Request) => void;
-  onEditOrder: (order: GeneralOrder) => void;
 }
 
-export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onEditOrder }: SentRequestsTabProps) => {
+export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest }: SentRequestsTabProps) => {
   const { t } = useTranslation();
 
   const { data: tripRequests, isLoading: isLoadingTripRequests, error: tripRequestsError } = useQuery({
@@ -45,48 +43,31 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     enabled: !!user,
   });
 
-  const { data: generalOrders, isLoading: isLoadingGeneralOrders, error: generalOrdersError } = useQuery({
-    queryKey: ['generalOrders', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase.from('general_orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-      if (error) throw new Error(error.message);
-      return data as GeneralOrder[];
-    },
-    enabled: !!user,
-  });
-
   const allSentItems = useMemo(() => {
-    if (isLoadingTripRequests || isLoadingGeneralOrders) return [];
-    const combined = [
-        ...(tripRequests || []).map(req => ({ ...req, type: 'trip_request' })),
-        ...(generalOrders || []).map(order => ({ ...order, type: 'general_order' }))
-    ];
-    return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [tripRequests, generalOrders, isLoadingTripRequests, isLoadingGeneralOrders]);
+    if (isLoadingTripRequests) return [];
+    return (tripRequests || []).map(req => ({ ...req, type: 'trip_request' })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [tripRequests, isLoadingTripRequests]);
 
-  const isLoadingSent = isLoadingTripRequests || isLoadingGeneralOrders;
-  const sentRequestsError = tripRequestsError || generalOrdersError;
+  const isLoadingSent = isLoadingTripRequests;
+  const sentRequestsError = tripRequestsError;
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'accepted': case 'claimed': return 'default';
+      case 'accepted': return 'default';
       case 'rejected': return 'destructive';
-      case 'new': return 'secondary';
       default: return 'secondary';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'accepted': case 'claimed': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'accepted': return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
       default: return <Clock className="h-4 w-4 text-yellow-500" />;
     }
   };
 
-  const getStatusCardClass = (status: string, isGeneralOrder = false) => {
-    if (isGeneralOrder) return 'border-2 border-dashed border-primary/50 bg-primary/5';
+  const getStatusCardClass = (status: string) => {
     switch (status) {
       case 'accepted': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
       case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
@@ -95,11 +76,10 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
   };
 
   const calculatePriceDisplay = (item: any) => {
-    const isGeneralOrder = item.type === 'general_order';
-    const from_country = isGeneralOrder ? item.from_country : item.trips?.from_country;
-    const to_country = isGeneralOrder ? item.to_country : item.trips?.to_country;
+    const from_country = item.trips?.from_country;
+    const to_country = item.trips?.to_country;
     const weight_kg = item.weight_kg;
-    const has_insurance = isGeneralOrder ? item.has_insurance : false;
+    const has_insurance = false; 
     if (!from_country || !to_country || from_country === to_country || weight_kg <= 0) return null;
     const result = calculateShippingCost(from_country, to_country, weight_kg);
     if (result.error) return null;
@@ -157,69 +137,40 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
 
   const renderSentItem = (item: any) => {
     const priceCalculation = calculatePriceDisplay(item);
-    if (item.type === 'trip_request') {
-      const req = item as RequestWithProfiles;
-      const travelerName = req.traveler_profile?.first_name || t('traveler');
-      const hasPendingChanges = !!req.proposed_changes;
-      return (
-        <Card key={req.id} className={getStatusCardClass(req.status)}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">{getStatusIcon(req.status)}{t('requestTo')} {travelerName}</span>
-              <Badge variant={getStatusVariant(req.status)}>{hasPendingChanges ? t('pendingChanges') : t(req.status)}</Badge>
-            </CardTitle>
-            {(req.status === 'pending' || req.status === 'rejected') && <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><Plane className="h-4 w-4" /><CountryFlag country={req.trips?.from_country || 'N/A'} showName /> → <CountryFlag country={req.trips?.to_country || 'N/A'} showName />{req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}</div>}
-          </CardHeader>
-          <CardContent>
-            {(req.status === 'pending' || req.status === 'rejected') && (
-              <div className="space-y-3">
-                <div><p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p><p className="text-sm text-muted-foreground pl-6">{req.description}</p></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <p className="flex items-center gap-2"><Weight className="h-4 w-4" /><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-                  <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /><span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
-                </div>
-                <div><p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p><p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p></div>
-                {renderPriceBlock(priceCalculation)}
+    const req = item as RequestWithProfiles;
+    const travelerName = req.traveler_profile?.first_name || t('traveler');
+    const hasPendingChanges = !!req.proposed_changes;
+    return (
+      <Card key={req.id} className={getStatusCardClass(req.status)}>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">{getStatusIcon(req.status)}{t('requestTo')} {travelerName}</span>
+            <Badge variant={getStatusVariant(req.status)}>{hasPendingChanges ? t('pendingChanges') : t(req.status)}</Badge>
+          </CardTitle>
+          {(req.status === 'pending' || req.status === 'rejected') && <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><Plane className="h-4 w-4" /><CountryFlag country={req.trips?.from_country || 'N/A'} showName /> → <CountryFlag country={req.trips?.to_country || 'N/A'} showName />{req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}</div>}
+        </CardHeader>
+        <CardContent>
+          {(req.status === 'pending' || req.status === 'rejected') && (
+            <div className="space-y-3">
+              <div><p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p><p className="text-sm text-muted-foreground pl-6">{req.description}</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <p className="flex items-center gap-2"><Weight className="h-4 w-4" /><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /><span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
               </div>
-            )}
-            {renderAcceptedDetails(req)}
-            {req.status === 'pending' && (
-              <div className="flex gap-2 mt-4">
-                <Button variant="destructive" size="sm" onClick={() => onCancelRequest(req)} disabled={deleteRequestMutation.isPending}><Trash2 className="mr-2 h-4 w-4" />{t('cancelRequest')}</Button>
-                <Button variant="secondary" size="sm" onClick={() => onEditRequest(req)} disabled={hasPendingChanges}><Pencil className="mr-2 h-4 w-4" />{t('editRequest')}</Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      );
-    } else if (item.type === 'general_order') {
-      const order = item as GeneralOrder;
-      const statusKey = order.status === 'new' ? 'statusNewOrder' : order.status;
-      const hasPendingChanges = !!order.proposed_changes;
-      return (
-        <Card key={order.id} className={getStatusCardClass(order.status, true)}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-lg"><span className="flex items-center gap-2">{getStatusIcon(order.status)}{t('placeOrder')}</span><Badge variant={getStatusVariant(order.status)} className="bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500">{hasPendingChanges ? t('pendingChanges') : t(statusKey)}</Badge></CardTitle>
-            <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><Plane className="h-4 w-4" /><CountryFlag country={order.from_country} showName /> → <CountryFlag country={order.to_country} showName /></div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div><p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p><p className="text-sm text-muted-foreground pl-6">{order.description}</p></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <p className="flex items-center gap-2"><Weight className="h-4 w-4" /><span className="font-semibold">{t('packageWeightKg')}:</span> {order.weight_kg} kg</p>
-              {order.has_insurance && <p className="flex items-center gap-2 text-blue-600 dark:text-blue-400"><BadgeCheck className="h-4 w-4" /><span className="font-semibold">{t('insuranceOption')}</span></p>}
+              <div><p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p><p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p></div>
+              {renderPriceBlock(priceCalculation)}
             </div>
-            {renderPriceBlock(priceCalculation)}
-            {(order.status === 'new' || order.status === 'claimed') && (
-              <div className="flex gap-2 mt-4">
-                {order.status === 'new' && <Button variant="destructive" size="sm" onClick={() => onCancelRequest(order)} disabled={deleteRequestMutation.isPending}><Trash2 className="mr-2 h-4 w-4" />{t('cancelRequest')}</Button>}
-                <Button variant="secondary" size="sm" onClick={() => onEditOrder(order)} disabled={hasPendingChanges}><Pencil className="mr-2 h-4 w-4" />{t('editOrder')}</Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      );
-    }
-    return null;
+          )}
+          {renderAcceptedDetails(req)}
+          {req.status === 'pending' && (
+            <div className="flex gap-2 mt-4">
+              <Button variant="destructive" size="sm" onClick={() => onCancelRequest(req)} disabled={deleteRequestMutation.isPending}><Trash2 className="mr-2 h-4 w-4" />{t('cancelRequest')}</Button>
+              <Button variant="secondary" size="sm" onClick={() => onEditRequest(req)} disabled={hasPendingChanges}><Pencil className="mr-2 h-4 w-4" />{t('editRequest')}</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   if (isLoadingSent) return <p>{t('loading')}</p>;

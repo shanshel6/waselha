@@ -152,16 +152,6 @@ const Trips = () => {
         </Link>
       </div>
       
-      {/* New Link/Text */}
-      <div className="mb-6 text-center">
-        <p className="text-lg text-muted-foreground">
-          {t('cantFindTrip')}
-          <Link to="/place-order" className="text-primary hover:underline font-semibold mr-2">
-            {' '}{t('placeOrderLink')}
-          </Link>
-        </p>
-      </div>
-      
       <Card className="mb-8">
         <CardContent className="p-6">
           <Form {...form}>
