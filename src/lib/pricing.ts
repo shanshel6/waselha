@@ -21,7 +21,8 @@ const PRICING_TIERS_USD = {
 };
 
 const USD_TO_IQD_RATE = 1400;
-const MAX_WEIGHT_KG = 10; // New maximum weight
+const MAX_TRIP_WEIGHT_KG = 10; // Max weight a traveler can offer/sender can request for a trip
+const MAX_CALCULATOR_WEIGHT_KG = 50; // Max weight for price calculation on the homepage
 
 const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {
   if (ZONES.A.includes(country)) return 'A';
@@ -35,8 +36,9 @@ const getTieredPricePerKg = (zone: keyof typeof PRICING_TIERS_USD, weight: numbe
   const tiers = PRICING_TIERS_USD[zone];
   if (weight >= 1 && weight <= 2) return tiers["1-2"];
   if (weight >= 3 && weight <= 5) return tiers["3-5"];
-  if (weight >= 6 && weight <= MAX_WEIGHT_KG) return tiers["6-10"];
-  return 0; // Should not happen if weight is validated
+  // For weights 6kg and above (up to 50kg), use the 6-10kg tier rate.
+  if (weight >= 6) return tiers["6-10"]; 
+  return 0; 
 };
 
 // Base price (1-2kg tier) logic for Traveler profit estimation (used in AddTrip)
@@ -47,7 +49,8 @@ const getBasePricePerKg = (zone: keyof typeof PRICING_TIERS_USD): number => {
 
 // Function for Senders (Price Calculator, Trip Details)
 export const calculateShippingCost = (originCountry: string, destinationCountry: string, weight: number) => {
-  if (weight <= 0 || weight > MAX_WEIGHT_KG) {
+  // We use MAX_CALCULATOR_WEIGHT_KG here, relying on Zod validation in TripDetails to enforce MAX_TRIP_WEIGHT_KG.
+  if (weight <= 0 || weight > MAX_CALCULATOR_WEIGHT_KG) {
     return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: "Invalid weight" };
   }
 
@@ -71,7 +74,7 @@ export const calculateShippingCost = (originCountry: string, destinationCountry:
 
 // Function for Travelers (Add Trip) - Calculates potential profit based on base price
 export const calculateTravelerProfit = (originCountry: string, destinationCountry: string, availableWeight: number) => {
-  if (availableWeight <= 0 || availableWeight > MAX_WEIGHT_KG) {
+  if (availableWeight <= 0 || availableWeight > MAX_TRIP_WEIGHT_KG) {
     return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: "Invalid weight" };
   }
 
