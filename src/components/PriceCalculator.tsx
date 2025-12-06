@@ -73,7 +73,7 @@ const PriceCalculator = () => {
               <Slider
                 id="weight-slider"
                 min={1}
-                max={30}
+                max={10}
                 step={1}
                 value={[weight]}
                 onValueChange={handleWeightChange}

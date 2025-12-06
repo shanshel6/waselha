@@ -1,55 +1,32 @@
+import { countries } from './countries';
+
 const ZONES = {
   A: [ // NEAR COUNTRIES (Start price: 5 USD)
     "Iraq", "Turkey", "Iran", "Jordan", "Syria", "Lebanon", "United Arab Emirates", 
     "Qatar", "Bahrain", "Kuwait", "Saudi Arabia", "Oman", "Cyprus", "Armenia", 
     "Georgia", "Azerbaijan", "Egypt"
   ],
-  B: [ // MEDIUM DISTANCE (Start price: 7 USD)
-    "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands", "Belgium", 
-    "Switzerland", "Sweden", "Norway", "Denmark", "Poland", "Czech Republic", "Austria", 
-    "Greece", "Romania", "Bulgaria", "Hungary", "Croatia", "Slovakia", "Slovenia", 
-    "Lithuania", "Latvia", "Estonia", "Finland", "Iceland", "Ireland", "Luxembourg", 
-    "Malta", "Monaco", "Montenegro", "North Macedonia", "Portugal", "Serbia", 
-    "Ukraine", "Belarus", "Moldova", "Bosnia and Herzegovina", "Albania", 
-    "Malaysia", "Thailand", "Singapore", "Indonesia", "India", "Pakistan", 
-    "Kazakhstan", "Uzbekistan", "Morocco", "Algeria", "Tunisia", "Bangladesh",
-    "Nepal", "Sri Lanka", "Myanmar", "Vietnam", "Laos", "Cambodia", "Philippines",
-    "South Korea", "North Korea", "Taiwan", "Mongolia", "Kyrgyzstan", "Tajikistan",
-    "Turkmenistan", "Yemen", "Libya", "Sudan", "South Sudan", "Eritrea", "Ethiopia",
-    "Somalia", "Djibouti", "Kenya", "Tanzania", "Uganda", "Rwanda", "Burundi",
-    "Congo (Kinshasa)", "Congo (Brazzaville)", "Central African Republic", "Chad",
-    "Niger", "Nigeria", "Benin", "Togo", "Ghana", "Ivory Coast", "Burkina Faso",
-    "Mali", "Mauritania", "Senegal", "Gambia", "Guinea-Bissau", "Guinea", "Sierra Leone",
-    "Liberia", "Cabo Verde", "Sao Tome and Principe", "Equatorial Guinea", "Gabon",
-    "Cameroon", "Angola", "Zambia", "Zimbabwe", "Botswana", "Namibia", "South Africa",
-    "Lesotho", "Eswatini", "Mozambique", "Malawi", "Madagascar", "Comoros", "Seychelles",
-    "Mauritius", "Fiji", "Samoa", "Tonga", "Tuvalu", "Kiribati", "Marshall Islands",
-    "Micronesia", "Palau", "Nauru", "Vanuatu", "Solomon Islands", "Papua New Guinea",
-    "Timor-Leste", "Haiti", "Dominican Republic", "Cuba", "Jamaica", "Trinidad and Tobago",
-    "Barbados", "Saint Lucia", "Saint Vincent and the Grenadines", "Grenada", 
-    "Saint Kitts and Nevis", "Dominica", "Antigua and Barbuda", "Bahamas", "Belize",
-    "Costa Rica", "El Salvador", "Guatemala", "Honduras", "Nicaragua", "Panama",
-    "Uruguay", "Paraguay", "Bolivia", "Ecuador", "Peru", "Venezuela", "Guyana",
-    "Suriname", "Russia" // Added Russia and other unlisted countries to B
-  ],
   C: [ // FAR COUNTRIES (Start price: 9 USD)
-    "China", "Hong Kong", "Japan", "Australia", "New Zealand",
-    "United States", "Canada", "Mexico", "Brazil", "Argentina", "Chile", "Colombia"
+    "China", "Hong Kong", "Japan", "Philippines", "Vietnam", "Taiwan", "Australia", 
+    "New Zealand", "United States", "Canada", "Mexico", "Brazil", "Argentina", 
+    "Chile", "Colombia"
   ]
+  // Zone B is implicitly all other countries in the list, defaulting unlisted to B.
 };
 
 const PRICING_TIERS_USD = {
-  A: { "1-2": 5.0, "3-5": 4.5, "6-10": 4.0, ">10": 3.5 },
-  B: { "1-2": 7.0, "3-5": 6.5, "6-10": 6.0, ">10": 5.5 },
-  C: { "1-2": 9.0, "3-5": 8.5, "6-10": 8.0, ">10": 7.5 }
+  A: { "1-2": 5.0, "3-5": 4.5, "6-10": 4.0 },
+  B: { "1-2": 7.0, "3-5": 6.5, "6-10": 6.0 },
+  C: { "1-2": 9.0, "3-5": 8.5, "6-10": 8.0 }
 };
 
 const USD_TO_IQD_RATE = 1400;
+const MAX_WEIGHT_KG = 10; // New maximum weight
 
 const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {
   if (ZONES.A.includes(country)) return 'A';
   if (ZONES.C.includes(country)) return 'C';
-  // Default to Zone B if country is not listed in A or C
+  // Default to Zone B if country is not listed in A or C (covers Europe, etc.)
   return 'B'; 
 };
 
@@ -58,9 +35,8 @@ const getTieredPricePerKg = (zone: keyof typeof PRICING_TIERS_USD, weight: numbe
   const tiers = PRICING_TIERS_USD[zone];
   if (weight >= 1 && weight <= 2) return tiers["1-2"];
   if (weight >= 3 && weight <= 5) return tiers["3-5"];
-  if (weight >= 6 && weight <= 10) return tiers["6-10"];
-  if (weight > 10) return tiers[">10"];
-  return 0;
+  if (weight >= 6 && weight <= MAX_WEIGHT_KG) return tiers["6-10"];
+  return 0; // Should not happen if weight is validated
 };
 
 // Base price (1-2kg tier) logic for Traveler profit estimation (used in AddTrip)
@@ -71,11 +47,11 @@ const getBasePricePerKg = (zone: keyof typeof PRICING_TIERS_USD): number => {
 
 // Function for Senders (Price Calculator, Trip Details)
 export const calculateShippingCost = (originCountry: string, destinationCountry: string, weight: number) => {
-  if (weight <= 0 || weight > 30) {
+  if (weight <= 0 || weight > MAX_WEIGHT_KG) {
     return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: "Invalid weight" };
   }
 
-  // Pricing is based ONLY on the destination country (the non-Iraq country)
+  // Pricing is based ONLY on the non-Iraq country involved in the trip.
   const pricingCountry = (originCountry === 'Iraq' && destinationCountry !== 'Iraq') 
     ? destinationCountry 
     : (destinationCountry === 'Iraq' && originCountry !== 'Iraq') 
@@ -95,11 +71,11 @@ export const calculateShippingCost = (originCountry: string, destinationCountry:
 
 // Function for Travelers (Add Trip) - Calculates potential profit based on base price
 export const calculateTravelerProfit = (originCountry: string, destinationCountry: string, availableWeight: number) => {
-  if (availableWeight <= 0 || availableWeight > 30) {
+  if (availableWeight <= 0 || availableWeight > MAX_WEIGHT_KG) {
     return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: "Invalid weight" };
   }
 
-  // Pricing is based ONLY on the destination country (the non-Iraq country)
+  // Pricing is based ONLY on the non-Iraq country involved in the trip.
   const pricingCountry = (originCountry === 'Iraq' && destinationCountry !== 'Iraq') 
     ? destinationCountry 
     : (destinationCountry === 'Iraq' && originCountry !== 'Iraq') 
@@ -117,4 +93,10 @@ export const calculateTravelerProfit = (originCountry: string, destinationCountr
 };
 
 // Re-generate zonedCountries list based on new ZONES definition
-export const zonedCountries = [...new Set([...ZONES.A, ...ZONES.B, ...ZONES.C])].sort();
+// This list should contain all countries available in the UI selectors.
+export const zonedCountries = [...new Set([
+  ...ZONES.A, 
+  ...ZONES.C, 
+  // Include all countries from src/lib/countries.ts that are not explicitly A or C (these are Zone B)
+  ...countries.filter((c: string) => !ZONES.A.includes(c) && !ZONES.C.includes(c))
+])].sort();
