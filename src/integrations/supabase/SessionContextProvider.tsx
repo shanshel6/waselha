@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './client';
 import { useNavigate } from 'react-router-dom';
@@ -19,14 +19,9 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  console.log("SessionContextProvider rendering. Current isLoading:", isLoading); // Debug log
-
   useEffect(() => {
-    console.log("SessionContextProvider useEffect running..."); // Debug log
-
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log("Auth state change event:", event, "Session:", currentSession); // Debug log
         setSession(currentSession);
         setUser(currentSession?.user || null);
         setIsLoading(false);
@@ -43,7 +38,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
     // Fetch initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Initial session fetched:", session); // Debug log
       setSession(session);
       setUser(session?.user || null);
       setIsLoading(false);
@@ -51,18 +45,25 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         navigate('/login');
       }
     }).catch(error => {
-      console.error("Error fetching initial session:", error); // Catch potential errors
-      setIsLoading(false); // Ensure loading state is cleared even on error
+      console.error("Error fetching initial session:", error);
+      setIsLoading(false);
     });
 
     return () => {
-      console.log("SessionContextProvider useEffect cleanup."); // Debug log
       authListener.subscription.unsubscribe();
     };
   }, [navigate]);
 
+  // Memoize the context value to prevent unnecessary re-renders of consumers,
+  // which was causing the real-time connection to be unstable.
+  const value = useMemo(() => ({
+    session,
+    user,
+    isLoading
+  }), [session, user, isLoading]);
+
   return (
-    <SessionContext.Provider value={{ session, user, isLoading }}>
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );
