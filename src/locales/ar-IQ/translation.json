@@ -243,7 +243,7 @@
   "editClaimedOrderDescription": "سيتم إرسال تغييراتك إلى المسافر للموافقة عليها.",
   "editNewOrderDescription": "سيتم تحديث طلبك على الفور.",
   "orderUpdatedSuccess": "تم تحديث الطلب بنجاح.",
-  "claimedOrders": "الطلبات المستلمة",
+  "claimedOrders": "الطلبات التي طالبت بها",
   "orderFrom": "طلب من",
   "noClaimedOrders": "لم تقم بالمطالبة بأي طلبات عامة بعد.",
   "claimed": "تمت المطالبة به"
