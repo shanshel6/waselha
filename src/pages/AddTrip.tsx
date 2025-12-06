@@ -22,6 +22,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { countries } from '@/lib/countries';
 import { calculateTravelerProfit } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
+import { useQueryClient } from '@tanstack/react-query';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -36,6 +37,7 @@ const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -103,7 +105,9 @@ const AddTrip = () => {
       showError(t('tripAddedError'));
     } else {
       showSuccess(t('tripAddedSuccess'));
-      navigate('/trips');
+      queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      navigate('/my-flights');
     }
   };
 
