@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -20,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
+import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 
 // Define the expected structure of the fetched trip data
 interface TripData {
@@ -42,6 +43,7 @@ const TripDetails = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const { user } = useSession();
+  const [isForbiddenItemsDialogOpen, setIsForbiddenItemsDialogOpen] = useState(false);
 
   const { data: trip, isLoading, error } = useQuery<TripData, Error>({
     queryKey: ['trip', tripId],
@@ -58,9 +60,8 @@ const TripDetails = () => {
     enabled: !!tripId,
   });
 
-  // Define schema dynamically based on trip's available weight, memoized for stability
   const requestSchema = useMemo(() => {
-    const maxWeight = trip ? Number(trip.free_kg) : 50; // Default to 50 if trip is not loaded yet
+    const maxWeight = trip ? Number(trip.free_kg) : 50;
     return z.object({
       weight_kg: z.coerce.number().min(1, { message: t("positiveNumber") }).max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
       description: z.string().min(10, { message: t("descriptionTooShort") }),
@@ -85,24 +86,28 @@ const TripDetails = () => {
     return calculateShippingCost(trip.from_country, trip.to_country, weight || 0);
   }, [weight, trip]);
 
-  const onSubmit = async (values: z.infer<typeof requestSchema>) => {
+  const handleRequestSubmit = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      setIsForbiddenItemsDialogOpen(true);
+    }
+  };
+
+  const onConfirmSubmit = form.handleSubmit(async (values) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
       navigate('/login');
       return;
     }
-
     if (!trip) {
       showError(t('tripNotFound'));
       return;
     }
-
     const { error } = await supabase.from('requests').insert({
       trip_id: trip.id,
       sender_id: user.id,
       ...values,
     });
-
     if (error) {
       console.error("Error creating request:", error);
       showError(t('requestFailed'));
@@ -110,7 +115,7 @@ const TripDetails = () => {
       showSuccess(t('requestSentSuccess'));
       navigate('/my-requests');
     }
-  };
+  });
 
   if (isLoading) return <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
@@ -122,7 +127,6 @@ const TripDetails = () => {
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Trip Details Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl text-primary">
@@ -137,141 +141,37 @@ const TripDetails = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="flex items-center gap-2">
-              <User className="h-5 w-5 text-gray-500" />
-              {t('traveler')}: {travelerName}
-            </p>
-            <p className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-gray-500" />
-              {t('availableWeight')}: {trip.free_kg} kg
-            </p>
-            {trip.traveler_location && (
-              <p className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-gray-500" />
-                {t('travelerLocation')}: {trip.traveler_location}
-              </p>
-            )}
-            {trip.notes && (
-              <div className="pt-2">
-                <h3 className="font-semibold flex items-center gap-2 mb-2">
-                  <Info className="h-5 w-5 text-gray-500" />
-                  {t('notesFromTraveler')}
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-md border">
-                  {trip.notes}
-                </p>
-              </div>
-            )}
+            <p className="flex items-center gap-2"><User className="h-5 w-5 text-gray-500" />{t('traveler')}: {travelerName}</p>
+            <p className="flex items-center gap-2"><Package className="h-5 w-5 text-gray-500" />{t('availableWeight')}: {trip.free_kg} kg</p>
+            {trip.traveler_location && (<p className="flex items-center gap-2"><MapPin className="h-5 w-5 text-gray-500" />{t('travelerLocation')}: {trip.traveler_location}</p>)}
+            {trip.notes && (<div className="pt-2"><h3 className="font-semibold flex items-center gap-2 mb-2"><Info className="h-5 w-5 text-gray-500" />{t('notesFromTraveler')}</h3><p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-md border">{trip.notes}</p></div>)}
           </CardContent>
         </Card>
         
-        {/* Send Request Section or Owner Info */}
         {isOwner ? (
           <Card>
-            <CardHeader>
-              <CardTitle>{t('yourTrip')}</CardTitle>
-              <CardDescription>{t('yourTripDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">{t('cannotRequestOwnTrip')}</p>
-              <Link to="/my-requests">
-                <Button className="w-full mt-4">{t('manageMyRequests')}</Button>
-              </Link>
-            </CardContent>
+            <CardHeader><CardTitle>{t('yourTrip')}</CardTitle><CardDescription>{t('yourTripDescription')}</CardDescription></CardHeader>
+            <CardContent><p className="text-muted-foreground">{t('cannotRequestOwnTrip')}</p><Link to="/my-requests"><Button className="w-full mt-4">{t('manageMyRequests')}</Button></Link></CardContent>
           </Card>
         ) : (
           <Card>
-            <CardHeader>
-              <CardTitle>{t('sendRequestToTraveler')}</CardTitle>
-              <CardDescription>{t('fillFormToSend')}</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle>{t('sendRequestToTraveler')}</CardTitle><CardDescription>{t('fillFormToSend')}</CardDescription></CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="weight_kg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('packageWeightKg')} ({field.value} kg)</FormLabel>
-                        <FormControl>
-                          <Slider
-                            min={1}
-                            max={trip.free_kg}
-                            step={1}
-                            value={[field.value]}
-                            onValueChange={(value) => field.onChange(value[0])}
-                            className="mt-4"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {priceCalculation && priceCalculation.totalPriceUSD > 0 && (
-                    <Card className="bg-primary/10 p-4">
-                      <CardTitle className="text-lg mb-2 text-center">{t('estimatedCost')}</CardTitle>
-                      <div className="flex justify-around text-center">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total (USD)</p>
-                          <p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total (IQD)</p>
-                          <p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center mt-2">
-                        {t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}
-                      </p>
-                    </Card>
-                  )}
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('packageContents')}</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder={t('packageContentsPlaceholder')} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="destination_city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('destinationCity')}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={t('destinationCityPlaceholder', { country: arabicCountries[trip.to_country] || trip.to_country })} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="receiver_details"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('receiverDetails')}</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder={t('receiverDetailsPlaceholder')} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full">{t('sendRequest')}</Button>
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                  <FormField control={form.control} name="weight_kg" render={({ field }) => (<FormItem><FormLabel>{t('packageWeightKg')} ({field.value} kg)</FormLabel><FormControl><Slider min={1} max={trip.free_kg} step={1} value={[field.value]} onValueChange={(value) => field.onChange(value[0])} className="mt-4" /></FormControl><FormMessage /></FormItem>)} />
+                  {priceCalculation && priceCalculation.totalPriceUSD > 0 && (<Card className="bg-primary/10 p-4"><CardTitle className="text-lg mb-2 text-center">{t('estimatedCost')}</CardTitle><div className="flex justify-around text-center"><div><p className="text-sm text-muted-foreground">Total (USD)</p><p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p></div><div><p className="text-sm text-muted-foreground">Total (IQD)</p><p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p></div></div><p className="text-xs text-muted-foreground text-center mt-2">{t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}</p></Card>)}
+                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>{t('packageContents')}</FormLabel><FormControl><Textarea placeholder={t('packageContentsPlaceholder')} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="destination_city" render={({ field }) => (<FormItem><FormLabel>{t('destinationCity')}</FormLabel><FormControl><Input placeholder={t('destinationCityPlaceholder', { country: arabicCountries[trip.to_country] || trip.to_country })} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="receiver_details" render={({ field }) => (<FormItem><FormLabel>{t('receiverDetails')}</FormLabel><FormControl><Textarea placeholder={t('receiverDetailsPlaceholder')} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <Button type="button" onClick={handleRequestSubmit} className="w-full">{t('sendRequest')}</Button>
                 </form>
               </Form>
             </CardContent>
           </Card>
         )}
       </div>
+      <ForbiddenItemsDialog isOpen={isForbiddenItemsDialogOpen} onOpenChange={setIsForbiddenItemsDialogOpen} onConfirm={onConfirmSubmit} />
     </div>
   );
 };
