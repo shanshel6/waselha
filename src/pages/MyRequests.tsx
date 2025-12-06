@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare } from 'lucide-react';
+import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +35,11 @@ const MyRequests = () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('requests')
-        .select(`*, trips(*, profiles(id, first_name, last_name))`)
+        .select(`
+          *, 
+          trips(*, profiles(id, first_name, last_name, phone)),
+          profiles:sender_id(id, first_name, last_name, phone)
+        `)
         .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
@@ -69,24 +73,17 @@ const MyRequests = () => {
       // 2. Fetch requests that are for one of the user's trips
       const { data, error } = await supabase
         .from('requests')
-        .select(`*, trips(*), profiles:sender_id(id, first_name, last_name)`)
+        .select(`
+          *, 
+          trips(*), 
+          profiles:sender_id(id, first_name, last_name, phone)
+        `)
         .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Log the error for debugging but don't throw, to avoid crashing the UI
         console.error("Error fetching received requests:", error);
-        // Try a simpler query without the profile join as a fallback
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('requests')
-          .select(`*, trips(*)`)
-          .in('trip_id', tripIds)
-          .order('created_at', { ascending: false });
-        
-        if (fallbackError) {
-          throw new Error(fallbackError.message);
-        }
-        return fallbackData;
+        throw new Error(error.message);
       }
       
       return data;
@@ -137,6 +134,52 @@ const MyRequests = () => {
     }
   };
 
+  const renderAcceptedDetails = (req: any, isReceived: boolean) => {
+    const otherParty = isReceived ? req.profiles : req.trips.profiles;
+    const trip = req.trips;
+    
+    if (req.status !== 'accepted' || !otherParty || !trip) return null;
+
+    const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
+    const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
+
+    return (
+      <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/30 space-y-3">
+        <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
+          <BadgeCheck className="h-5 w-5" /> {t('requestAcceptedTitle')}
+        </h4>
+        
+        {/* Contact Info */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <p className="flex items-center gap-2">
+            <User className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{isReceived ? t('sender') : t('traveler')}:</span> {otherPartyName}
+          </p>
+          <p className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('phone')}:</span> {otherPartyPhone}
+          </p>
+        </div>
+
+        {/* Trip Info */}
+        <div className="border-t pt-3 space-y-2 text-sm">
+          <p className="flex items-center gap-2">
+            <Plane className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('tripRoute')}:</span> {trip.from_country} → {trip.to_country}
+          </p>
+          <p className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('tripDate')}:</span> {format(new Date(trip.trip_date), 'PPP')}
+          </p>
+          <p className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('handoverLocation')}:</span> {req.handover_location || t('toBeDeterminedInChat')}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myRequests')}</h1>
@@ -174,6 +217,9 @@ const MyRequests = () => {
                       <p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p>
                       <p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p>
                     </div>
+                    
+                    {renderAcceptedDetails(req, true)}
+
                     <div className="flex gap-2 pt-2">
                       {req.status === 'pending' && (
                         <>
@@ -214,6 +260,9 @@ const MyRequests = () => {
                   </CardHeader>
                   <CardContent>
                     <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                    
+                    {renderAcceptedDetails(req, false)}
+
                     <div className="flex gap-2 mt-4">
                       {req.status === 'pending' && (
                         <Button
