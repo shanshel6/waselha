@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from "@/components/ui/alert-dialog";
 import { ReceivedRequestsTab } from '@/components/my-requests/ReceivedRequestsTab';
 import { SentRequestsTab } from '@/components/my-requests/SentRequestsTab';
+import { EditRequestModal } from '@/components/my-requests/EditRequestModal';
 
 // Define types for our data
 interface Trip {
@@ -38,7 +39,8 @@ interface Request {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
   trips: Trip;
-  cancellation_requested_by: string | null; // Added for mutual cancellation
+  cancellation_requested_by: string | null;
+  proposed_changes: { weight_kg: number; description: string } | null;
 }
 
 interface Profile {
@@ -53,25 +55,12 @@ interface RequestWithProfiles extends Request {
   traveler_profile: Profile | null;
 }
 
-interface GeneralOrder {
-  id: string;
-  user_id: string;
-  traveler_id: string | null;
-  from_country: string;
-  to_country: string;
-  description: string;
-  weight_kg: number;
-  is_valuable: boolean;
-  has_insurance: boolean;
-  status: 'new' | 'claimed' | 'in_transit' | 'delivered';
-  created_at: string;
-}
-
 const MyRequests = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [itemToCancel, setItemToCancel] = useState<any | null>(null);
+  const [requestToEdit, setRequestToEdit] = useState<Request | null>(null);
 
   // --- Mutations ---
   const updateRequestMutation = useMutation({
@@ -90,7 +79,6 @@ const MyRequests = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Mutation for handling the two-step cancellation process for accepted requests
   const mutualCancelMutation = useMutation({
     mutationFn: async (request: Request) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
@@ -104,73 +92,85 @@ const MyRequests = () => {
       }
 
       if (request.cancellation_requested_by) {
-        // Second party confirming cancellation -> DELETE
         if (request.cancellation_requested_by !== user.id) {
-          const { error } = await supabase
-            .from('requests')
-            .delete()
-            .eq('id', request.id);
-          
+          const { error } = await supabase.from('requests').delete().eq('id', request.id);
           if (error) throw error;
           return 'deleted';
         } else {
-          // Should not happen if UI is correct, but handle defensively
           throw new Error(t('alreadyRequestedCancellation'));
         }
       } else {
-        // First party requesting cancellation -> UPDATE cancellation_requested_by
-        const { error } = await supabase
-          .from('requests')
-          .update({ cancellation_requested_by: user.id })
-          .eq('id', request.id);
-        
+        const { error } = await supabase.from('requests').update({ cancellation_requested_by: user.id }).eq('id', request.id);
         if (error) throw error;
         return 'requested';
       }
     },
-    onSuccess: (result, request) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
-      
-      if (result === 'deleted') {
-        showSuccess(t('requestCancelledSuccess'));
-      } else if (result === 'requested') {
-        showSuccess(t('cancellationRequestedSuccess'));
-      }
+      if (result === 'deleted') showSuccess(t('requestCancelledSuccess'));
+      else if (result === 'requested') showSuccess(t('cancellationRequestedSuccess'));
     },
-    onError: (err: any) => {
-      showError(err.message);
-    },
+    onError: (err: any) => showError(err.message),
   });
 
   const deleteRequestMutation = useMutation({
     mutationFn: async (item: any) => {
-      if (item.type === 'trip_request') {
-        const { error } = await supabase
-          .from('requests')
-          .delete()
-          .eq('id', item.id);
-        if (error) throw error;
-      } else if (item.type === 'general_order') {
-        const { error } = await supabase
-          .from('general_orders')
-          .delete()
-          .eq('id', item.id)
-          .eq('status', 'new'); 
-        if (error) throw error;
-      } else {
-        throw new Error("Unknown item type for deletion");
-      }
+      const fromTable = item.type === 'trip_request' ? 'requests' : 'general_orders';
+      const { error } = await supabase.from(fromTable).delete().eq('id', item.id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
       queryClient.invalidateQueries({ queryKey: ['generalOrders'] });
       showSuccess(t('requestCancelledSuccess'));
     },
-    onError: (err: any) => {
-      console.error("Error deleting request:", err);
-      showError(t('requestCancelledError'));
+    onError: (err: any) => showError(t('requestCancelledError')),
+  });
+
+  const editRequestMutation = useMutation({
+    mutationFn: async ({ requestId, values }: { requestId: string; values: { weight_kg: number; description: string } }) => {
+      const { error } = await supabase
+        .from('requests')
+        .update({ proposed_changes: values })
+        .eq('id', requestId);
+      if (error) throw error;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      showSuccess(t('changesSubmittedSuccess'));
+      setRequestToEdit(null);
+    },
+    onError: (err: any) => showError(err.message),
+  });
+
+  const reviewChangesMutation = useMutation({
+    mutationFn: async ({ request, accept }: { request: Request; accept: boolean }) => {
+      if (accept) {
+        const { error } = await supabase
+          .from('requests')
+          .update({
+            weight_kg: request.proposed_changes?.weight_kg,
+            description: request.proposed_changes?.description,
+            proposed_changes: null,
+          })
+          .eq('id', request.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('requests')
+          .update({ proposed_changes: null })
+          .eq('id', request.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { accept }) => {
+      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      showSuccess(accept ? t('changesAcceptedSuccess') : t('changesRejectedSuccess'));
+    },
+    onError: (err: any) => showError(err.message),
   });
 
   const handleUpdateRequest = (request: any, status: string) => {
@@ -183,13 +183,15 @@ const MyRequests = () => {
 
   const handleConfirmCancellation = () => {
     if (!itemToCancel) return;
-
-    if (itemToCancel.type === 'accepted_trip_request') {
-      mutualCancelMutation.mutate(itemToCancel);
-    } else {
-      deleteRequestMutation.mutate(itemToCancel);
-    }
+    if (itemToCancel.type === 'accepted_trip_request') mutualCancelMutation.mutate(itemToCancel);
+    else deleteRequestMutation.mutate(itemToCancel);
     setItemToCancel(null);
+  };
+
+  const handleEditRequest = (values: { weight_kg: number; description: string }) => {
+    if (requestToEdit) {
+      editRequestMutation.mutate({ requestId: requestToEdit.id, values });
+    }
   };
 
   const isAcceptedRequest = itemToCancel?.type === 'accepted_trip_request';
@@ -210,6 +212,8 @@ const MyRequests = () => {
             onUpdateRequest={handleUpdateRequest}
             updateRequestMutation={updateRequestMutation}
             onCancelAcceptedRequest={handleAcceptedRequestCancel}
+            onReviewChanges={reviewChangesMutation.mutate}
+            reviewChangesMutation={reviewChangesMutation}
           />
         </TabsContent>
         <TabsContent value="sent">
@@ -218,6 +222,7 @@ const MyRequests = () => {
             onCancelRequest={setItemToCancel}
             deleteRequestMutation={deleteRequestMutation}
             onCancelAcceptedRequest={handleAcceptedRequestCancel}
+            onEditRequest={setRequestToEdit}
           />
         </TabsContent>
       </Tabs>
@@ -249,6 +254,15 @@ const MyRequests = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {requestToEdit && (
+        <EditRequestModal
+          isOpen={!!requestToEdit}
+          onOpenChange={() => setRequestToEdit(null)}
+          request={requestToEdit}
+          onSubmit={handleEditRequest}
+          isSubmitting={editRequestMutation.isPending}
+        />
+      )}
     </div>
   );
 };

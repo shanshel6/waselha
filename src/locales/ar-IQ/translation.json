@@ -227,5 +227,16 @@
   "yourTrip": "هذه رحلتك",
   "yourTripDescription": "يمكنك إدارة الطلبات المستلمة لهذه الرحلة من صفحة طلباتي.",
   "cannotRequestOwnTrip": "لا يمكنك إرسال طلب لنفسك.",
-  "manageMyRequests": "إدارة طلباتي"
+  "manageMyRequests": "إدارة طلباتي",
+  "editRequest": "تعديل الطلب",
+  "editRequestDescription": "قم بتحديث تفاصيل طلبك. سيتم إرسال التغييرات إلى المسافر للموافقة عليها.",
+  "submitChanges": "إرسال التغييرات",
+  "changesSubmittedSuccess": "تم إرسال التغييرات بنجاح. في انتظار موافقة المسافر.",
+  "pendingChanges": "تغييرات معلقة",
+  "reviewChanges": "مراجعة التغييرات",
+  "proposedChanges": "التغييرات المقترحة من المرسل",
+  "acceptChanges": "قبول التغييرات",
+  "rejectChanges": "رفض التغييرات",
+  "changesAcceptedSuccess": "تم قبول التغييرات بنجاح.",
+  "changesRejectedSuccess": "تم رفض التغييرات."
 }
