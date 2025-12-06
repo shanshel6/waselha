@@ -38,6 +38,7 @@ interface Request {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
   trips: Trip;
+  cancellation_requested_by: string | null; // Added for mutual cancellation
 }
 
 interface Profile {
@@ -70,7 +71,7 @@ const MyRequests = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const queryClient = useQueryClient();
-  const [requestToCancel, setRequestToCancel] = useState<any | null>(null);
+  const [itemToCancel, setItemToCancel] = useState<any | null>(null);
 
   // --- Mutations ---
   const updateRequestMutation = useMutation({
@@ -87,6 +88,59 @@ const MyRequests = () => {
       showSuccess(t('requestUpdatedSuccess'));
     },
     onError: (err: any) => showError(err.message),
+  });
+
+  // Mutation for handling the two-step cancellation process for accepted requests
+  const mutualCancelMutation = useMutation({
+    mutationFn: async (request: Request) => {
+      if (!user) throw new Error(t('mustBeLoggedIn'));
+      
+      const isCurrentUserSender = user.id === request.sender_id;
+      const travelerId = request.trips.user_id;
+      const isCurrentUserTraveler = user.id === travelerId;
+      
+      if (!isCurrentUserSender && !isCurrentUserTraveler) {
+        throw new Error("Unauthorized action.");
+      }
+
+      if (request.cancellation_requested_by) {
+        // Second party confirming cancellation -> DELETE
+        if (request.cancellation_requested_by !== user.id) {
+          const { error } = await supabase
+            .from('requests')
+            .delete()
+            .eq('id', request.id);
+          
+          if (error) throw error;
+          return 'deleted';
+        } else {
+          // Should not happen if UI is correct, but handle defensively
+          throw new Error(t('alreadyRequestedCancellation'));
+        }
+      } else {
+        // First party requesting cancellation -> UPDATE cancellation_requested_by
+        const { error } = await supabase
+          .from('requests')
+          .update({ cancellation_requested_by: user.id })
+          .eq('id', request.id);
+        
+        if (error) throw error;
+        return 'requested';
+      }
+    },
+    onSuccess: (result, request) => {
+      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      
+      if (result === 'deleted') {
+        showSuccess(t('requestCancelledSuccess'));
+      } else if (result === 'requested') {
+        showSuccess(t('cancellationRequestedSuccess'));
+      }
+    },
+    onError: (err: any) => {
+      showError(err.message);
+    },
   });
 
   const deleteRequestMutation = useMutation({
@@ -122,6 +176,25 @@ const MyRequests = () => {
   const handleUpdateRequest = (request: any, status: string) => {
     updateRequestMutation.mutate({ requestId: request.id, status });
   };
+  
+  const handleAcceptedRequestCancel = (request: Request) => {
+    setItemToCancel({ ...request, type: 'accepted_trip_request' });
+  };
+
+  const handleConfirmCancellation = () => {
+    if (!itemToCancel) return;
+
+    if (itemToCancel.type === 'accepted_trip_request') {
+      mutualCancelMutation.mutate(itemToCancel);
+    } else {
+      deleteRequestMutation.mutate(itemToCancel);
+    }
+    setItemToCancel(null);
+  };
+
+  const isAcceptedRequest = itemToCancel?.type === 'accepted_trip_request';
+  const isFirstPartyRequesting = isAcceptedRequest && itemToCancel.cancellation_requested_by && itemToCancel.cancellation_requested_by === user?.id;
+  const isSecondPartyConfirming = isAcceptedRequest && itemToCancel.cancellation_requested_by && itemToCancel.cancellation_requested_by !== user?.id;
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -136,35 +209,42 @@ const MyRequests = () => {
             user={user}
             onUpdateRequest={handleUpdateRequest}
             updateRequestMutation={updateRequestMutation}
+            onCancelAcceptedRequest={handleAcceptedRequestCancel}
           />
         </TabsContent>
         <TabsContent value="sent">
           <SentRequestsTab 
             user={user}
-            onCancelRequest={setRequestToCancel}
+            onCancelRequest={setItemToCancel}
             deleteRequestMutation={deleteRequestMutation}
+            onCancelAcceptedRequest={handleAcceptedRequestCancel}
           />
         </TabsContent>
       </Tabs>
-      <AlertDialog open={!!requestToCancel} onOpenChange={(open) => !open && setRequestToCancel(null)}>
+      <AlertDialog open={!!itemToCancel} onOpenChange={(open) => !open && setItemToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('areYouSureCancel')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('cannotBeUndone')}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {isAcceptedRequest 
+                ? isSecondPartyConfirming ? t('confirmMutualCancellation') : t('requestCancellationTitle')
+                : t('areYouSureCancel')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAcceptedRequest 
+                ? isSecondPartyConfirming ? t('confirmMutualCancellationDescription') : t('requestCancellationDescription')
+                : t('cannotBeUndone')}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setRequestToCancel(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setItemToCancel(null)}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => {
-                if (requestToCancel) {
-                  deleteRequestMutation.mutate(requestToCancel);
-                }
-                setRequestToCancel(null);
-              }} 
-              disabled={deleteRequestMutation.isPending}
+              onClick={handleConfirmCancellation} 
+              disabled={deleteRequestMutation.isPending || mutualCancelMutation.isPending || isFirstPartyRequesting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {t('confirmDelete')}
+              {isAcceptedRequest 
+                ? isSecondPartyConfirming ? t('confirmCancellation') : t('requestCancellation')
+                : t('confirmDelete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

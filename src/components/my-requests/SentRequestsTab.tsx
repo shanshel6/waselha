@@ -44,6 +44,7 @@ interface Request {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
   trips: Trip;
+  cancellation_requested_by: string | null; // Added
 }
 
 interface RequestWithProfiles extends Request {
@@ -69,9 +70,10 @@ interface SentRequestsTabProps {
   user: any;
   onCancelRequest: (request: any) => void;
   deleteRequestMutation: any;
+  onCancelAcceptedRequest: (request: Request) => void; // Added
 }
 
-export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }: SentRequestsTabProps) => {
+export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest }: SentRequestsTabProps) => {
   const { t } = useTranslation();
 
   const { data: tripRequests, isLoading: isLoadingTripRequests, error: tripRequestsError } = useQuery({
@@ -255,6 +257,10 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
     const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
     const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
     
+    const cancellationRequested = req.cancellation_requested_by;
+    const isCurrentUserRequester = cancellationRequested === user?.id;
+    const isOtherUserRequester = cancellationRequested && cancellationRequested !== user?.id;
+
     return (
       <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
         <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
@@ -284,6 +290,32 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
             <span className="font-semibold">{t('tripDate')}:</span>
             {trip.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
           </p>
+        </div>
+        
+        {cancellationRequested && (
+          <div className={`p-3 rounded-md text-sm ${isCurrentUserRequester ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>
+            {isCurrentUserRequester 
+              ? t('waitingForOtherPartyCancellation') 
+              : t('otherPartyRequestedCancellation')}
+          </div>
+        )}
+        
+        <div className="flex gap-2 pt-2">
+          <Link to={`/chat/${req.id}`}>
+            <Button size="sm" variant="outline">
+              <MessageSquare className="mr-2 h-4 w-4" />
+              {t('viewChat')}
+            </Button>
+          </Link>
+          <Button 
+            size="sm" 
+            variant="destructive" 
+            onClick={() => onCancelAcceptedRequest(req)}
+            disabled={isCurrentUserRequester}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
+          </Button>
         </div>
       </div>
     );
@@ -338,22 +370,14 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
             
             {renderAcceptedDetails(req)}
             
-            <div className="flex gap-2 mt-4">
-              {req.status === 'pending' && (
+            {req.status === 'pending' && (
+              <div className="flex gap-2 mt-4">
                 <Button variant="destructive" size="sm" onClick={() => onCancelRequest(req)} disabled={deleteRequestMutation.isPending}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   {t('cancelRequest')}
                 </Button>
-              )}
-              {req.status === 'accepted' && (
-                <Link to={`/chat/${req.id}`}>
-                  <Button size="sm" variant="outline">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    {t('viewChat')}
-                  </Button>
-                </Link>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       );

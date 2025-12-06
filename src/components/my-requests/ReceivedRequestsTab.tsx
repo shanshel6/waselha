@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -44,6 +44,7 @@ interface Request {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
   trips: Trip;
+  cancellation_requested_by: string | null; // Added
 }
 
 interface RequestWithProfiles extends Request {
@@ -55,9 +56,10 @@ interface ReceivedRequestsTabProps {
   user: any;
   onUpdateRequest: (request: any, status: string) => void;
   updateRequestMutation: any;
+  onCancelAcceptedRequest: (request: Request) => void; // Added
 }
 
-export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutation }: ReceivedRequestsTabProps) => {
+export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutation, onCancelAcceptedRequest }: ReceivedRequestsTabProps) => {
   const { t } = useTranslation();
 
   const { data: receivedRequests, isLoading, error } = useQuery({
@@ -191,6 +193,10 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
     const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
     const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
     
+    const cancellationRequested = req.cancellation_requested_by;
+    const isCurrentUserRequester = cancellationRequested === user?.id;
+    const isOtherUserRequester = cancellationRequested && cancellationRequested !== user?.id;
+
     return (
       <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
         <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
@@ -225,6 +231,32 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
             <span className="font-semibold">{t('handoverLocation')}:</span>
             {req.handover_location || t('toBeDeterminedInChat')}
           </p>
+        </div>
+        
+        {cancellationRequested && (
+          <div className={`p-3 rounded-md text-sm ${isCurrentUserRequester ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>
+            {isCurrentUserRequester 
+              ? t('waitingForOtherPartyCancellation') 
+              : t('otherPartyRequestedCancellation')}
+          </div>
+        )}
+        
+        <div className="flex gap-2 pt-2">
+          <Link to={`/chat/${req.id}`}>
+            <Button size="sm" variant="outline">
+              <MessageSquare className="mr-2 h-4 w-4" />
+              {t('viewChat')}
+            </Button>
+          </Link>
+          <Button 
+            size="sm" 
+            variant="destructive" 
+            onClick={() => onCancelAcceptedRequest(req)}
+            disabled={isCurrentUserRequester}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
+          </Button>
         </div>
       </div>
     );
@@ -295,22 +327,12 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
                 
                 {renderAcceptedDetails(req)}
                 
-                <div className="flex gap-2 pt-2">
-                  {req.status === 'pending' && (
-                    <>
-                      <Button size="sm" onClick={() => onUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
-                      <Button size="sm" variant="destructive" onClick={() => onUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
-                    </>
-                  )}
-                  {req.status === 'accepted' && (
-                    <Link to={`/chat/${req.id}`}>
-                      <Button size="sm" variant="outline">
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        {t('viewChat')}
-                      </Button>
-                    </Link>
-                  )}
-                </div>
+                {req.status === 'pending' && (
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" onClick={() => onUpdateRequest(req, 'accepted')} disabled={updateRequestMutation.isPending}>{t('accept')}</Button>
+                    <Button size="sm" variant="destructive" onClick={() => onUpdateRequest(req, 'rejected')} disabled={updateRequestMutation.isPending}>{t('reject')}</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
@@ -319,7 +341,7 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
             <p>{t('noReceivedRequests')}</p>
             {user && (
               <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground font-semibold">
                   Debug Info:
                 </p>
                 <p className="text-sm">User ID: {user.id}</p>

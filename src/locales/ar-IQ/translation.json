@@ -211,5 +211,14 @@
   "deleteTripWarning": "سيؤدي حذف هذه الرحلة إلى إزالة جميع الطلبات المعلقة المرتبطة بها. لا يمكن التراجع عن هذا الإجراء.",
   "confirmDeleteTrip": "نعم، احذف الرحلة",
   "tripDeletedSuccess": "تم حذف الرحلة بنجاح.",
-  "tripDeletedError": "فشل حذف الرحلة. الرجاء المحاولة مرة أخرى."
+  "tripDeletedError": "فشل حذف الرحلة. الرجاء المحاولة مرة أخرى.",
+  "requestCancellation": "طلب الإلغاء",
+  "confirmCancellation": "تأكيد الإلغاء",
+  "requestCancellationTitle": "طلب إلغاء الطلب",
+  "requestCancellationDescription": "هل أنت متأكد أنك تريد طلب إلغاء هذا الطلب؟ سيتم إرسال إشعار إلى الطرف الآخر للموافقة. إذا وافق الطرفان، سيتم إلغاء الطلب نهائيًا.",
+  "confirmMutualCancellation": "تأكيد الإلغاء المشترك",
+  "confirmMutualCancellationDescription": "لقد طلب الطرف الآخر بالفعل إلغاء هذا الطلب. بالنقر على 'تأكيد الإلغاء'، سيتم إلغاء الطلب نهائيًا.",
+  "cancellationRequestedSuccess": "تم إرسال طلب الإلغاء بنجاح. ننتظر موافقة الطرف الآخر.",
+  "waitingForOtherPartyCancellation": "في انتظار موافقة الطرف الآخر على الإلغاء.",
+  "otherPartyRequestedCancellation": "لقد طلب الطرف الآخر إلغاء هذا الطلب. انقر على 'تأكيد الإلغاء' للموافقة."
 }
