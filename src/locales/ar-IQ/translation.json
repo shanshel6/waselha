@@ -182,8 +182,16 @@
   "requestAcceptedTitle": "تم قبول الطلب! تفاصيل الاتصال:",
   "sender": "المرسل",
   "handoverLocation": "موقع التسليم",
-  "toBeDeterminedInChat": "سيتم تحديده في الدردشة",
   "eitherFromOrToIraq": "يجب أن تكون إحدى الوجهتين هي العراق (إما نقطة المغادرة أو الوصول)",
   "dateNotSet": "لم يتم تحديد التاريخ",
-  "maxWeight": "الحد الأقصى للوزن هو 10 كجم"
+  "maxWeight": "الحد الأقصى للوزن هو 10 كجم",
+  "placeOrder": "طلب شحن جديد",
+  "orderDescription": "وصف البضائع",
+  "orderDescriptionPlaceholder": "ما هي البضائع التي تريد إرسالها؟",
+  "isValuable": "هل البضائع ذات قيمة عالية؟",
+  "insuranceOption": "هل تريد تأمينًا؟ (يضاعف السعر)",
+  "orderSubmittedSuccess": "تم إرسال طلب الشحن العام بنجاح! سنتواصل معك قريباً.",
+  "orderSubmittedError": "فشل إرسال طلب الشحن.",
+  "cantFindTrip": "لم تجد رحلة؟",
+  "placeOrderLink": "اطلب شحنة الآن"
 }

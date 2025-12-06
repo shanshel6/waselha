@@ -156,6 +156,17 @@ const Trips = () => {
           <Button size="lg"><PlusCircle className="mr-2 h-5 w-5" />{t('addTrip')}</Button>
         </Link>
       </div>
+      
+      {/* New Link/Text */}
+      <div className="mb-6 text-center">
+        <p className="text-lg text-muted-foreground">
+          {t('cantFindTrip')}
+          <Link to="/place-order" className="text-primary hover:underline font-semibold mr-2">
+            {t('placeOrderLink')}
+          </Link>
+        </p>
+      </div>
+
       <Card className="mb-8">
         <CardContent className="p-6">
           <Form {...form}>
