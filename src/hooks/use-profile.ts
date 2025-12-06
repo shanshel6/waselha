@@ -11,6 +11,7 @@ export interface Profile {
   role: 'traveler' | 'sender' | 'both';
   is_verified: boolean;
   address: string | null;
+  updated_at: string | null; // Added updated_at
 }
 
 export const useProfile = () => {
@@ -23,7 +24,7 @@ export const useProfile = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, phone, role, is_verified, address')
+        .select('id, first_name, last_name, avatar_url, phone, role, is_verified, address, updated_at') // Included updated_at
         .eq('id', user.id)
         .single();
 

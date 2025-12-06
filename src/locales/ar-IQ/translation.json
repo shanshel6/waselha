@@ -156,5 +156,10 @@
   "newMessage": "رسالة جديدة في الدردشة",
   "completeProfileTitle": "أكمل ملفك الشخصي",
   "completeProfileDescription": "يرجى إدخال اسمك الأول واسم العائلة للمتابعة.",
-  "saveAndContinue": "حفظ ومتابعة"
+  "saveAndContinue": "حفظ ومتابعة",
+  "editProfile": "تعديل الملف الشخصي",
+  "nameChangeCooldownError": "لا يمكنك تغيير اسمك الآن. يمكنك تغيير الاسم مرة واحدة فقط كل 30 يومًا.",
+  "nameChangeCooldownMessage": "يمكنك تغيير اسمك مرة أخرى بعد تاريخ: {{date}}.",
+  "noChangesMade": "لم يتم إجراء أي تغييرات.",
+  "verified": "مُتحقق منه"
 }
