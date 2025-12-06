@@ -13,17 +13,21 @@ const Navbar = () => {
   const { t } = useTranslation();
   const { session } = useSession();
   
-  const navItems = [
+  const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
   ];
   
+  const authenticatedNavItems = [
+    { name: t('myRequests'), path: '/my-requests' },
+    { name: t('myFlights'), path: '/add-trip' },
+  ];
+  
   const mobileNavItems = [
-    ...navItems,
+    ...publicNavItems,
     ...(session ? [
+      ...authenticatedNavItems,
       { name: t('myProfile'), path: '/my-profile' },
-      { name: t('myRequests'), path: '/my-requests' },
-      { name: t('myFlights'), path: '/add-trip' },
     ] : []),
   ];
 
@@ -37,7 +41,17 @@ const Navbar = () => {
         
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
-          {navItems.map((item) => (
+          {publicNavItems.map((item) => (
+            <Link 
+              key={item.name} 
+              to={item.path}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              {item.name}
+            </Link>
+          ))}
+          
+          {session && authenticatedNavItems.map((item) => (
             <Link 
               key={item.name} 
               to={item.path}
