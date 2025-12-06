@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays } from 'lucide-react';
+import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,9 +37,8 @@ const MyRequests = () => {
         .from('requests')
         .select(`
           *, 
-          trips(*, profiles(id, first_name, last_name, phone)),
-          profiles:sender_id(id, first_name, last_name, phone)
-        `)
+          trips(*, profiles(id, first_name, last_name, phone))
+        `) // Simplified select: only fetch traveler profile via trips
         .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
@@ -135,6 +134,8 @@ const MyRequests = () => {
   };
 
   const renderAcceptedDetails = (req: any, isReceived: boolean) => {
+    // For received requests (isReceived=true), the other party is the sender (req.profiles).
+    // For sent requests (isReceived=false), the other party is the traveler (req.trips.profiles).
     const otherParty = isReceived ? req.profiles : req.trips.profiles;
     const trip = req.trips;
     
