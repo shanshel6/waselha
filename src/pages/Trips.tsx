@@ -27,10 +27,8 @@ type SearchFilters = z.infer<typeof searchSchema>;
 
 const Trips = () => {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<SearchFilters>({
-    from_country: "Iraq"
-  });
-
+  const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
+  
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),
     defaultValues: {
@@ -56,17 +54,17 @@ const Trips = () => {
       if (filters.from_country) {
         query = query.eq('from_country', filters.from_country);
       }
-
+      
       if (filters.to_country) {
         query = query.eq('to_country', filters.to_country);
       }
 
       const { data, error: queryError } = await query.order('trip_date', { ascending: true });
-
+      
       if (queryError) {
         throw new Error(queryError.message);
       }
-
+      
       return data;
     },
     enabled: !!filters.from_country || !!filters.to_country,
@@ -77,10 +75,7 @@ const Trips = () => {
   };
 
   const resetFilters = () => {
-    form.reset({
-      from_country: "Iraq",
-      to_country: "",
-    });
+    form.reset({ from_country: "Iraq", to_country: "" });
     setFilters({ from_country: "Iraq" });
   };
 
@@ -88,11 +83,11 @@ const Trips = () => {
     if (isLoading) {
       return <p>{t('loadingTrips')}</p>;
     }
-
+    
     if (error) {
       return <p className="text-red-500">{t('errorLoadingTrips')}: {error.message}</p>;
     }
-
+    
     if (trips && trips.length > 0) {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -136,7 +131,7 @@ const Trips = () => {
         </div>
       );
     }
-
+    
     return (
       <Card className="text-center p-12">
         <h3 className="text-xl font-semibold">{t('noTripsFound')}</h3>
@@ -162,11 +157,11 @@ const Trips = () => {
         <p className="text-lg text-muted-foreground">
           {t('cantFindTrip')}
           <Link to="/place-order" className="text-primary hover:underline font-semibold mr-2">
-            {t('placeOrderLink')}
+            {' '}{t('placeOrderLink')}
           </Link>
         </p>
       </div>
-
+      
       <Card className="mb-8">
         <CardContent className="p-6">
           <Form {...form}>
@@ -225,6 +220,7 @@ const Trips = () => {
           </Form>
         </CardContent>
       </Card>
+      
       {renderContent()}
     </div>
   );

@@ -1,11 +1,10 @@
 "use client";
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Send, PackageOpen } from 'lucide-react';
+import { Menu, Send } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
@@ -13,19 +12,18 @@ import Notifications from './Notifications';
 const Navbar = () => {
   const { t } = useTranslation();
   const { session } = useSession();
-
+  
   const navItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
-    { name: t('generalOrders'), path: '/general-orders' }, // New link
   ];
-
+  
   const mobileNavItems = [
     ...navItems,
     ...(session ? [
       { name: t('myProfile'), path: '/my-profile' },
       { name: t('myRequests'), path: '/my-requests' },
-      { name: t('myFlights'), path: '/add-trip' }, // Changed from /trips to /add-trip for clarity
+      { name: t('myFlights'), path: '/add-trip' },
     ] : []),
   ];
 
@@ -36,14 +34,19 @@ const Navbar = () => {
           <Send className="h-6 w-6" />
           Waselha
         </Link>
-
+        
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
           {navItems.map((item) => (
-            <Link key={item.name} to={item.path} className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+            <Link 
+              key={item.name} 
+              to={item.path}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
               {item.name}
             </Link>
           ))}
+          
           {session ? (
             <div className="flex items-center gap-2">
               <Notifications />
@@ -55,7 +58,7 @@ const Navbar = () => {
             </Link>
           )}
         </div>
-
+        
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center">
           {session && (
@@ -63,6 +66,7 @@ const Navbar = () => {
               <Notifications />
             </div>
           )}
+          
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-foreground ml-2">
@@ -72,10 +76,15 @@ const Navbar = () => {
             <SheetContent side="right" className="w-[250px] sm:w-[300px] bg-background text-foreground dark:bg-gray-800">
               <div className="flex flex-col space-y-4 p-4">
                 {mobileNavItems.map((item) => (
-                  <Link key={item.name} to={item.path} className="text-lg hover:text-primary transition-colors">
+                  <Link 
+                    key={item.name} 
+                    to={item.path}
+                    className="text-lg hover:text-primary transition-colors"
+                  >
                     {item.name}
                   </Link>
                 ))}
+                
                 <div className="pt-4 border-t">
                   {session ? (
                     <UserNav />
