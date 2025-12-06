@@ -43,11 +43,11 @@ function Login() {
 
                     // Social Buttons Customization
                     socialButtonBackground: 'hsl(var(--primary))',
-                    socialButtonText: 'hsl(0 0% 100%)', // Explicitly set to white
+                    socialButtonText: '#FFFFFF', // Using Hex for white text
                     socialButtonBorder: 'hsl(var(--primary))',
                     socialButtonBackgroundHover: 'hsl(var(--primary)/0.9)',
-                    socialButtonTextHover: 'hsl(0 0% 100%)',
-                    socialButtonIcon: 'hsl(0 0% 100%)', // Explicitly set to white
+                    socialButtonTextHover: '#FFFFFF',
+                    socialButtonIcon: '#FFFFFF', // Using Hex for white icon
                   },
                 },
               },
