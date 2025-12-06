@@ -223,5 +223,9 @@
   "otherPartyRequestedCancellation": "لقد طلب الطرف الآخر إلغاء هذا الطلب. انقر على 'تأكيد الإلغاء' للموافقة.",
   "clearAll": "مسح الكل",
   "allNotificationsCleared": "تم مسح جميع الإشعارات.",
-  "notificationDeleteError": "فشل في حذف الإشعار."
+  "notificationDeleteError": "فشل في حذف الإشعار.",
+  "yourTrip": "هذه رحلتك",
+  "yourTripDescription": "يمكنك إدارة الطلبات المستلمة لهذه الرحلة من صفحة طلباتي.",
+  "cannotRequestOwnTrip": "لا يمكنك إرسال طلب لنفسك.",
+  "manageMyRequests": "إدارة طلباتي"
 }

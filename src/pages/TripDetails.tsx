@@ -1,7 +1,7 @@
 "use client";
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -76,12 +76,6 @@ const TripDetails = () => {
       return;
     }
 
-    // Verification check disabled for testing
-    /* if (!profile?.is_verified) {
-      setVerificationModalOpen(true);
-      return;
-    } */
-
     const { error } = await supabase.from('requests').insert({
       trip_id: trip.id,
       sender_id: user.id,
@@ -100,6 +94,8 @@ const TripDetails = () => {
   if (isLoading) return <div className="container p-4">{t('loadingTrips')}...</div>;
   if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
   if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
+
+  const isOwner = user?.id === trip.user_id;
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark-bg-gray-900">
@@ -147,90 +143,105 @@ const TripDetails = () => {
           </CardContent>
         </Card>
         
-        {/* Send Request Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('sendRequestToTraveler')}</CardTitle>
-            <CardDescription>{t('fillFormToSend')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="weight_kg"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('packageWeightKg')}</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" min="1" max="50" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {priceCalculation && priceCalculation.totalPriceUSD > 0 && (
-                  <Card className="bg-primary/10 p-4">
-                    <CardTitle className="text-lg mb-2 text-center">{t('estimatedCost')}</CardTitle>
-                    <div className="flex justify-around text-center">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total (USD)</p>
-                        <p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p>
+        {/* Send Request Section or Owner Info */}
+        {isOwner ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('yourTrip')}</CardTitle>
+              <CardDescription>{t('yourTripDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">{t('cannotRequestOwnTrip')}</p>
+              <Link to="/my-requests">
+                <Button className="w-full mt-4">{t('manageMyRequests')}</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('sendRequestToTraveler')}</CardTitle>
+              <CardDescription>{t('fillFormToSend')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="weight_kg"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('packageWeightKg')}</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.1" min="1" max="50" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {priceCalculation && priceCalculation.totalPriceUSD > 0 && (
+                    <Card className="bg-primary/10 p-4">
+                      <CardTitle className="text-lg mb-2 text-center">{t('estimatedCost')}</CardTitle>
+                      <div className="flex justify-around text-center">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total (USD)</p>
+                          <p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total (IQD)</p>
+                          <p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total (IQD)</p>
-                        <p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      {t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}
-                    </p>
-                  </Card>
-                )}
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('packageContents')}</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder={t('packageContentsPlaceholder')} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        {t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}
+                      </p>
+                    </Card>
                   )}
-                />
-                <FormField
-                  control={form.control}
-                  name="destination_city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('destinationCity')}</FormLabel>
-                      <FormControl>
-                        <Input placeholder={t('destinationCityPlaceholder', { country: arabicCountries[trip.to_country] || trip.to_country })} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="receiver_details"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('receiverDetails')}</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder={t('receiverDetailsPlaceholder')} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full">{t('sendRequest')}</Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('packageContents')}</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder={t('packageContentsPlaceholder')} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="destination_city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('destinationCity')}</FormLabel>
+                        <FormControl>
+                          <Input placeholder={t('destinationCityPlaceholder', { country: arabicCountries[trip.to_country] || trip.to_country })} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="receiver_details"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('receiverDetails')}</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder={t('receiverDetailsPlaceholder')} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full">{t('sendRequest')}</Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
