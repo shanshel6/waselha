@@ -18,10 +18,8 @@ const Notifications = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
 
-  const queryKey = ['notifications', user?.id];
-
   const { data: notifications } = useQuery({
-    queryKey: queryKey,
+    queryKey: ['notifications', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -45,7 +43,7 @@ const Notifications = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKey });
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
     },
     onError: (err: any) => {
       showError(t('notificationDeleteError'));
@@ -62,7 +60,7 @@ const Notifications = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKey });
+      queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
       showSuccess(t('allNotificationsCleared'));
     },
     onError: (err: any) => {
@@ -74,14 +72,16 @@ const Notifications = () => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel(`public:notifications:user_id=eq.${user.id}`)
+    // Define a stable channel name for the user
+    const channel = supabase.channel(`notifications-channel-${user.id}`);
+
+    channel
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
           // Invalidate the query to update the list in the popover
-          queryClient.invalidateQueries({ queryKey: queryKey });
+          queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
           
           // Show a real-time toast alert to the user
           const newNotification = payload.new as { message: string };
@@ -92,21 +92,17 @@ const Notifications = () => {
       )
       .subscribe();
 
+    // Cleanup function to remove the channel subscription when the component unmounts
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient, queryKey]);
+  }, [user, queryClient]);
 
   const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
 
-  const handleNotificationClick = (notificationId: string, link: string | null) => {
+  const handleNotificationClick = (notificationId: string) => {
     // Immediately delete the notification upon click
     deleteNotificationMutation.mutate(notificationId);
-    
-    // Navigate if a link exists
-    if (link) {
-      // Note: Navigation is handled by the Link component, but we ensure deletion happens.
-    }
   };
 
   return (
@@ -146,7 +142,7 @@ const Notifications = () => {
                   key={notification.id}
                   to={notification.link || '#'}
                   className={`block p-2 rounded-md hover:bg-accent ${!notification.is_read ? 'bg-accent/50 font-medium' : 'text-muted-foreground'}`}
-                  onClick={() => handleNotificationClick(notification.id, notification.link)}
+                  onClick={() => handleNotificationClick(notification.id)}
                 >
                   <p className="text-sm">{notification.message}</p>
                   <p className="text-xs text-muted-foreground mt-1">
