@@ -21,62 +21,77 @@ const MyRequests = () => {
   const [requestToCancel, setRequestToCancel] = useState<any | null>(null);
 
   // Fetch requests sent by the current user
-  const { data: sentRequests, isLoading: isLoadingSent } = useQuery({
+  const { data: sentRequests, isLoading: isLoadingSent, error: sentRequestsError } = useQuery({
     queryKey: ['sentRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('requests')
-        .select(`*, trips(*, profiles(id, first_name, last_name, phone))`)
+        .select(`
+          *,
+          trips(
+            *,
+            profiles(
+              id, 
+              first_name, 
+              last_name, 
+              phone
+            )
+          )
+        `)
         .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("Error fetching sent requests:", error);
+        throw new Error(error.message);
+      }
+      console.log("Sent requests data:", data);
       return data;
     },
     enabled: !!user,
   });
 
   // Fetch requests received for the current user's trips
-  const { data: receivedRequests, isLoading: isLoadingReceived } = useQuery({
+  const { data: receivedRequests, isLoading: isLoadingReceived, error: receivedRequestsError } = useQuery({
     queryKey: ['receivedRequests', user?.id],
     queryFn: async () => {
-      if (!user) return [];
-      
-      // First, get the user's trips
-      const { data: userTrips, error: tripsError } = await supabase
-        .from('trips')
-        .select('id')
-        .eq('user_id', user.id);
-      
-      if (tripsError) throw new Error(tripsError.message);
-      
-      if (!userTrips || userTrips.length === 0) {
-        return []; // No trips, so no received requests
+      if (!user) {
+        console.log("No user, returning empty array");
+        return [];
       }
       
-      const tripIds = userTrips.map(trip => trip.id);
+      console.log("Fetching received requests for user:", user.id);
       
-      // Now get requests for those trips
-      const { data, error } = await supabase
-        .from('requests')
-        .select(`
-          *,
-          trips(*),
-          sender:profiles!requests_sender_id_fkey(id, first_name, last_name, phone)
-        `)
-        .in('trip_id', tripIds)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error("Error fetching received requests:", error);
-        throw new Error(error.message);
+      try {
+        // Get requests where the trip belongs to the current user
+        const { data, error } = await supabase
+          .from('requests')
+          .select(`
+            *,
+            trips(
+              *,
+              profiles(
+                id, 
+                first_name, 
+                last_name, 
+                phone
+              )
+            )
+          `)
+          .eq('trips.user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error("Error fetching received requests:", error);
+          throw new Error(error.message);
+        }
+        
+        console.log("Received requests data:", data);
+        return data;
+      } catch (error) {
+        console.error("Error in received requests query:", error);
+        throw error;
       }
-      
-      // Map the sender profile back to the expected 'profiles' key for consistency
-      return data.map(req => ({
-        ...req,
-        profiles: req.sender,
-      }));
     },
     enabled: !!user,
   });
@@ -195,6 +210,16 @@ const MyRequests = () => {
             <CardHeader><CardTitle>{t('receivedRequests')}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {isLoadingReceived && <p>{t('loading')}</p>}
+              {receivedRequestsError && (
+                <div>
+                  <p className="text-red-500">
+                    Error loading received requests: {receivedRequestsError.message}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    User ID: {user?.id}
+                  </p>
+                </div>
+              )}
               {receivedRequests && receivedRequests.length > 0 ? receivedRequests.map(req => (
                 <Card key={req.id}>
                   <CardHeader>
@@ -241,7 +266,20 @@ const MyRequests = () => {
                     </div>
                   </CardContent>
                 </Card>
-              )) : !isLoadingReceived && <p>{t('noReceivedRequests')}</p>}
+              )) : !isLoadingReceived && !receivedRequestsError && (
+                <div>
+                  <p>{t('noReceivedRequests')}</p>
+                  {user && (
+                    <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Debug Info:
+                      </p>
+                      <p className="text-sm">User ID: {user.id}</p>
+                      <p className="text-sm">Session: {user ? 'Active' : 'None'}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -250,6 +288,11 @@ const MyRequests = () => {
             <CardHeader><CardTitle>{t('sentRequests')}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {isLoadingSent && <p>{t('loading')}</p>}
+              {sentRequestsError && (
+                <p className="text-red-500">
+                  Error loading sent requests: {sentRequestsError.message}
+                </p>
+              )}
               {sentRequests && sentRequests.length > 0 ? sentRequests.map(req => (
                 <Card key={req.id}>
                   <CardHeader>
@@ -283,7 +326,7 @@ const MyRequests = () => {
                     </div>
                   </CardContent>
                 </Card>
-              )) : !isLoadingSent && <p>{t('noSentRequests')}</p>}
+              )) : !isLoadingSent && !sentRequestsError && <p>{t('noSentRequests')}</p>}
             </CardContent>
           </Card>
         </TabsContent>
