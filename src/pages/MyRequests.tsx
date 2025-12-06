@@ -123,7 +123,7 @@ const MyRequests = () => {
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myRequests')}</h1>
       <Tabs defaultValue="received" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-lg mx-auto">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="received">{t('receivedRequests')}</TabsTrigger>
           <TabsTrigger value="sent">{t('sentRequests')}</TabsTrigger>
         </TabsList>
