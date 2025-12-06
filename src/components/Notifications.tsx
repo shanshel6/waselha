@@ -99,7 +99,7 @@ const Notifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, queryClient]); // Dependency changed to user.id for stability
+  }, [user?.id, queryClient]);
 
   const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
 
