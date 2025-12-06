@@ -35,22 +35,39 @@ const Chat = () => {
     queryKey: ['requestDetailsForChat', requestId],
     queryFn: async () => {
       if (!requestId) return null;
-      const { data, error } = await supabase
+      
+      // Use standard PostgREST syntax for nested joins and restructure the data manually
+      const { data: rawData, error: queryError } = await supabase
         .from('requests')
         .select(`
           *,
-          trip:trips(
+          trips(
             from_country,
             to_country,
             user_id,
-            traveler:profiles(id, first_name, last_name)
+            profiles(id, first_name, last_name)
           ),
-          sender:profiles(id, first_name, last_name)
+          profiles(id, first_name, last_name)
         `)
         .eq('id', requestId)
         .single();
-      if (error) throw error;
-      return data;
+
+      if (queryError) throw queryError;
+      if (!rawData) return null;
+
+      // Restructure the data to match expected keys (trip, sender, traveler)
+      const senderProfile = rawData.profiles;
+      const tripData = rawData.trips;
+      const travelerProfile = tripData?.profiles;
+
+      return {
+        ...rawData,
+        sender: senderProfile,
+        trip: {
+          ...tripData,
+          traveler: travelerProfile,
+        },
+      };
     },
     enabled: !!requestId,
   });
@@ -172,7 +189,7 @@ const Chat = () => {
   }
 
   const otherUserName = otherUser?.first_name || t('user');
-  const tripRoute = `${requestData?.trip.from_country} → ${requestData?.trip.to_country}`;
+  const tripRoute = `${requestData?.trip?.from_country || t('undefined')} → ${requestData?.trip?.to_country || t('undefined')}`;
   const priceDisplay = priceCalculation 
     ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)`
     : t('calculatingPrice');
