@@ -42,12 +42,12 @@ function Login() {
                     inputText: 'hsl(var(--foreground))',
 
                     // Social Buttons Customization
-                    socialButtonBackground: 'hsl(var(--background))',
-                    socialButtonText: 'hsl(var(--foreground))',
-                    socialButtonBorder: 'hsl(var(--border))',
-                    socialButtonBackgroundHover: 'hsl(var(--accent))',
-                    socialButtonTextHover: 'hsl(var(--foreground))',
-                    socialButtonIcon: 'hsl(var(--foreground))',
+                    socialButtonBackground: 'hsl(var(--primary))', // Changed background to primary for better contrast with white text
+                    socialButtonText: 'hsl(0 0% 100%)', // White text
+                    socialButtonBorder: 'hsl(var(--primary))',
+                    socialButtonBackgroundHover: 'hsl(var(--primary)/0.9)',
+                    socialButtonTextHover: 'hsl(0 0% 100%)',
+                    socialButtonIcon: 'hsl(0 0% 100%)', // White icon
                   },
                 },
               },
@@ -60,7 +60,7 @@ function Login() {
                   email_input_placeholder: t('email'),
                   password_input_placeholder: t('password'),
                   button_label: t('login'),
-                  social_provider_text: 'Sign in with {{provider}}',
+                  social_provider_text: 'تسجيل الدخول باستخدام {{provider}}', // Changed to Arabic
                   forgotten_password: t('forgotPassword'),
                 },
               },
