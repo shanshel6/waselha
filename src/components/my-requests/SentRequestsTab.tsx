@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign } from 'lucide-react';
+import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -225,6 +225,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
     if (!otherParty || !trip) return null;
     
     const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
+    const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
     
     return (
       <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/30 space-y-3">
@@ -234,8 +235,14 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <p className="flex items-center gap-2">
+            <User className="h-4 w-4 text-primary" />
             <span className="font-semibold">{t('traveler')}:</span>
             {otherPartyName}
+          </p>
+          <p className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('phone')}:</span>
+            {otherPartyPhone}
           </p>
         </div>
         <div className="border-t pt-3 space-y-2 text-sm">
@@ -243,6 +250,11 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
             <Plane className="h-4 w-4 text-primary" />
             <span className="font-semibold">{t('tripRoute')}:</span>
             {trip.from_country} → {trip.to_country}
+          </p>
+          <p className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('tripDate')}:</span>
+            {trip.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
           </p>
         </div>
       </div>
@@ -263,18 +275,24 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
               <span>{t('requestTo')} {travelerName}</span>
               <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
             </CardTitle>
-            <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
-              <Plane className="h-4 w-4" />
-              {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
-              {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
-            </div>
+            {req.status === 'pending' && (
+              <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
+                <Plane className="h-4 w-4" />
+                {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
+                {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
-            <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-            
-            {renderPriceBlock(priceCalculation)}
+            {req.status === 'pending' && (
+              <>
+                <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                {renderPriceBlock(priceCalculation)}
+              </>
+            )}
             
             {renderAcceptedDetails(req)}
+            
             <div className="flex gap-2 mt-4">
               {req.status === 'pending' && (
                 <Button variant="destructive" size="sm" onClick={() => onCancelRequest(req)} disabled={deleteRequestMutation.isPending}>
