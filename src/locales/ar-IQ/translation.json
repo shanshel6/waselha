@@ -130,7 +130,6 @@
   "passwordTooShort": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
   "signUpSuccessCheckEmail": "تم التسجيل بنجاح! يرجى التحقق من بريدك الإلكتروني للتفعيل.",
   "createAccountToStart": "أنشئ حسابك للبدء.",
-  "signingUp": "جاري إنشاء الحساب...",
   "profileDetails": "تفاصيل ملفك الشخصي.",
   "noPhoneProvided": "لم يتم تقديم رقم هاتف",
   "fullName": "الاسم الكامل",
@@ -154,5 +153,8 @@
   "startTheConversation": "ابدأ المحادثة!",
   "chattingWith": "تتحدث مع",
   "tripRoute": "مسار الرحلة",
-  "newMessage": "رسالة جديدة في الدردشة"
+  "newMessage": "رسالة جديدة في الدردشة",
+  "completeProfileTitle": "أكمل ملفك الشخصي",
+  "completeProfileDescription": "يرجى إدخال اسمك الأول واسم العائلة للمتابعة.",
+  "saveAndContinue": "حفظ ومتابعة"
 }

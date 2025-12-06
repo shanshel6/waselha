@@ -14,8 +14,10 @@ import AddTrip from "./pages/AddTrip";
 import TripDetails from "./pages/TripDetails";
 import MyRequests from "./pages/MyRequests";
 import Chat from "./pages/Chat";
+import CompleteProfile from "./pages/CompleteProfile"; // Import new page
 import Navbar from "./components/Navbar";
 import ChatNotificationListener from "./components/ChatNotificationListener";
+import ProfileCheckWrapper from "./components/ProfileCheckWrapper"; // Import new wrapper
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 
 const queryClient = new QueryClient();
@@ -24,17 +26,19 @@ const MainLayout = () => (
   <>
     <Navbar />
     <ChatNotificationListener />
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/trips" element={<Trips />} />
-      <Route path="/trips/:tripId" element={<TripDetails />} />
-      <Route path="/my-profile" element={<MyProfile />} />
-      <Route path="/verification" element={<Verification />} />
-      <Route path="/add-trip" element={<AddTrip />} />
-      <Route path="/my-requests" element={<MyRequests />} />
-      <Route path="/chat/:requestId" element={<Chat />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <ProfileCheckWrapper>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/trips" element={<Trips />} />
+        <Route path="/trips/:tripId" element={<TripDetails />} />
+        <Route path="/my-profile" element={<MyProfile />} />
+        <Route path="/verification" element={<Verification />} />
+        <Route path="/add-trip" element={<AddTrip />} />
+        <Route path="/my-requests" element={<MyRequests />} />
+        <Route path="/chat/:requestId" element={<Chat />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ProfileCheckWrapper>
   </>
 );
 
@@ -53,6 +57,7 @@ const AppContent = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
+      <Route path="/complete-profile" element={<CompleteProfile />} /> {/* Add new route */}
       <Route path="/*" element={<MainLayout />} />
     </Routes>
   );
