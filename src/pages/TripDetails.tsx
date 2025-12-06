@@ -20,13 +20,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Plane, Package, User, MapPin, Calendar, Info } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 
-const requestSchema = z.object({
-  weight_kg: z.coerce.number().min(1, { message: "positiveNumber" }).max(50, { message: "maxWeight" }),
-  description: z.string().min(10, { message: "descriptionTooShort" }),
-  destination_city: z.string().min(2, { message: "requiredField" }),
-  receiver_details: z.string().min(10, { message: "requiredField" }),
-});
-
 const TripDetails = () => {
   const { t } = useTranslation();
   const { tripId } = useParams();
@@ -46,6 +39,20 @@ const TripDetails = () => {
       return data;
     },
     enabled: !!tripId,
+  });
+
+  if (isLoading) return <div className="container p-4">{t('loadingTrips')}...</div>;
+  if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
+  if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
+
+  const maxWeight = trip.free_kg;
+
+  // Define schema dynamically based on trip's available weight
+  const requestSchema = z.object({
+    weight_kg: z.coerce.number().min(1, { message: t("positiveNumber") }).max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
+    description: z.string().min(10, { message: t("descriptionTooShort") }),
+    destination_city: z.string().min(2, { message: t("requiredField") }),
+    receiver_details: z.string().min(10, { message: t("requiredField") }),
   });
 
   const form = useForm<z.infer<typeof requestSchema>>({
@@ -90,10 +97,6 @@ const TripDetails = () => {
       navigate('/my-requests');
     }
   };
-
-  if (isLoading) return <div className="container p-4">{t('loadingTrips')}...</div>;
-  if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
-  if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
 
   const isOwner = user?.id === trip.user_id;
 
@@ -173,7 +176,7 @@ const TripDetails = () => {
                       <FormItem>
                         <FormLabel>{t('packageWeightKg')}</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.1" min="1" max="50" {...field} />
+                          <Input type="number" step="0.1" min="1" max={maxWeight} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

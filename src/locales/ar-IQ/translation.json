@@ -185,6 +185,7 @@
   "eitherFromOrToIraq": "يجب أن تكون إحدى الوجهتين هي العراق (إما نقطة المغادرة أو الوصول)",
   "dateNotSet": "لم يتم تحديد التاريخ",
   "maxWeight": "الحد الأقصى للوزن هو 50 كجم",
+  "maxWeightDynamic": "الحد الأقصى للوزن المسموح به لهذه الرحلة هو {{max}} كجم",
   "placeOrder": "طلب شحن جديد",
   "orderDescription": "وصف البضائع",
   "orderDescriptionPlaceholder": "ما هي البضائع التي تريد إرسالها؟",
