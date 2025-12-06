@@ -28,7 +28,7 @@ const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
   to_country: z.string().min(1, { message: "requiredField" }),
   trip_date: z.date({ required_error: "dateRequired", }),
-  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(10, { message: "maxWeight" }), // Enforce max weight 10
+  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }), // Enforce max weight 50
   traveler_location: z.string().min(1, { message: "requiredField" }),
   notes: z.string().optional(),
 });
@@ -217,7 +217,7 @@ const AddTrip = () => {
               <FormItem>
                 <FormLabel>{t('freeKg')}</FormLabel>
                 <FormControl>
-                  <Input type="number" min="1" max="10" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                  <Input type="number" min="1" max="50" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

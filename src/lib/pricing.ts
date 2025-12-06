@@ -21,7 +21,7 @@ const PRICING_TIERS_USD = {
 };
 
 const USD_TO_IQD_RATE = 1400;
-const MAX_TRIP_WEIGHT_KG = 10; // Max weight a traveler can offer/sender can request for a trip
+const MAX_TRIP_WEIGHT_KG = 50; // Max weight a traveler can offer/sender can request for a trip
 const MAX_CALCULATOR_WEIGHT_KG = 50; // Max weight for price calculation on the homepage
 
 const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {

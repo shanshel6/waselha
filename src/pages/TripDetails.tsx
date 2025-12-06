@@ -21,7 +21,7 @@ import { Plane, Package, User, MapPin, Calendar, Info } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 
 const requestSchema = z.object({
-  weight_kg: z.coerce.number().min(1, { message: "positiveNumber" }).max(10, { message: "maxWeight" }),
+  weight_kg: z.coerce.number().min(1, { message: "positiveNumber" }).max(50, { message: "maxWeight" }),
   description: z.string().min(10, { message: "descriptionTooShort" }),
   destination_city: z.string().min(2, { message: "requiredField" }),
   receiver_details: z.string().min(10, { message: "requiredField" }),
@@ -163,7 +163,7 @@ const TripDetails = () => {
                     <FormItem>
                       <FormLabel>{t('packageWeightKg')}</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.1" min="1" max="10" {...field} />
+                        <Input type="number" step="0.1" min="1" max="50" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

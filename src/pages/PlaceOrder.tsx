@@ -29,7 +29,7 @@ const orderSchema = z.object({
   description: z.string().min(10, { message: "descriptionTooShort" }),
   is_valuable: z.boolean().default(false),
   has_insurance: z.boolean().default(false),
-  weight_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeightGeneralOrder" }),
+  weight_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }),
 });
 
 const PlaceOrder = () => {
