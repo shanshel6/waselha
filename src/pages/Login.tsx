@@ -28,15 +28,26 @@ function Login() {
               variables: {
                 default: {
                   colors: {
+                    // Primary Auth Button (Email/Password Login)
                     brand: 'hsl(var(--primary))',
                     brandAccent: 'hsl(var(--primary-foreground))',
                     defaultButtonBackground: 'hsl(var(--primary))',
                     defaultButtonBackgroundHover: 'hsl(var(--primary)/0.9)',
+                    
+                    // Inputs
                     inputBackground: 'hsl(var(--background))',
                     inputBorder: 'hsl(var(--border))',
                     inputBorderHover: 'hsl(var(--ring))',
                     inputBorderFocus: 'hsl(var(--ring))',
                     inputText: 'hsl(var(--foreground))',
+
+                    // Social Buttons Customization
+                    socialButtonBackground: 'hsl(var(--background))',
+                    socialButtonText: 'hsl(var(--foreground))',
+                    socialButtonBorder: 'hsl(var(--border))',
+                    socialButtonBackgroundHover: 'hsl(var(--accent))',
+                    socialButtonTextHover: 'hsl(var(--foreground))',
+                    socialButtonIcon: 'hsl(var(--foreground))',
                   },
                 },
               },
