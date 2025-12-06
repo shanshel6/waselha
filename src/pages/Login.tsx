@@ -6,21 +6,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Link } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 function Login() {
   const { t } = useTranslation();
 
   return (
-    <div
-      className="relative min-h-screen flex flex-col items-center justify-center p-4 bg-cover bg-center"
-      style={{ backgroundImage: `url('https://images.unsplash.com/photo-1520250400481-be63a6124444?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')` }}
-    >
-      {/* Dark overlay for better text readability */}
-      <div className="absolute inset-0 bg-black opacity-60"></div> 
-
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white/80 dark:bg-gray-800/80 p-8 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
-          <h1 className="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-white">{t('login')}</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background dark:bg-gray-900">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold">{t('login')}</CardTitle>
+        </CardHeader>
+        <CardContent>
           <Auth
             supabaseClient={supabase}
             providers={['google', 'facebook']}
@@ -61,10 +58,10 @@ function Login() {
           <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-300">
             {t('noAccount')} <Link to="/signup" className="font-medium text-primary hover:underline">{t('signUp')}</Link>
           </p>
-        </div>
-        <div className="relative z-10">
-          <MadeWithDyad />
-        </div>
+        </CardContent>
+      </Card>
+      <div className="relative z-10 mt-4">
+        <MadeWithDyad />
       </div>
     </div>
   );

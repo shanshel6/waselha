@@ -78,15 +78,11 @@ const SignUp = () => {
   };
 
   return (
-    <div
-      className="relative min-h-screen flex flex-col items-center justify-center p-4 bg-cover bg-center"
-      style={{ backgroundImage: `url('https://images.unsplash.com/photo-1520250400481-be63a6124444?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')` }}
-    >
-      <div className="absolute inset-0 bg-black opacity-60"></div>
-      <div className="relative z-10 w-full max-w-md">
-        <Card className="bg-white/80 dark:bg-gray-800/80 p-8 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background dark:bg-gray-900">
+      <div className="w-full max-w-md">
+        <Card className="p-4 rounded-lg shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-gray-900 dark:text-white">{t('signUp')}</CardTitle>
+            <CardTitle className="text-3xl font-bold">{t('signUp')}</CardTitle>
             <CardDescription>{t('createAccountToStart')}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -179,7 +175,9 @@ const SignUp = () => {
             </p>
           </CardContent>
         </Card>
-        <MadeWithDyad />
+        <div className="mt-4">
+          <MadeWithDyad />
+        </div>
       </div>
     </div>
   );
