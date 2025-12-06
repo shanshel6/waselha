@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -15,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import { Send, Plane, User, MessageSquare, DollarSign } from 'lucide-react';
+import { Send, Plane, User, MessageSquare, DollarSign, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 
@@ -44,10 +43,21 @@ const Chat = () => {
           trips(
             from_country,
             to_country,
+            trip_date,
             user_id,
-            profiles(id, first_name, last_name)
+            profiles(
+              id,
+              first_name,
+              last_name,
+              phone
+            )
           ),
-          profiles(id, first_name, last_name)
+          profiles(
+            id,
+            first_name,
+            last_name,
+            phone
+          )
         `)
         .eq('id', requestId)
         .single();
@@ -87,6 +97,7 @@ const Chat = () => {
     },
     enabled: !!requestId,
   });
+
   const chatId = chatData?.id;
 
   // Query 3: Get messages, only enabled when we have a chat ID
@@ -109,8 +120,8 @@ const Chat = () => {
   const priceCalculation = useMemo(() => {
     if (!requestData || !requestData.trip) return null;
     return calculateShippingCost(
-      requestData.trip.from_country, 
-      requestData.trip.to_country, 
+      requestData.trip.from_country,
+      requestData.trip.to_country,
       requestData.weight_kg
     );
   }, [requestData]);
@@ -122,7 +133,12 @@ const Chat = () => {
       .channel(`public:chat_messages:chat_id=eq.${chatId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatId}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `chat_id=eq.${chatId}`
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: ['messages', chatId] });
         }
@@ -140,17 +156,21 @@ const Chat = () => {
 
   const form = useForm<z.infer<typeof messageSchema>>({
     resolver: zodResolver(messageSchema),
-    defaultValues: { content: '' },
+    defaultValues: {
+      content: ''
+    },
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (values: z.infer<typeof messageSchema>) => {
       if (!chatId || !user) throw new Error('Chat not ready');
-      const { error } = await supabase.from('chat_messages').insert({
-        chat_id: chatId,
-        sender_id: user.id,
-        content: values.content,
-      });
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          content: values.content,
+        });
       if (error) throw error;
     },
     onMutate: async (newMessage) => {
@@ -188,11 +208,27 @@ const Chat = () => {
     return <div className="container p-4 flex items-center justify-center h-full">{t('loading')}...</div>;
   }
 
-  const otherUserName = otherUser?.first_name || t('user');
-  const tripRoute = `${requestData?.trip?.from_country || t('undefined')} → ${requestData?.trip?.to_country || t('undefined')}`;
+  const otherUserName = otherUser 
+    ? `${otherUser.first_name || ''} ${otherUser.last_name || ''}`.trim() || t('user')
+    : t('user');
+    
+  const otherUserPhone = otherUser?.phone || t('noPhoneProvided');
+  
+  const tripRoute = requestData?.trip 
+    ? `${requestData.trip.from_country || t('undefined')} → ${requestData.trip.to_country || t('undefined')}`
+    : t('tripDetailsNotAvailable');
+    
+  const tripDate = requestData?.trip?.trip_date 
+    ? format(new Date(requestData.trip.trip_date), 'PPP')
+    : t('dateNotSet');
+    
   const priceDisplay = priceCalculation 
     ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)`
     : t('calculatingPrice');
+    
+  const weightDisplay = requestData?.weight_kg 
+    ? `${requestData.weight_kg} kg`
+    : t('weightNotSet');
 
   return (
     <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
@@ -201,36 +237,65 @@ const Chat = () => {
           <CardTitle className="text-xl">
             {t('chattingWith')}: {otherUserName}
           </CardTitle>
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-1">
-            <p className="flex items-center gap-1">
+          
+          {/* User Details */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-primary/80" />
+              <span>{otherUserName}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary/80" />
+              <span>{otherUserPhone}</span>
+            </div>
+          </div>
+          
+          {/* Trip Details */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
+            <div className="flex items-center gap-2">
               <Plane className="h-4 w-4 text-primary/80" />
-              {tripRoute}
-            </p>
-            <p className="flex items-center gap-1 font-semibold mt-1 sm:mt-0">
+              <span>{tripRoute}</span>
+              {requestData?.trip?.trip_date && (
+                <span>({tripDate})</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 font-semibold">
               <DollarSign className="h-4 w-4 text-green-600" />
-              {t('estimatedCost')}: {priceDisplay}
-            </p>
+              <span>{t('packageWeightKg')}: {weightDisplay}</span>
+            </div>
+          </div>
+          
+          {/* Price Details */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2 pt-2 border-t">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">{t('estimatedCost')}:</span>
+              <span>{priceDisplay}</span>
+            </div>
+            {priceCalculation && (
+              <div className="flex items-center gap-2 text-xs">
+                <span>{t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}</span>
+              </div>
+            )}
           </div>
         </CardHeader>
+        
         <CardContent className="flex-grow overflow-y-auto p-4 flex flex-col">
           {isLoadingMessages ? (
             <div className="m-auto text-center text-muted-foreground">{t('loading')}...</div>
           ) : messages && messages.length > 0 ? (
             <div className="space-y-4 mt-auto">
               {messages.map((message) => (
-                <div
-                  key={message.id}
+                <div 
+                  key={message.id} 
                   className={cn(
                     'flex flex-col w-fit max-w-[75%]',
                     message.sender_id === user?.id ? 'ml-auto items-end' : 'mr-auto items-start'
                   )}
                 >
-                  <div
+                  <div 
                     className={cn(
                       'p-3 rounded-lg',
-                      message.sender_id === user?.id
-                        ? 'bg-primary text-primary-foreground rounded-br-none'
-                        : 'bg-muted rounded-bl-none'
+                      message.sender_id === user?.id ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted rounded-bl-none'
                     )}
                   >
                     <p className="break-words">{message.content}</p>
@@ -250,6 +315,7 @@ const Chat = () => {
             </div>
           )}
         </CardContent>
+        
         <div className="p-4 border-t bg-background">
           <Form {...form}>
             <form onSubmit={form.handleSubmit((d) => sendMessageMutation.mutate(d))} className="flex gap-2">
