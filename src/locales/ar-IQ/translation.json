@@ -248,5 +248,9 @@
   "orderFrom": "طلب من",
   "noClaimedOrders": "لم تقم بالمطالبة بأي طلبات عامة بعد.",
   "claimed": "تمت المطالبة به",
-  "user": "مستخدم"
+  "user": "مستخدم",
+  "contactInformation": "معلومات الاتصال",
+  "editContactInfo": "تعديل معلومات الاتصال",
+  "updatePhoneAndAddress": "قم بتحديث رقم هاتفك وعنوانك.",
+  "noAddressProvided": "لم يتم تقديم عنوان"
 }

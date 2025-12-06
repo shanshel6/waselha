@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plane, User, Mail, Phone, Briefcase, BadgeCheck, Pencil } from 'lucide-react';
+import { Plane, User, Mail, Phone, Briefcase, BadgeCheck, Pencil, MapPin } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { Badge } from '@/components/ui/badge';
 import EditNameDialog from '@/components/EditNameDialog';
+import EditContactDialog from '@/components/EditContactDialog';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
@@ -16,6 +17,7 @@ const MyProfile = () => {
   const { user, isLoading: isSessionLoading } = useSession();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false); // New state for contact dialog
 
   if (isSessionLoading || isLoadingProfile) {
     return (
@@ -61,16 +63,38 @@ const MyProfile = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
-              <Mail className="h-5 w-5 text-gray-500" />
-              <span className="text-gray-800 dark:text-gray-200 text-sm">{user?.email}</span>
+          {/* Contact Info Block */}
+          <div className="space-y-3 p-4 rounded-lg border bg-card">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold text-lg">{t('contactInformation')}</h3>
+              {profile && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-primary"
+                  onClick={() => setIsContactDialogOpen(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-            <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
-              <Phone className="h-5 w-5 text-gray-500" />
-              <span className="text-gray-800 dark:text-gray-200 text-sm">{profile?.phone || t('noPhoneProvided')}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+                <Mail className="h-5 w-5 text-gray-500" />
+                <span className="text-gray-800 dark:text-gray-200 text-sm">{user?.email}</span>
+              </div>
+              <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+                <Phone className="h-5 w-5 text-gray-500" />
+                <span className="text-gray-800 dark:text-gray-200 text-sm">{profile?.phone || t('noPhoneProvided')}</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
+              <MapPin className="h-5 w-5 text-gray-500 flex-shrink-0 mt-1" />
+              <span className="text-gray-800 dark:text-gray-200 text-sm">{profile?.address || t('noAddressProvided')}</span>
             </div>
           </div>
+
+          {/* Role Info */}
           <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
             <Briefcase className="h-5 w-5 text-gray-500" />
             <Badge variant="outline">{roleText(profile?.role)}</Badge>
@@ -88,13 +112,20 @@ const MyProfile = () => {
         </CardContent>
       </Card>
 
-      {/* Edit Name Dialog */}
+      {/* Dialogs */}
       {profile && (
-        <EditNameDialog 
-          profile={profile} 
-          isOpen={isNameDialogOpen} 
-          onOpenChange={setIsNameDialogOpen} 
-        />
+        <>
+          <EditNameDialog 
+            profile={profile} 
+            isOpen={isNameDialogOpen} 
+            onOpenChange={setIsNameDialogOpen} 
+          />
+          <EditContactDialog
+            profile={profile}
+            isOpen={isContactDialogOpen}
+            onOpenChange={setIsContactDialogOpen}
+          />
+        </>
       )}
     </div>
   );
