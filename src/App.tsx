@@ -15,6 +15,7 @@ import TripDetails from "./pages/TripDetails";
 import MyRequests from "./pages/MyRequests";
 import Chat from "./pages/Chat";
 import Navbar from "./components/Navbar";
+import ChatNotificationListener from "./components/ChatNotificationListener";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const queryClient = new QueryClient();
 const MainLayout = () => (
   <>
     <Navbar />
+    <ChatNotificationListener />
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/trips" element={<Trips />} />
