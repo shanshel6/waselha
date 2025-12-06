@@ -23,6 +23,7 @@ import { countries } from '@/lib/countries';
 import { calculateTravelerProfit } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import { useQueryClient } from '@tanstack/react-query';
+import { Slider } from '@/components/ui/slider';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -215,9 +216,18 @@ const AddTrip = () => {
             name="free_kg"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('freeKg')}</FormLabel>
+                <FormLabel>
+                  {t('freeKg')} ({field.value} kg)
+                </FormLabel>
                 <FormControl>
-                  <Input type="number" min="1" max="50" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                  <Slider
+                    min={1}
+                    max={50}
+                    step={1}
+                    value={[field.value]}
+                    onValueChange={(value) => field.onChange(value[0])}
+                    className="mt-4"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
