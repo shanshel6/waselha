@@ -205,5 +205,6 @@
   "orderClaimedSuccess": "تمت المطالبة بالطلب بنجاح! يرجى التواصل مع المرسل.",
   "orderClaimedError": "فشل المطالبة بالطلب.",
   "claimedByYou": "تمت المطالبة به من قبلك",
-  "orderPlacedOn": "تم تقديم الطلب في"
+  "orderPlacedOn": "تم تقديم الطلب في",
+  "you": "أنت (المسافر)"
 }
