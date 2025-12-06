@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone } from 'lucide-react';
+import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -156,6 +156,33 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'accepted':
+      case 'claimed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+    }
+  };
+
+  const getStatusCardClass = (status: string, isGeneralOrder = false) => {
+    if (isGeneralOrder) {
+      return 'border-2 border-dashed border-primary/50 bg-primary/5';
+    }
+    
+    switch (status) {
+      case 'accepted':
+        return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
+      case 'rejected':
+        return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+      default:
+        return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
+    }
+  };
+
   const calculatePriceDisplay = (item: any) => {
     const isGeneralOrder = item.type === 'general_order';
     const from_country = isGeneralOrder ? item.from_country : item.trips?.from_country;
@@ -228,7 +255,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
     const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
     
     return (
-      <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/30 space-y-3">
+      <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
         <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
           <BadgeCheck className="h-5 w-5" />
           {t('requestAcceptedTitle')}
@@ -269,10 +296,13 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
       const travelerName = req.traveler_profile?.first_name || t('traveler');
       
       return (
-        <Card key={req.id}>
+        <Card key={req.id} className={getStatusCardClass(req.status)}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>{t('requestTo')} {travelerName}</span>
+              <span className="flex items-center gap-2">
+                {getStatusIcon(req.status)}
+                {t('requestTo')} {travelerName}
+              </span>
               <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
             </CardTitle>
             {req.status === 'pending' && (
@@ -317,10 +347,13 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
       const statusKey = order.status === 'new' ? 'statusNewOrder' : order.status;
       
       return (
-        <Card key={order.id} className="border-2 border-dashed border-primary/50 bg-primary/5">
+        <Card key={order.id} className={getStatusCardClass(order.status, true)}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-lg">
-              <span>{t('placeOrder')}</span>
+              <span className="flex items-center gap-2">
+                {getStatusIcon(order.status)}
+                {t('placeOrder')}
+              </span>
               <Badge variant={getStatusVariant(order.status)} className="bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500">
                 {t(statusKey)}
               </Badge>

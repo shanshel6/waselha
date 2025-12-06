@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign } from 'lucide-react';
+import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -111,6 +111,28 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+    }
+  };
+
+  const getStatusCardClass = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
+      case 'rejected':
+        return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+      default:
+        return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
+    }
+  };
+
   const calculatePriceDisplay = (request: RequestWithProfiles) => {
     const from_country = request.trips?.from_country;
     const to_country = request.trips?.to_country;
@@ -169,7 +191,7 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
     const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
     
     return (
-      <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/30 space-y-3">
+      <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
         <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
           <BadgeCheck className="h-5 w-5" />
           {t('requestAcceptedTitle')}
@@ -231,10 +253,13 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
           const senderName = req.sender_profile?.first_name || 'User';
 
           return (
-            <Card key={req.id}>
+            <Card key={req.id} className={getStatusCardClass(req.status)}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>{t('requestFrom')} {senderName}</span>
+                  <span className="flex items-center gap-2">
+                    {getStatusIcon(req.status)}
+                    {t('requestFrom')} {senderName}
+                  </span>
                   <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
                 </CardTitle>
                 {req.status === 'pending' && (
