@@ -10,10 +10,64 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign } from 'lucide-react';
+import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign } from 'lix-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from "@/components/ui/alert-dialog";
 import { Link } from 'react-router-dom';
 import { calculateShippingCost } from '@/lib/pricing'; // Import pricing utility
+
+// Define types for our data
+interface Trip {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  free_kg: number;
+  charge_per_kg: number | null;
+  traveler_location: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+interface Request {
+  id: string;
+  trip_id: string;
+  sender_id: string;
+  description: string;
+  weight_kg: number;
+  destination_city: string;
+  receiver_details: string;
+  handover_location: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  trips: Trip;
+}
+
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+}
+
+interface RequestWithProfiles extends Request {
+  sender_profile: Profile | null;
+  traveler_profile: Profile | null;
+}
+
+interface GeneralOrder {
+  id: string;
+  user_id: string;
+  traveler_id: string | null;
+  from_country: string;
+  to_country: string;
+  description: string;
+  weight_kg: number;
+  is_valuable: boolean;
+  has_insurance: boolean;
+  status: 'new' | 'claimed' | 'in_transit' | 'delivered';
+  created_at: string;
+}
 
 const MyRequests = () => {
   const { t } = useTranslation();
@@ -27,31 +81,43 @@ const MyRequests = () => {
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
+      // First, get the requests for trips owned by the current user
+      const { data: requests, error: requestsError } = await supabase
         .from('requests')
         .select(`
-            *,
-            trips(
-              *,
-              traveler_profile: profiles!user_id(
-                id, 
-                first_name, 
-                last_name, 
-                phone
-              )
-            ),
-            sender_profile: profiles!sender_id(
-              id,
-              first_name,
-              last_name,
-              phone
-            )
-          `)
+          *,
+          trips(*)
+        `)
         .eq('trips.user_id', user.id)
         .order('created_at', { ascending: false });
         
-      if (error) throw new Error(error.message);
-      return data;
+      if (requestsError) throw new Error(requestsError.message);
+      
+      // Extract unique sender IDs
+      const senderIds = [...new Set(requests.map(r => r.sender_id))];
+      
+      // Fetch profiles for all senders in a single query
+      const { data: senderProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, phone')
+        .in('id', senderIds);
+      
+      if (profilesError) throw new Error(profilesError.message);
+      
+      // Create a map for quick lookup
+      const profileMap = senderProfiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, Profile>);
+      
+      // Attach sender profiles to requests
+      const requestsWithProfiles: RequestWithProfiles[] = requests.map(request => ({
+        ...request,
+        sender_profile: profileMap[request.sender_id] || null,
+        traveler_profile: null // Not needed for received requests
+      }));
+      
+      return requestsWithProfiles;
     },
     enabled: !!user,
   });
@@ -61,24 +127,44 @@ const MyRequests = () => {
     queryKey: ['sentTripRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      
+      // Get requests sent by the current user
+      const { data: requests, error: requestsError } = await supabase
         .from('requests')
         .select(`
           *,
-          trips(
-            *,
-            traveler_profile: profiles!user_id(
-              id, 
-              first_name, 
-              last_name, 
-              phone
-            )
-          )
+          trips(*)
         `)
         .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) throw new Error(error.message);
-      return data;
+        
+      if (requestsError) throw new Error(requestsError.message);
+      
+      // Extract unique traveler IDs from trips
+      const travelerIds = [...new Set(requests.map(r => r.trips.user_id).filter(id => id))];
+      
+      // Fetch profiles for all travelers in a single query
+      const { data: travelerProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, phone')
+        .in('id', travelerIds);
+      
+      if (profilesError) throw new Error(profilesError.message);
+      
+      // Create a map for quick lookup
+      const profileMap = travelerProfiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, Profile>);
+      
+      // Attach traveler profiles to requests
+      const requestsWithProfiles: RequestWithProfiles[] = requests.map(request => ({
+        ...request,
+        sender_profile: null, // Not needed for sent requests
+        traveler_profile: profileMap[request.trips.user_id] || null
+      }));
+      
+      return requestsWithProfiles;
     },
     enabled: !!user,
   });
@@ -245,13 +331,13 @@ const MyRequests = () => {
     );
   };
 
-  const renderAcceptedDetails = (req: any, isReceived: boolean) => {
+  const renderAcceptedDetails = (req: RequestWithProfiles, isReceived: boolean) => {
     // This function is only relevant for trip_requests
     if (req.type !== 'trip_request' || req.status !== 'accepted') return null;
     
-    // For received requests, the sender profile is aliased as 'sender_profile' in the query
-    // For sent requests, the traveler profile is now nested under req.trips.traveler_profile
-    const otherParty = isReceived ? req.sender_profile : req.trips?.traveler_profile;
+    // For received requests, we use sender_profile
+    // For sent requests, we use traveler_profile
+    const otherParty = isReceived ? req.sender_profile : req.traveler_profile;
     const trip = req.trips;
     
     if (!otherParty || !trip) return null;
@@ -304,8 +390,8 @@ const MyRequests = () => {
     const priceCalculation = calculatePriceDisplay(item);
 
     if (item.type === 'trip_request') {
-      const req = item;
-      const travelerName = req.trips?.traveler_profile?.first_name || t('traveler');
+      const req = item as RequestWithProfiles;
+      const travelerName = req.traveler_profile?.first_name || t('traveler');
       
       return (
         <Card key={req.id}>
@@ -346,7 +432,7 @@ const MyRequests = () => {
         </Card>
       );
     } else if (item.type === 'general_order') {
-      const order = item;
+      const order = item as GeneralOrder;
       const statusKey = order.status === 'new' ? 'statusNewOrder' : order.status;
       
       return (
@@ -460,7 +546,7 @@ const MyRequests = () => {
                       
                       {renderPriceBlock(priceCalculation)}
                       
-                      {renderAcceptedDetails(requestWithMetadata, true)}
+                      {renderAcceptedDetails(req, true)}
                       <div className="flex gap-2 pt-2">
                         {req.status === 'pending' && (
                           <>
