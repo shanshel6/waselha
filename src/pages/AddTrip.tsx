@@ -29,12 +29,6 @@ const formSchema = z.object({
   free_kg: z.coerce.number().min(1, { message: "minimumWeight" }),
   traveler_location: z.string().min(1, { message: "requiredField" }),
   notes: z.string().optional(),
-}).refine((data) => {
-  // Ensure either from_country or to_country is Iraq
-  return data.from_country === "Iraq" || data.to_country === "Iraq";
-}, {
-  message: "Either departure or destination must be Iraq",
-  path: ["from_country"], // This will show the error on the from_country field
 });
 
 const AddTrip = () => {
@@ -44,7 +38,7 @@ const AddTrip = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      from_country: "",
+      from_country: "Iraq",
       to_country: "",
       free_kg: 1,
       traveler_location: "",
@@ -53,6 +47,23 @@ const AddTrip = () => {
   });
 
   const { from_country, to_country, free_kg } = form.watch();
+  
+  // Auto-manage Iraq selection
+  React.useEffect(() => {
+    // If from_country is changed and it's not Iraq, set to_country to Iraq
+    if (from_country && from_country !== "Iraq") {
+      form.setValue("to_country", "Iraq");
+    }
+    // If to_country is changed and it's not Iraq, set from_country to Iraq
+    else if (to_country && to_country !== "Iraq") {
+      form.setValue("from_country", "Iraq");
+    }
+    // If both are Iraq (somehow), reset to_country
+    else if (from_country === "Iraq" && to_country === "Iraq") {
+      form.setValue("to_country", "");
+    }
+  }, [from_country, to_country, form]);
+
   const estimatedProfit = useMemo(() => {
     if (from_country && to_country && free_kg > 0) {
       return calculateTravelerProfit(from_country, to_country, free_kg);
@@ -99,7 +110,7 @@ const AddTrip = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('fromCountry')}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder={t('selectCountry')} />
@@ -124,7 +135,7 @@ const AddTrip = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('toCountry')}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder={t('selectCountry')} />
