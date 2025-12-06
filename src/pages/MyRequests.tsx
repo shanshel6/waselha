@@ -40,7 +40,7 @@ const MyRequests = () => {
                 phone
               )
             ),
-            sender_profile: profiles!requests_sender_id_fkey(
+            sender_profile: profiles!sender_id(
               id,
               first_name,
               last_name,
