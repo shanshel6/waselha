@@ -70,33 +70,36 @@ const Notifications = () => {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    // Define a stable channel name for the user
-    const channel = supabase.channel(`notifications-channel-${user.id}`);
-
+    const channel = supabase.channel(`notifications:${user.id}`);
     channel
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
         (payload) => {
-          // Invalidate the query to update the list in the popover
           queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
-          
-          // Show a real-time toast alert to the user
           const newNotification = payload.new as { message: string };
           if (newNotification.message) {
             showSuccess(newNotification.message);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Real-time notifications enabled.');
+        }
+      });
 
-    // Cleanup function to remove the channel subscription when the component unmounts
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user?.id, queryClient]); // Dependency changed to user.id for stability
 
   const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
 

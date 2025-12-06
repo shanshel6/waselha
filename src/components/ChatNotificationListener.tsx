@@ -29,7 +29,7 @@ const ChatNotificationListener = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     const handleNewMessage = async (payload: { new: NewMessagePayload }) => {
       const newMessage = payload.new;
@@ -91,8 +91,8 @@ const ChatNotificationListener = () => {
       activeChatToasts.set(requestId, toastId);
     };
 
-    const channel = supabase
-      .channel('chat-messages-listener')
+    const channel = supabase.channel(`chat-messages:${user.id}`);
+    channel
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -100,12 +100,16 @@ const ChatNotificationListener = () => {
           handleNewMessage(payload as { new: NewMessagePayload });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Real-time chat notifications enabled.');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, t]);
+  }, [user?.id, t]); // Dependency changed to user.id for stability
 
   return null;
 };
