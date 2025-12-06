@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -447,7 +447,12 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
 
   return (
     <Card>
-      <CardHeader><CardTitle>{t('sentRequests')}</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Send className="h-6 w-6 text-primary" />
+          {t('sentRequests')}
+        </CardTitle>
+      </CardHeader>
       <CardContent className="space-y-4">
         {allSentItems.length > 0 ? allSentItems.map(renderSentItem) : !isLoadingSent && !sentRequestsError && <p>{t('noSentRequests')}</p>}
       </CardContent>

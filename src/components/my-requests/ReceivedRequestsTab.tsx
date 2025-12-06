@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2, Inbox } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -279,7 +279,12 @@ export const ReceivedRequestsTab = ({ user, onUpdateRequest, updateRequestMutati
 
   return (
     <Card>
-      <CardHeader><CardTitle>{t('receivedRequests')}</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Inbox className="h-6 w-6 text-primary" />
+          {t('receivedRequests')}
+        </CardTitle>
+      </CardHeader>
       <CardContent className="space-y-4">
         {receivedRequests && receivedRequests.length > 0 ? receivedRequests.map(req => {
           const priceCalculation = calculatePriceDisplay(req);
