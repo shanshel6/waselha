@@ -238,5 +238,13 @@
   "acceptChanges": "قبول التغييرات",
   "rejectChanges": "رفض التغييرات",
   "changesAcceptedSuccess": "تم قبول التغييرات بنجاح.",
-  "changesRejectedSuccess": "تم رفض التغييرات."
+  "changesRejectedSuccess": "تم رفض التغييرات.",
+  "editOrder": "تعديل الطلب العام",
+  "editClaimedOrderDescription": "سيتم إرسال تغييراتك إلى المسافر للموافقة عليها.",
+  "editNewOrderDescription": "سيتم تحديث طلبك على الفور.",
+  "orderUpdatedSuccess": "تم تحديث الطلب بنجاح.",
+  "claimedOrders": "الطلبات المستلمة",
+  "orderFrom": "طلب من",
+  "noClaimedOrders": "لم تقم بالمطالبة بأي طلبات عامة بعد.",
+  "claimed": "تمت المطالبة به"
 }

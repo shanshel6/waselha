@@ -12,60 +12,11 @@ import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 
-interface Profile {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-}
-
-interface Trip {
-  id: string;
-  user_id: string;
-  from_country: string;
-  to_country: string;
-  trip_date: string;
-  free_kg: number;
-  charge_per_kg: number | null;
-  traveler_location: string | null;
-  notes: string | null;
-  created_at: string;
-}
-
-interface Request {
-  id: string;
-  trip_id: string;
-  sender_id: string;
-  description: string;
-  weight_kg: number;
-  destination_city: string;
-  receiver_details: string;
-  handover_location: string | null;
-  status: 'pending' | 'accepted' | 'rejected';
-  created_at: string;
-  trips: Trip;
-  cancellation_requested_by: string | null;
-  proposed_changes: { weight_kg: number; description: string } | null;
-}
-
-interface RequestWithProfiles extends Request {
-  sender_profile: Profile | null;
-  traveler_profile: Profile | null;
-}
-
-interface GeneralOrder {
-  id: string;
-  user_id: string;
-  traveler_id: string | null;
-  from_country: string;
-  to_country: string;
-  description: string;
-  weight_kg: number;
-  is_valuable: boolean;
-  has_insurance: boolean;
-  status: 'new' | 'claimed' | 'in_transit' | 'delivered';
-  created_at: string;
-}
+interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
+interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
+interface Request { id: string; trip_id: string; sender_id: string; description: string; weight_kg: number; destination_city: string; receiver_details: string; handover_location: string | null; status: 'pending' | 'accepted' | 'rejected'; created_at: string; trips: Trip; cancellation_requested_by: string | null; proposed_changes: { weight_kg: number; description: string } | null; }
+interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
+interface GeneralOrder { id: string; user_id: string; traveler_id: string | null; from_country: string; to_country: string; description: string; weight_kg: number; is_valuable: boolean; has_insurance: boolean; status: 'new' | 'claimed' | 'in_transit' | 'delivered'; created_at: string; proposed_changes: { weight_kg: number; description: string } | null; }
 
 interface SentRequestsTabProps {
   user: any;
@@ -73,48 +24,23 @@ interface SentRequestsTabProps {
   deleteRequestMutation: any;
   onCancelAcceptedRequest: (request: Request) => void;
   onEditRequest: (request: Request) => void;
+  onEditOrder: (order: GeneralOrder) => void;
 }
 
-export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest }: SentRequestsTabProps) => {
+export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onEditOrder }: SentRequestsTabProps) => {
   const { t } = useTranslation();
 
   const { data: tripRequests, isLoading: isLoadingTripRequests, error: tripRequestsError } = useQuery({
     queryKey: ['sentTripRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      
-      const { data: requests, error: requestsError } = await supabase
-        .from('requests')
-        .select(`
-          *,
-          trips(*)
-        `)
-        .eq('sender_id', user.id)
-        .order('created_at', { ascending: false });
-        
+      const { data: requests, error: requestsError } = await supabase.from('requests').select(`*, trips(*)`).eq('sender_id', user.id).order('created_at', { ascending: false });
       if (requestsError) throw new Error(requestsError.message);
-      
       const travelerIds = [...new Set(requests.map(r => r.trips.user_id).filter(id => id))];
-      
-      const { data: travelerProfiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, phone')
-        .in('id', travelerIds);
-      
+      const { data: travelerProfiles, error: profilesError } = await supabase.from('profiles').select('id, first_name, last_name, phone').in('id', travelerIds);
       if (profilesError) throw new Error(profilesError.message);
-      
-      const profileMap = travelerProfiles.reduce((acc, profile) => {
-        acc[profile.id] = profile;
-        return acc;
-      }, {} as Record<string, Profile>);
-      
-      const requestsWithProfiles: RequestWithProfiles[] = requests.map(request => ({
-        ...request,
-        sender_profile: null,
-        traveler_profile: profileMap[request.trips.user_id] || null
-      }));
-      
-      return requestsWithProfiles;
+      const profileMap = travelerProfiles.reduce((acc, profile) => { acc[profile.id] = profile; return acc; }, {} as Record<string, Profile>);
+      return requests.map(request => ({ ...request, sender_profile: null, traveler_profile: profileMap[request.trips.user_id] || null })) as RequestWithProfiles[];
     },
     enabled: !!user,
   });
@@ -123,25 +49,19 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     queryKey: ['generalOrders', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from('general_orders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('general_orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
-      return data;
+      return data as GeneralOrder[];
     },
     enabled: !!user,
   });
 
   const allSentItems = useMemo(() => {
     if (isLoadingTripRequests || isLoadingGeneralOrders) return [];
-    
     const combined = [
         ...(tripRequests || []).map(req => ({ ...req, type: 'trip_request' })),
         ...(generalOrders || []).map(order => ({ ...order, type: 'general_order' }))
     ];
-    
     return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [tripRequests, generalOrders, isLoadingTripRequests, isLoadingGeneralOrders]);
 
@@ -150,7 +70,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'accepted': return 'default';
+      case 'accepted': case 'claimed': return 'default';
       case 'rejected': return 'destructive';
       case 'new': return 'secondary';
       default: return 'secondary';
@@ -275,10 +195,11 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     } else if (item.type === 'general_order') {
       const order = item as GeneralOrder;
       const statusKey = order.status === 'new' ? 'statusNewOrder' : order.status;
+      const hasPendingChanges = !!order.proposed_changes;
       return (
         <Card key={order.id} className={getStatusCardClass(order.status, true)}>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between text-lg"><span className="flex items-center gap-2">{getStatusIcon(order.status)}{t('placeOrder')}</span><Badge variant={getStatusVariant(order.status)} className="bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500">{t(statusKey)}</Badge></CardTitle>
+            <CardTitle className="flex items-center justify-between text-lg"><span className="flex items-center gap-2">{getStatusIcon(order.status)}{t('placeOrder')}</span><Badge variant={getStatusVariant(order.status)} className="bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500">{hasPendingChanges ? t('pendingChanges') : t(statusKey)}</Badge></CardTitle>
             <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><Plane className="h-4 w-4" /><CountryFlag country={order.from_country} showName /> → <CountryFlag country={order.to_country} showName /></div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -288,7 +209,12 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
               {order.has_insurance && <p className="flex items-center gap-2 text-blue-600 dark:text-blue-400"><BadgeCheck className="h-4 w-4" /><span className="font-semibold">{t('insuranceOption')}</span></p>}
             </div>
             {renderPriceBlock(priceCalculation)}
-            {order.status === 'new' && <div className="flex gap-2 mt-4"><Button variant="destructive" size="sm" onClick={() => onCancelRequest(order)} disabled={deleteRequestMutation.isPending}><Trash2 className="mr-2 h-4 w-4" />{t('cancelRequest')}</Button></div>}
+            {(order.status === 'new' || order.status === 'claimed') && (
+              <div className="flex gap-2 mt-4">
+                {order.status === 'new' && <Button variant="destructive" size="sm" onClick={() => onCancelRequest(order)} disabled={deleteRequestMutation.isPending}><Trash2 className="mr-2 h-4 w-4" />{t('cancelRequest')}</Button>}
+                <Button variant="secondary" size="sm" onClick={() => onEditOrder(order)} disabled={hasPendingChanges}><Pencil className="mr-2 h-4 w-4" />{t('editOrder')}</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       );
