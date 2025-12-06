@@ -27,7 +27,7 @@ const Navbar = () => {
     ...publicNavItems,
     ...(session ? [
       { name: t('myRequests'), path: '/my-requests' },
-      { name: t('myFlights'), path: '/add-trip' }, // Keep in mobile menu for easy access
+      { name: t('myFlights'), path: '/my-flights' }, // Updated path
       { name: t('myProfile'), path: '/my-profile' },
     ] : []),
   ];

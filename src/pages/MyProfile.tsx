@@ -4,69 +4,12 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { Plane, Package, CalendarDays, User, Mail, Phone, Briefcase, BadgeCheck, Pencil } from 'lucide-react';
+import { Plane, User, Mail, Phone, Briefcase, BadgeCheck, Pencil } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
-import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import EditNameDialog from '@/components/EditNameDialog'; // Import the new dialog component
+import EditNameDialog from '@/components/EditNameDialog';
 import { Button } from '@/components/ui/button';
-
-const MyTrips = () => {
-  const { t } = useTranslation();
-  const { user } = useSession();
-
-  const { data: trips, isLoading, error } = useQuery({
-    queryKey: ['userTrips', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('trip_date', { ascending: true });
-
-      if (error) throw new Error(error.message);
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
-  if (isLoading) return <p>{t('loadingTrips')}</p>;
-  if (error) return <p className="text-red-500">{t('errorLoadingTrips')}: {error.message}</p>;
-
-  return (
-    <Card className="max-w-2xl mx-auto mt-8">
-      <CardHeader>
-        <CardTitle>{t('myTrips')}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {trips && trips.length > 0 ? (
-          <div className="space-y-4">
-            {trips.map((trip) => (
-              <Card key={trip.id} className="shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-md">
-                    <Plane className="h-5 w-5" /> {trip.from_country} → {trip.to_country}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-2 text-sm">
-                    <CalendarDays className="h-4 w-4" /> {format(new Date(trip.trip_date), 'PPP')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                  <p className="flex items-center gap-2"><Package className="h-4 w-4" />{trip.free_kg} kg</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <p>{t('noTripsYet')}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
+import { Link } from 'react-router-dom';
 
 const MyProfile = () => {
   const { t } = useTranslation();
@@ -132,6 +75,16 @@ const MyProfile = () => {
             <Briefcase className="h-5 w-5 text-gray-500" />
             <Badge variant="outline">{roleText(profile?.role)}</Badge>
           </div>
+          
+          {/* Link to My Flights Page */}
+          <div className="pt-4 border-t">
+            <Link to="/my-flights">
+              <Button variant="secondary" className="w-full">
+                <Plane className="h-4 w-4 mr-2" />
+                {t('myFlights')}
+              </Button>
+            </Link>
+          </div>
         </CardContent>
       </Card>
 
@@ -143,8 +96,6 @@ const MyProfile = () => {
           onOpenChange={setIsNameDialogOpen} 
         />
       )}
-
-      <MyTrips />
     </div>
   );
 };

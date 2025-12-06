@@ -17,6 +17,7 @@ import Chat from "./pages/Chat";
 import CompleteProfile from "./pages/CompleteProfile";
 import AdminDashboard from "./pages/AdminDashboard";
 import PlaceOrder from "./pages/PlaceOrder";
+import MyTripsPage from "./pages/MyTripsPage"; // Import new page
 import Navbar from "./components/Navbar";
 import ChatNotificationListener from "./components/ChatNotificationListener";
 import ProfileCheckWrapper from "./components/ProfileCheckWrapper";
@@ -37,6 +38,7 @@ const MainLayout = () => (
         <Route path="/verification" element={<Verification />} />
         <Route path="/add-trip" element={<AddTrip />} />
         <Route path="/my-requests" element={<MyRequests />} />
+        <Route path="/my-flights" element={<MyTripsPage />} /> {/* New Route */}
         <Route path="/chat/:requestId" element={<Chat />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/place-order" element={<PlaceOrder />} />

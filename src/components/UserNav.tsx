@@ -84,7 +84,7 @@ const UserNav = () => {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/add-trip" className="flex items-center cursor-pointer">
+            <Link to="/my-flights" className="flex items-center cursor-pointer">
               <Plane className="mr-2 h-4 w-4" />
               <span>{t('myFlights')}</span>
             </Link>
