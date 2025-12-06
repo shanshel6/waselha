@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Send } from 'lucide-react';
+import { Menu, Send, PackageOpen } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
@@ -17,6 +17,7 @@ const Navbar = () => {
   const navItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
+    { name: t('generalOrders'), path: '/general-orders' }, // New link
   ];
 
   const mobileNavItems = [
@@ -24,7 +25,7 @@ const Navbar = () => {
     ...(session ? [
       { name: t('myProfile'), path: '/my-profile' },
       { name: t('myRequests'), path: '/my-requests' },
-      { name: t('myFlights'), path: '/trips' },
+      { name: t('myFlights'), path: '/add-trip' }, // Changed from /trips to /add-trip for clarity
     ] : []),
   ];
 

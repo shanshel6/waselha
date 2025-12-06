@@ -16,7 +16,8 @@ import MyRequests from "./pages/MyRequests";
 import Chat from "./pages/Chat";
 import CompleteProfile from "./pages/CompleteProfile";
 import AdminDashboard from "./pages/AdminDashboard";
-import PlaceOrder from "./pages/PlaceOrder"; // Import PlaceOrder
+import PlaceOrder from "./pages/PlaceOrder";
+import GeneralOrders from "./pages/GeneralOrders"; // Import GeneralOrders
 import Navbar from "./components/Navbar";
 import ChatNotificationListener from "./components/ChatNotificationListener";
 import ProfileCheckWrapper from "./components/ProfileCheckWrapper";
@@ -39,7 +40,8 @@ const MainLayout = () => (
         <Route path="/my-requests" element={<MyRequests />} />
         <Route path="/chat/:requestId" element={<Chat />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/place-order" element={<PlaceOrder />} /> {/* Add PlaceOrder Route */}
+        <Route path="/place-order" element={<PlaceOrder />} />
+        <Route path="/general-orders" element={<GeneralOrders />} /> {/* Add GeneralOrders Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </ProfileCheckWrapper>

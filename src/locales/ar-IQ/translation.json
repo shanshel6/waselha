@@ -196,5 +196,14 @@
   "placeOrderLink": "سوي طلب رحلة جديدة",
   "packageDetails": "تفاصيل الطرد",
   "maxWeightGeneralOrder": "الحد الأقصى للوزن هو 50 كجم",
-  "statusNewOrder": "في انتظار مسافر لاستلام طلبك"
+  "statusNewOrder": "في انتظار مسافر لاستلام طلبك",
+  "generalOrders": "طلبات الشحن العامة",
+  "generalOrdersDescription": "تصفح الطلبات التي تحتاج إلى مسافرين. يمكنك المطالبة بطلب إذا كنت تخطط لرحلة مطابقة.",
+  "noGeneralOrdersFound": "لا توجد طلبات شحن عامة جديدة حاليًا.",
+  "noGeneralOrdersDescription": "حاول التحقق لاحقًا أو انشر رحلتك الخاصة.",
+  "claimOrder": "المطالبة بالطلب",
+  "orderClaimedSuccess": "تمت المطالبة بالطلب بنجاح! يرجى التواصل مع المرسل.",
+  "orderClaimedError": "فشل المطالبة بالطلب.",
+  "claimedByYou": "تمت المطالبة به من قبلك",
+  "orderPlacedOn": "تم تقديم الطلب في"
 }
