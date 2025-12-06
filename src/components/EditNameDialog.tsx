@@ -22,21 +22,30 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle, User } from 'lucide-react';
 
 const profileSchema = z.object({
   first_name: z.string().min(1, { message: "requiredField" }),
   last_name: z.string().min(1, { message: "requiredField" }),
 });
 
-interface EditProfileFormProps {
+interface EditNameDialogProps {
   profile: Profile;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 const NAME_CHANGE_COOLDOWN_DAYS = 30;
 
-const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile }) => {
+const EditNameDialog: React.FC<EditNameDialogProps> = ({ profile, isOpen, onOpenChange }) => {
   const { t } = useTranslation();
   const { user } = useSession();
   const queryClient = useQueryClient();
@@ -44,6 +53,10 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile }) => {
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      first_name: profile.first_name || "",
+      last_name: profile.last_name || "",
+    },
+    values: {
       first_name: profile.first_name || "",
       last_name: profile.last_name || "",
     },
@@ -75,8 +88,6 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile }) => {
       .update({
         first_name: values.first_name,
         last_name: values.last_name,
-        // Supabase automatically updates 'updated_at' on row update, but we explicitly set it here 
-        // to ensure the timestamp is fresh for the cooldown check.
         updated_at: new Date().toISOString(), 
       })
       .eq('id', user.id);
@@ -86,18 +97,31 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile }) => {
     } else {
       showSuccess(t('profileUpdatedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+      onOpenChange(false); // Close dialog on success
     }
   };
 
   return (
-    <Card className="max-w-2xl mx-auto mt-8">
-      <CardHeader>
-        <CardTitle>{t('editProfile')}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{t('editProfile')}</DialogTitle>
+          <DialogDescription>
+            {t('completeProfileDescription')}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Alert variant="default" className="bg-yellow-50/50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-300">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{t('important')}</AlertTitle>
+          <AlertDescription>
+            {t('nameChangeWarning')}
+          </AlertDescription>
+        </Alert>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="first_name"
@@ -139,9 +163,9 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({ profile }) => {
             )}
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default EditProfileForm;
+export default EditNameDialog;

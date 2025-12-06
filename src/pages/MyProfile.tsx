@@ -1,16 +1,17 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plane, Package, CalendarDays, User, Mail, Phone, Briefcase, BadgeCheck } from 'lucide-react';
+import { Plane, Package, CalendarDays, User, Mail, Phone, Briefcase, BadgeCheck, Pencil } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import EditProfileForm from '@/components/EditProfileForm'; // Import the new component
+import EditNameDialog from '@/components/EditNameDialog'; // Import the new dialog component
+import { Button } from '@/components/ui/button';
 
 const MyTrips = () => {
   const { t } = useTranslation();
@@ -71,6 +72,7 @@ const MyProfile = () => {
   const { t } = useTranslation();
   const { user, isLoading: isSessionLoading } = useSession();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
+  const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
 
   if (isSessionLoading || isLoadingProfile) {
     return (
@@ -96,7 +98,19 @@ const MyProfile = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <User className="h-8 w-8 text-primary" />
-            <span>{profile?.first_name} {profile?.last_name}</span>
+            <span className="flex items-center gap-2">
+              {profile?.first_name} {profile?.last_name}
+              {profile && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 text-muted-foreground hover:text-primary"
+                  onClick={() => setIsNameDialogOpen(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </span>
             {profile?.is_verified && <Badge className="bg-green-500 hover:bg-green-500/90 text-white"><BadgeCheck className="h-4 w-4 mr-1" /> {t('verified')}</Badge>}
           </CardTitle>
           <CardDescription>
@@ -121,8 +135,14 @@ const MyProfile = () => {
         </CardContent>
       </Card>
 
-      {/* Edit Profile Form */}
-      {profile && <EditProfileForm profile={profile} />}
+      {/* Edit Name Dialog */}
+      {profile && (
+        <EditNameDialog 
+          profile={profile} 
+          isOpen={isNameDialogOpen} 
+          onOpenChange={setIsNameDialogOpen} 
+        />
+      )}
 
       <MyTrips />
     </div>
