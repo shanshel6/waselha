@@ -12,7 +12,7 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showError } from '@/utils/toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Send, Plane, User, MessageSquare, DollarSign, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,56 +30,60 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Query 1: Get the request details (traveler, sender, trip)
-  const { data: requestData, isLoading: isLoadingRequest } = useQuery({
+  const { data: requestData, isLoading: isLoadingRequest, error: requestError } = useQuery({
     queryKey: ['requestDetailsForChat', requestId],
     queryFn: async () => {
-      if (!requestId) return null;
+      if (!requestId || !user) return null;
       
-      // Use standard PostgREST syntax for nested joins and restructure the data manually
-      const { data: rawData, error: queryError } = await supabase
+      // First get the request with all related data
+      const { data: request, error: requestError } = await supabase
         .from('requests')
         .select(`
-          *,
+          id,
+          trip_id,
+          sender_id,
+          description,
+          weight_kg,
+          status,
+          destination_city,
+          receiver_details,
+          created_at,
           trips(
+            id,
             from_country,
             to_country,
             trip_date,
             user_id,
-            profiles(
-              id,
-              first_name,
-              last_name,
-              phone
-            )
-          ),
-          profiles(
-            id,
-            first_name,
-            last_name,
-            phone
+            free_kg
           )
         `)
         .eq('id', requestId)
         .single();
 
-      if (queryError) throw queryError;
-      if (!rawData) return null;
+      if (requestError) throw requestError;
+      if (!request) return null;
 
-      // Restructure the data to match expected keys (trip, sender, traveler)
-      const senderProfile = rawData.profiles;
-      const tripData = rawData.trips;
-      const travelerProfile = tripData?.profiles;
+      // Get sender profile
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, phone')
+        .eq('id', request.sender_id)
+        .single();
+
+      // Get traveler profile
+      const { data: travelerProfile } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, phone')
+        .eq('id', request.trips?.user_id)
+        .single();
 
       return {
-        ...rawData,
+        ...request,
         sender: senderProfile,
-        trip: {
-          ...tripData,
-          traveler: travelerProfile,
-        },
+        traveler: travelerProfile
       };
     },
-    enabled: !!requestId,
+    enabled: !!requestId && !!user,
   });
 
   // Query 2: Get the chat ID
@@ -118,10 +122,10 @@ const Chat = () => {
 
   // Calculate Price
   const priceCalculation = useMemo(() => {
-    if (!requestData || !requestData.trip) return null;
+    if (!requestData || !requestData.trips) return null;
     return calculateShippingCost(
-      requestData.trip.from_country,
-      requestData.trip.to_country,
+      requestData.trips.from_country,
+      requestData.trips.to_country,
       requestData.weight_kg
     );
   }, [requestData]);
@@ -200,33 +204,44 @@ const Chat = () => {
     },
   });
 
-  const isUserTheTraveler = user?.id === requestData?.trip?.user_id;
-  const otherUser = isUserTheTraveler ? requestData?.sender : requestData?.trip?.traveler;
   const isLoading = isLoadingRequest || isLoadingChat;
 
   if (isLoading) {
     return <div className="container p-4 flex items-center justify-center h-full">{t('loading')}...</div>;
   }
 
+  if (requestError) {
+    return <div className="container p-4 flex items-center justify-center h-full text-red-500">Error loading chat data: {requestError.message}</div>;
+  }
+
+  if (!requestData) {
+    return <div className="container p-4 flex items-center justify-center h-full">{t('tripDetailsNotAvailable')}</div>;
+  }
+
+  // Determine the other user based on who is viewing the chat
+  const isCurrentUserSender = user?.id === requestData.sender_id;
+  const isCurrentUserTraveler = user?.id === requestData.trips?.user_id;
+  const otherUser = isCurrentUserSender ? requestData.traveler : requestData.sender;
+  
   const otherUserName = otherUser 
     ? `${otherUser.first_name || ''} ${otherUser.last_name || ''}`.trim() || t('user')
     : t('user');
     
   const otherUserPhone = otherUser?.phone || t('noPhoneProvided');
   
-  const tripRoute = requestData?.trip 
-    ? `${requestData.trip.from_country || t('undefined')} → ${requestData.trip.to_country || t('undefined')}`
+  const tripRoute = requestData.trips 
+    ? `${requestData.trips.from_country || t('undefined')} → ${requestData.trips.to_country || t('undefined')}`
     : t('tripDetailsNotAvailable');
     
-  const tripDate = requestData?.trip?.trip_date 
-    ? format(new Date(requestData.trip.trip_date), 'PPP')
+  const tripDate = requestData.trips?.trip_date 
+    ? format(new Date(requestData.trips.trip_date), 'PPP')
     : t('dateNotSet');
     
   const priceDisplay = priceCalculation 
     ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)`
     : t('calculatingPrice');
     
-  const weightDisplay = requestData?.weight_kg 
+  const weightDisplay = requestData.weight_kg 
     ? `${requestData.weight_kg} kg`
     : t('weightNotSet');
 
@@ -255,7 +270,7 @@ const Chat = () => {
             <div className="flex items-center gap-2">
               <Plane className="h-4 w-4 text-primary/80" />
               <span>{tripRoute}</span>
-              {requestData?.trip?.trip_date && (
+              {requestData.trips?.trip_date && (
                 <span>({tripDate})</span>
               )}
             </div>
