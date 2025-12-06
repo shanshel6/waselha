@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
+import { Slider } from '@/components/ui/slider';
 
 // Define the expected structure of the fetched trip data
 interface TripData {
@@ -192,9 +193,16 @@ const TripDetails = () => {
                     name="weight_kg"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('packageWeightKg')}</FormLabel>
+                        <FormLabel>{t('packageWeightKg')} ({field.value} kg)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.1" min="1" max={trip.free_kg} {...field} />
+                          <Slider
+                            min={1}
+                            max={trip.free_kg}
+                            step={1}
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            className="mt-4"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
