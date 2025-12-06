@@ -61,15 +61,16 @@ const TripDetails = () => {
   if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
   if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
 
-  const maxWeight = trip.free_kg;
+  // Ensure maxWeight is a safe number
+  const maxWeight = Number(trip.free_kg);
 
-  // Define schema dynamically based on trip's available weight
-  const requestSchema = z.object({
+  // Define schema dynamically based on trip's available weight, memoized for stability
+  const requestSchema = useMemo(() => z.object({
     weight_kg: z.coerce.number().min(1, { message: t("positiveNumber") }).max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
     description: z.string().min(10, { message: t("descriptionTooShort") }),
     destination_city: z.string().min(2, { message: t("requiredField") }),
     receiver_details: z.string().min(10, { message: t("requiredField") }),
-  });
+  }), [maxWeight, t]);
 
   const form = useForm<z.infer<typeof requestSchema>>({
     resolver: zodResolver(requestSchema),
