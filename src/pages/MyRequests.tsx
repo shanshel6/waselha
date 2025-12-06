@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,16 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
 import { Plane, Package, Trash2, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from "@/components/ui/alert-dialog";
 import { Link } from 'react-router-dom';
 
 const MyRequests = () => {
@@ -35,10 +27,7 @@ const MyRequests = () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('requests')
-        .select(`
-          *, 
-          trips(*, profiles(id, first_name, last_name, phone))
-        `) // Simplified select: only fetch traveler profile via trips
+        .select(`*, trips(*, profiles(id, first_name, last_name, phone))`)
         .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
@@ -52,24 +41,38 @@ const MyRequests = () => {
     queryKey: ['receivedRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
-
-      // Relying purely on RLS policy: "Travelers can view requests for their trips"
-      // The RLS policy automatically filters requests where the associated trip belongs to the current user.
+      
+      // First, get the user's trips
+      const { data: userTrips, error: tripsError } = await supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', user.id);
+      
+      if (tripsError) throw new Error(tripsError.message);
+      
+      if (!userTrips || userTrips.length === 0) {
+        return []; // No trips, so no received requests
+      }
+      
+      const tripIds = userTrips.map(trip => trip.id);
+      
+      // Now get requests for those trips
       const { data, error } = await supabase
         .from('requests')
         .select(`
-          *, 
-          trips(*), 
+          *,
+          trips(*),
           sender:profiles!requests_sender_id_fkey(id, first_name, last_name, phone)
         `)
+        .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
-
+      
       if (error) {
         console.error("Error fetching received requests:", error);
         throw new Error(error.message);
       }
       
-      // Map the sender profile back to the expected 'profiles' key for consistency in rendering
+      // Map the sender profile back to the expected 'profiles' key for consistency
       return data.map(req => ({
         ...req,
         profiles: req.sender,
@@ -80,7 +83,10 @@ const MyRequests = () => {
 
   const updateRequestMutation = useMutation({
     mutationFn: async ({ requestId, status }: { requestId: string; status: string }) => {
-      const { error: updateError } = await supabase.from('requests').update({ status }).eq('id', requestId);
+      const { error: updateError } = await supabase
+        .from('requests')
+        .update({ status })
+        .eq('id', requestId);
       if (updateError) throw updateError;
     },
     onSuccess: () => {
@@ -93,7 +99,10 @@ const MyRequests = () => {
 
   const deleteRequestMutation = useMutation({
     mutationFn: async (request: any) => {
-      const { error } = await supabase.from('requests').delete().eq('id', request.id);
+      const { error } = await supabase
+        .from('requests')
+        .delete()
+        .eq('id', request.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -107,17 +116,17 @@ const MyRequests = () => {
   });
 
   const handleUpdateRequest = (request: any, status: string) => {
-    updateRequestMutation.mutate({
-      requestId: request.id,
-      status,
-    });
+    updateRequestMutation.mutate({ requestId: request.id, status });
   };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'accepted': return 'default';
-      case 'rejected': return 'destructive';
-      default: return 'secondary';
+      case 'accepted':
+        return 'default';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'secondary';
     }
   };
 
@@ -128,41 +137,45 @@ const MyRequests = () => {
     const trip = req.trips;
     
     if (req.status !== 'accepted' || !otherParty || !trip) return null;
-
+    
     const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
     const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
-
+    
     return (
       <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/30 space-y-3">
         <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
-          <BadgeCheck className="h-5 w-5" /> {t('requestAcceptedTitle')}
+          <BadgeCheck className="h-5 w-5" />
+          {t('requestAcceptedTitle')}
         </h4>
-        
         {/* Contact Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <p className="flex items-center gap-2">
             <User className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{isReceived ? t('sender') : t('traveler')}:</span> {otherPartyName}
+            <span className="font-semibold">{isReceived ? t('sender') : t('traveler')}:</span>
+            {otherPartyName}
           </p>
           <p className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('phone')}:</span> {otherPartyPhone}
+            <span className="font-semibold">{t('phone')}:</span>
+            {otherPartyPhone}
           </p>
         </div>
-
         {/* Trip Info */}
         <div className="border-t pt-3 space-y-2 text-sm">
           <p className="flex items-center gap-2">
             <Plane className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('tripRoute')}:</span> {trip.from_country} → {trip.to_country}
+            <span className="font-semibold">{t('tripRoute')}:</span>
+            {trip.from_country} → {trip.to_country}
           </p>
           <p className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('tripDate')}:</span> {format(new Date(trip.trip_date), 'PPP')}
+            <span className="font-semibold">{t('tripDate')}:</span>
+            {format(new Date(trip.trip_date), 'PPP')}
           </p>
           <p className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('handoverLocation')}:</span> {req.handover_location || t('toBeDeterminedInChat')}
+            <span className="font-semibold">{t('handoverLocation')}:</span>
+            {req.handover_location || t('toBeDeterminedInChat')}
           </p>
         </div>
       </div>
@@ -190,7 +203,8 @@ const MyRequests = () => {
                       <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 pt-2">
-                      <Plane className="h-4 w-4" /> {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
+                      <Plane className="h-4 w-4" />
+                      {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -199,16 +213,16 @@ const MyRequests = () => {
                       <p className="text-sm text-muted-foreground pl-6">{req.description}</p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                      <p className="flex items-center gap-2"><Weight className="h-4 w-4" /> <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-                      <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
+                      <p className="flex items-center gap-2"><Weight className="h-4 w-4" />
+                        <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+                      <p className="flex items-center gap-2"><MapPin className="h-4 w-4" />
+                        <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
                     </div>
                     <div>
                       <p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p>
                       <p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p>
                     </div>
-                    
                     {renderAcceptedDetails(req, true)}
-
                     <div className="flex gap-2 pt-2">
                       {req.status === 'pending' && (
                         <>
@@ -227,7 +241,7 @@ const MyRequests = () => {
                     </div>
                   </CardContent>
                 </Card>
-              )) : <p>{t('noReceivedRequests')}</p>}
+              )) : !isLoadingReceived && <p>{t('noReceivedRequests')}</p>}
             </CardContent>
           </Card>
         </TabsContent>
@@ -244,22 +258,16 @@ const MyRequests = () => {
                       <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 pt-2">
-                      <Plane className="h-4 w-4" /> {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
+                      <Plane className="h-4 w-4" />
+                      {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-                    
                     {renderAcceptedDetails(req, false)}
-
                     <div className="flex gap-2 mt-4">
                       {req.status === 'pending' && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setRequestToCancel(req)}
-                          disabled={deleteRequestMutation.isPending}
-                        >
+                        <Button variant="destructive" size="sm" onClick={() => setRequestToCancel(req)} disabled={deleteRequestMutation.isPending}>
                           <Trash2 className="mr-2 h-4 w-4" />
                           {t('cancelRequest')}
                         </Button>
@@ -275,12 +283,11 @@ const MyRequests = () => {
                     </div>
                   </CardContent>
                 </Card>
-              )) : <p>{t('noSentRequests')}</p>}
+              )) : !isLoadingSent && <p>{t('noSentRequests')}</p>}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
       <AlertDialog open={!!requestToCancel} onOpenChange={(open) => !open && setRequestToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -289,13 +296,13 @@ const MyRequests = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setRequestToCancel(null)}>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogAction 
               onClick={() => {
                 if (requestToCancel) {
                   deleteRequestMutation.mutate(requestToCancel);
                 }
                 setRequestToCancel(null);
-              }}
+              }} 
               disabled={deleteRequestMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
