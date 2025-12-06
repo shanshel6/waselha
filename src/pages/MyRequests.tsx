@@ -33,7 +33,7 @@ const MyRequests = () => {
             *,
             trips(
               *,
-              profiles(
+              traveler_profile: profiles!user_id(
                 id, 
                 first_name, 
                 last_name, 
@@ -67,7 +67,7 @@ const MyRequests = () => {
           *,
           trips(
             *,
-            profiles(
+            traveler_profile: profiles!user_id(
               id, 
               first_name, 
               last_name, 
@@ -250,8 +250,8 @@ const MyRequests = () => {
     if (req.type !== 'trip_request' || req.status !== 'accepted') return null;
     
     // For received requests, the sender profile is aliased as 'sender_profile' in the query
-    // For sent requests, the traveler profile is nested under req.trips.profiles
-    const otherParty = isReceived ? req.sender_profile : req.trips?.profiles;
+    // For sent requests, the traveler profile is now nested under req.trips.traveler_profile
+    const otherParty = isReceived ? req.sender_profile : req.trips?.traveler_profile;
     const trip = req.trips;
     
     if (!otherParty || !trip) return null;
@@ -305,7 +305,7 @@ const MyRequests = () => {
 
     if (item.type === 'trip_request') {
       const req = item;
-      const travelerName = req.trips?.profiles?.first_name || t('traveler');
+      const travelerName = req.trips?.traveler_profile?.first_name || t('traveler');
       
       return (
         <Card key={req.id}>
