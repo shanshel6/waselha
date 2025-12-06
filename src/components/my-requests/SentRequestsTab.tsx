@@ -10,6 +10,7 @@ import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, 
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
+import CountryFlag from '@/components/CountryFlag'; // Import CountryFlag
 
 interface Profile {
   id: string;
@@ -276,7 +277,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
           <p className="flex items-center gap-2">
             <Plane className="h-4 w-4 text-primary" />
             <span className="font-semibold">{t('tripRoute')}:</span>
-            {trip.from_country} → {trip.to_country}
+            <CountryFlag country={trip.from_country} showName /> → <CountryFlag country={trip.to_country} showName />
           </p>
           <p className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
@@ -308,7 +309,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
             {(req.status === 'pending' || req.status === 'rejected') && (
               <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
                 <Plane className="h-4 w-4" />
-                {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
+                <CountryFlag country={req.trips?.from_country || 'N/A'} showName /> → <CountryFlag country={req.trips?.to_country || 'N/A'} showName />
                 {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
               </div>
             )}
@@ -374,7 +375,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation }
             </CardTitle>
             <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
               <Plane className="h-4 w-4" />
-              {order.from_country} → {order.to_country} 
+              <CountryFlag country={order.from_country} showName /> → <CountryFlag country={order.to_country} showName />
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
