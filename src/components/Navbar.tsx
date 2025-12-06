@@ -18,15 +18,16 @@ const Navbar = () => {
     { name: t('trips'), path: '/trips' },
   ];
   
+  // Only keep My Requests in the main nav
   const authenticatedNavItems = [
     { name: t('myRequests'), path: '/my-requests' },
-    { name: t('myFlights'), path: '/add-trip' },
   ];
   
   const mobileNavItems = [
     ...publicNavItems,
     ...(session ? [
-      ...authenticatedNavItems,
+      { name: t('myRequests'), path: '/my-requests' },
+      { name: t('myFlights'), path: '/add-trip' }, // Keep in mobile menu for easy access
       { name: t('myProfile'), path: '/my-profile' },
     ] : []),
   ];
