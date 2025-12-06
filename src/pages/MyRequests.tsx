@@ -148,7 +148,7 @@ const MyRequests = () => {
   const renderAcceptedDetails = (req: any, isReceived: boolean) => {
     // For received requests (isReceived=true), the other party is the sender (req.profiles).
     // For sent requests (isReceived=false), the other party is the traveler (req.trips.profiles).
-    const otherParty = isReceived ? req.profiles : req.trips.profiles;
+    const otherParty = isReceived ? req.profiles : req.trips?.profiles;
     const trip = req.trips;
     
     if (req.status !== 'accepted' || !otherParty || !trip) return null;
@@ -185,7 +185,7 @@ const MyRequests = () => {
           <p className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
             <span className="font-semibold">{t('tripDate')}:</span>
-            {format(new Date(trip.trip_date), 'PPP')}
+            {trip.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
           </p>
           <p className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />
@@ -229,7 +229,8 @@ const MyRequests = () => {
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 pt-2">
                       <Plane className="h-4 w-4" />
-                      {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
+                      {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
+                      {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -297,12 +298,13 @@ const MyRequests = () => {
                 <Card key={req.id}>
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                      <span>{t('requestTo')} {req.trips.profiles?.first_name || 'Traveler'}</span>
+                      <span>{t('requestTo')} {req.trips?.profiles?.first_name || 'Traveler'}</span>
                       <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 pt-2">
                       <Plane className="h-4 w-4" />
-                      {req.trips.from_country} → {req.trips.to_country} on {format(new Date(req.trips.trip_date), 'PPP')}
+                      {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
+                      {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
