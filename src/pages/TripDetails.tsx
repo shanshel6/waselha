@@ -57,20 +57,16 @@ const TripDetails = () => {
     enabled: !!tripId,
   });
 
-  if (isLoading) return <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
-  if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
-
-  // Ensure maxWeight is a safe number
-  const maxWeight = Number(trip.free_kg);
-
   // Define schema dynamically based on trip's available weight, memoized for stability
-  const requestSchema = useMemo(() => z.object({
-    weight_kg: z.coerce.number().min(1, { message: t("positiveNumber") }).max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
-    description: z.string().min(10, { message: t("descriptionTooShort") }),
-    destination_city: z.string().min(2, { message: t("requiredField") }),
-    receiver_details: z.string().min(10, { message: t("requiredField") }),
-  }), [maxWeight, t]);
+  const requestSchema = useMemo(() => {
+    const maxWeight = trip ? Number(trip.free_kg) : 50; // Default to 50 if trip is not loaded yet
+    return z.object({
+      weight_kg: z.coerce.number().min(1, { message: t("positiveNumber") }).max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
+      description: z.string().min(10, { message: t("descriptionTooShort") }),
+      destination_city: z.string().min(2, { message: t("requiredField") }),
+      receiver_details: z.string().min(10, { message: t("requiredField") }),
+    });
+  }, [trip, t]);
 
   const form = useForm<z.infer<typeof requestSchema>>({
     resolver: zodResolver(requestSchema),
@@ -114,6 +110,10 @@ const TripDetails = () => {
       navigate('/my-requests');
     }
   };
+
+  if (isLoading) return <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
+  if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
 
   const isOwner = user?.id === trip.user_id;
   const travelerName = `${trip.profiles?.first_name || 'N/A'} ${trip.profiles?.last_name || ''}`.trim();
@@ -194,7 +194,7 @@ const TripDetails = () => {
                       <FormItem>
                         <FormLabel>{t('packageWeightKg')}</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.1" min="1" max={maxWeight} {...field} />
+                          <Input type="number" step="0.1" min="1" max={trip.free_kg} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
