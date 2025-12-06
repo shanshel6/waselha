@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   Bomb, Flame, Container, Skull, Biohazard, Radiation, BatteryCharging,
-  CigaretteOff, Battery, Drone, CircuitBoard, FileLock, LucideProps, XCircle
+  CigaretteOff, Battery, CameraOff, CircuitBoard, FileLock, LucideProps, XCircle
 } from 'lucide-react';
 
 const icons: { [key: string]: React.FC<LucideProps> } = {
@@ -16,7 +16,7 @@ const icons: { [key: string]: React.FC<LucideProps> } = {
   BatteryCharging,
   CigaretteOff,
   Battery,
-  Drone,
+  CameraOff,
   CircuitBoard,
   FileLock
 };

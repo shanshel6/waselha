@@ -13,7 +13,7 @@ export const forbiddenItemsList: ForbiddenItem[] = [
   { key: "powerBanks", icon: "BatteryCharging" },
   { key: "eCigarettes", icon: "CigaretteOff" }, // Includes vapes
   { key: "spareLithiumBatteries", icon: "Battery" },
-  { key: "drones", icon: "Drone" },
+  { key: "drones", icon: "CameraOff" },
   { key: "certainElectronics", icon: "CircuitBoard" },
   { key: "politicallySensitive", icon: "FileLock" },
 ];
