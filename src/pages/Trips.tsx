@@ -17,6 +17,7 @@ import { countries } from '@/lib/countries';
 import { arabicCountries } from '@/lib/countries-ar';
 import { Badge } from '@/components/ui/badge';
 import CountryFlag from '@/components/CountryFlag';
+import { useSession } from '@/integrations/supabase/SessionContextProvider';
 
 const searchSchema = z.object({
   from_country: z.string().optional(),
@@ -28,6 +29,7 @@ type SearchFilters = z.infer<typeof searchSchema>;
 const Trips = () => {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
+  const { user } = useSession();
   
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),
@@ -38,8 +40,21 @@ const Trips = () => {
   });
 
   const { data: trips, isLoading, error } = useQuery({
-    queryKey: ['trips', filters],
+    queryKey: ['trips', filters, user?.id],
     queryFn: async () => {
+      let tripIdsToExclude: string[] = [];
+      if (user) {
+        const { data: activeRequests } = await supabase
+          .from('requests')
+          .select('trip_id')
+          .eq('sender_id', user.id)
+          .in('status', ['pending', 'accepted']);
+        
+        if (activeRequests) {
+          tripIdsToExclude = activeRequests.map(r => r.trip_id);
+        }
+      }
+
       let query = supabase
         .from('trips')
         .select(
@@ -57,6 +72,10 @@ const Trips = () => {
       
       if (filters.to_country) {
         query = query.eq('to_country', filters.to_country);
+      }
+
+      if (tripIdsToExclude.length > 0) {
+        query = query.not('id', 'in', `(${tripIdsToExclude.join(',')})`);
       }
 
       const { data, error: queryError } = await query.order('trip_date', { ascending: true });
