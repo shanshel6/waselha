@@ -1,12 +1,13 @@
 "use client";
-
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { calculateShippingCost, zonedCountries } from '@/lib/pricing';
+import { arabicCountries } from '@/lib/countries-ar';
 import { DollarSign } from 'lucide-react';
+import CountryFlag from '@/components/CountryFlag';
 
 const PriceCalculator = () => {
   const { t } = useTranslation();
@@ -39,7 +40,11 @@ const PriceCalculator = () => {
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {zonedCountries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {zonedCountries.map((c) => (
+                    <SelectItem key={c} value={c} className="flex items-center">
+                      <CountryFlag country={c} showName />
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -50,12 +55,18 @@ const PriceCalculator = () => {
                   <SelectValue placeholder={t('selectCountry')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {zonedCountries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {zonedCountries.map((c) => (
+                    <SelectItem key={c} value={c} className="flex items-center">
+                      <CountryFlag country={c} showName />
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="weight-slider" className="font-semibold">{t('packageWeightKg')} ({weight} kg)</Label>
+              <Label htmlFor="weight-slider" className="font-semibold">
+                {t('packageWeightKg')} ({weight} kg)
+              </Label>
               <Slider
                 id="weight-slider"
                 min={1}
@@ -67,7 +78,7 @@ const PriceCalculator = () => {
               />
             </div>
           </div>
-
+          
           {/* Results Section */}
           <div className="bg-primary/10 dark:bg-primary/20 p-6 rounded-lg space-y-4 border border-primary/20 md:col-span-2 flex flex-col justify-center h-full">
             <h3 className="text-xl font-semibold text-center text-primary">{t('estimatedCost')}</h3>
@@ -89,7 +100,9 @@ const PriceCalculator = () => {
                   </p>
                 </div>
                 <div className="text-center border-t pt-2 mt-2">
-                  <span className="text-xs text-muted-foreground">{t('pricePerKg')}: ${calculation.pricePerKgUSD.toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t('pricePerKg')}: ${calculation.pricePerKgUSD.toFixed(2)}
+                  </span>
                 </div>
               </>
             )}

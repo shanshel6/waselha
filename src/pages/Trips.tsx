@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -10,13 +9,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Plane, Package, User, MapPin, Search, PlusCircle, BadgeCheck } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { countries } from '@/lib/countries';
+import { arabicCountries } from '@/lib/countries-ar';
 import { Badge } from '@/components/ui/badge';
+import CountryFlag from '@/components/CountryFlag';
 
 const searchSchema = z.object({
   from_country: z.string().optional(),
@@ -27,7 +27,9 @@ type SearchFilters = z.infer<typeof searchSchema>;
 
 const Trips = () => {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
+  const [filters, setFilters] = useState<SearchFilters>({
+    from_country: "Iraq"
+  });
 
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),
@@ -43,8 +45,7 @@ const Trips = () => {
       let query = supabase
         .from('trips')
         .select(
-          `*,
-          profiles (
+          `*, profiles (
             first_name,
             last_name,
             is_verified
@@ -55,6 +56,7 @@ const Trips = () => {
       if (filters.from_country) {
         query = query.eq('from_country', filters.from_country);
       }
+
       if (filters.to_country) {
         query = query.eq('to_country', filters.to_country);
       }
@@ -64,16 +66,21 @@ const Trips = () => {
       if (queryError) {
         throw new Error(queryError.message);
       }
+
       return data;
     },
+    enabled: !!filters.from_country || !!filters.to_country,
   });
 
   const onSubmit = (values: SearchFilters) => {
     setFilters(values);
   };
-  
+
   const resetFilters = () => {
-    form.reset({ from_country: "Iraq", to_country: "" });
+    form.reset({
+      from_country: "Iraq",
+      to_country: "",
+    });
     setFilters({ from_country: "Iraq" });
   };
 
@@ -95,7 +102,10 @@ const Trips = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="flex items-center gap-2 text-xl">
-                      <Plane className="h-5 w-5 text-primary" /> {trip.from_country} → {trip.to_country}
+                      <Plane className="h-5 w-5 text-primary" />
+                      <CountryFlag country={trip.from_country} showName className="text-base" />
+                      <span className="text-lg">→</span>
+                      <CountryFlag country={trip.to_country} showName className="text-base" />
                     </CardTitle>
                     <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
                   </div>
@@ -146,7 +156,6 @@ const Trips = () => {
           <Button size="lg"><PlusCircle className="mr-2 h-5 w-5" />{t('addTrip')}</Button>
         </Link>
       </div>
-      
       <Card className="mb-8">
         <CardContent className="p-6">
           <Form {...form}>
@@ -159,10 +168,16 @@ const Trips = () => {
                     <FormLabel>{t('fromCountry')}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('selectCountry')} />
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        {countries.map((c) => (
+                          <SelectItem key={c} value={c} className="flex items-center">
+                            <CountryFlag country={c} showName />
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </FormItem>
@@ -176,10 +191,16 @@ const Trips = () => {
                     <FormLabel>{t('toCountry')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder={t('selectCountry')} /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('selectCountry')} />
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {countries.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        {countries.map((c) => (
+                          <SelectItem key={c} value={c} className="flex items-center">
+                            <CountryFlag country={c} showName />
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </FormItem>
@@ -193,7 +214,6 @@ const Trips = () => {
           </Form>
         </CardContent>
       </Card>
-
       {renderContent()}
     </div>
   );

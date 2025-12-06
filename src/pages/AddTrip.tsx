@@ -20,7 +20,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { countries } from '@/lib/countries';
+import { arabicCountries } from '@/lib/countries-ar';
 import { calculateTravelerProfit } from '@/lib/pricing';
+import CountryFlag from '@/components/CountryFlag';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -118,8 +120,8 @@ const AddTrip = () => {
                   </FormControl>
                   <SelectContent>
                     {countries.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
+                      <SelectItem key={country} value={country} className="flex items-center">
+                        <CountryFlag country={country} showName />
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -143,8 +145,8 @@ const AddTrip = () => {
                   </FormControl>
                   <SelectContent>
                     {countries.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
+                      <SelectItem key={country} value={country} className="flex items-center">
+                        <CountryFlag country={country} showName />
                       </SelectItem>
                     ))}
                   </SelectContent>
