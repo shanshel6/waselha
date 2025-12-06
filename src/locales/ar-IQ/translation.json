@@ -195,5 +195,6 @@
   "cantFindTrip": "لم تجد الرحلة المطلوبة؟",
   "placeOrderLink": "سوي طلب رحلة جديدة",
   "packageDetails": "تفاصيل الطرد",
-  "maxWeightGeneralOrder": "الحد الأقصى للوزن هو 50 كجم"
+  "maxWeightGeneralOrder": "الحد الأقصى للوزن هو 50 كجم",
+  "statusNewOrder": "في انتظار مسافر لاستلام طلبك"
 }

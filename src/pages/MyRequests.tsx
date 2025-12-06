@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,9 +20,38 @@ const MyRequests = () => {
   const queryClient = useQueryClient();
   const [requestToCancel, setRequestToCancel] = useState<any | null>(null);
 
-  // Fetch requests sent by the current user
-  const { data: sentRequests, isLoading: isLoadingSent, error: sentRequestsError } = useQuery({
-    queryKey: ['sentRequests', user?.id],
+  // --- 1. Fetch Received Requests (Requests for user's trips) ---
+  const { data: receivedRequests, isLoading: isLoadingReceived, error: receivedRequestsError } = useQuery({
+    queryKey: ['receivedRequests', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+            *,
+            trips(
+              *,
+              profiles(
+                id, 
+                first_name, 
+                last_name, 
+                phone
+              )
+            )
+          `)
+        .eq('trips.user_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // --- 2. Fetch Sent Trip-Specific Requests ---
+  const { data: tripRequests, isLoading: isLoadingTripRequests, error: tripRequestsError } = useQuery({
+    queryKey: ['sentTripRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -41,60 +70,45 @@ const MyRequests = () => {
         `)
         .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) {
-        console.error("Error fetching sent requests:", error);
-        throw new Error(error.message);
-      }
-      console.log("Sent requests data:", data);
+      if (error) throw new Error(error.message);
       return data;
     },
     enabled: !!user,
   });
 
-  // Fetch requests received for the current user's trips
-  const { data: receivedRequests, isLoading: isLoadingReceived, error: receivedRequestsError } = useQuery({
-    queryKey: ['receivedRequests', user?.id],
+  // --- 3. Fetch Sent General Orders ---
+  const { data: generalOrders, isLoading: isLoadingGeneralOrders, error: generalOrdersError } = useQuery({
+    queryKey: ['generalOrders', user?.id],
     queryFn: async () => {
-      if (!user) {
-        console.log("No user, returning empty array");
-        return [];
-      }
-      
-      console.log("Fetching received requests for user:", user.id);
-      
-      try {
-        // Get requests where the trip belongs to the current user
-        const { data, error } = await supabase
-          .from('requests')
-          .select(`
-            *,
-            trips(
-              *,
-              profiles(
-                id, 
-                first_name, 
-                last_name, 
-                phone
-              )
-            )
-          `)
-          .eq('trips.user_id', user.id)
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error("Error fetching received requests:", error);
-          throw new Error(error.message);
-        }
-        
-        console.log("Received requests data:", data);
-        return data;
-      } catch (error) {
-        console.error("Error in received requests query:", error);
-        throw error;
-      }
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('general_orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return data;
     },
     enabled: !!user,
   });
+
+  // --- 4. Combine and Sort All Sent Items ---
+  const allSentItems = useMemo(() => {
+    if (isLoadingTripRequests || isLoadingGeneralOrders) return [];
+    
+    const combined = [
+        ...(tripRequests || []).map(req => ({ ...req, type: 'trip_request' })),
+        ...(generalOrders || []).map(order => ({ ...order, type: 'general_order' }))
+    ];
+    
+    // Sort by created_at descending
+    return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [tripRequests, generalOrders, isLoadingTripRequests, isLoadingGeneralOrders]);
+
+  const isLoadingSent = isLoadingTripRequests || isLoadingGeneralOrders;
+  const sentRequestsError = tripRequestsError || generalOrdersError;
+
+  // --- Mutations ---
 
   const updateRequestMutation = useMutation({
     mutationFn: async ({ requestId, status }: { requestId: string; status: string }) => {
@@ -105,7 +119,7 @@ const MyRequests = () => {
       if (updateError) throw updateError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       showSuccess(t('requestUpdatedSuccess'));
     },
@@ -113,15 +127,29 @@ const MyRequests = () => {
   });
 
   const deleteRequestMutation = useMutation({
-    mutationFn: async (request: any) => {
-      const { error } = await supabase
-        .from('requests')
-        .delete()
-        .eq('id', request.id);
-      if (error) throw error;
+    mutationFn: async (item: any) => {
+      if (item.type === 'trip_request') {
+        // Only allow deletion of pending trip requests (RLS handles this too)
+        const { error } = await supabase
+          .from('requests')
+          .delete()
+          .eq('id', item.id);
+        if (error) throw error;
+      } else if (item.type === 'general_order') {
+        // Only allow deletion of 'new' general orders
+        const { error } = await supabase
+          .from('general_orders')
+          .delete()
+          .eq('id', item.id)
+          .eq('status', 'new'); 
+        if (error) throw error;
+      } else {
+        throw new Error("Unknown item type for deletion");
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['generalOrders'] });
       showSuccess(t('requestCancelledSuccess'));
     },
     onError: (err: any) => {
@@ -140,18 +168,21 @@ const MyRequests = () => {
         return 'default';
       case 'rejected':
         return 'destructive';
+      case 'new':
+        return 'secondary'; // General order status
       default:
         return 'secondary';
     }
   };
 
   const renderAcceptedDetails = (req: any, isReceived: boolean) => {
-    // For received requests (isReceived=true), the other party is the sender (req.profiles).
-    // For sent requests (isReceived=false), the other party is the traveler (req.trips.profiles).
+    // This function is only relevant for trip_requests
+    if (req.type !== 'trip_request' || req.status !== 'accepted') return null;
+    
     const otherParty = isReceived ? req.profiles : req.trips?.profiles;
     const trip = req.trips;
     
-    if (req.status !== 'accepted' || !otherParty || !trip) return null;
+    if (!otherParty || !trip) return null;
     
     const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
     const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
@@ -196,6 +227,97 @@ const MyRequests = () => {
       </div>
     );
   };
+  
+  const renderSentItem = (item: any) => {
+    if (item.type === 'trip_request') {
+      const req = item;
+      const travelerName = req.trips?.profiles?.first_name || t('traveler');
+      
+      return (
+        <Card key={req.id}>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>{t('requestTo')} {travelerName}</span>
+              <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 pt-2">
+              <Plane className="h-4 w-4" />
+              {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
+              {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
+            {renderAcceptedDetails(req, false)}
+            <div className="flex gap-2 mt-4">
+              {req.status === 'pending' && (
+                <Button variant="destructive" size="sm" onClick={() => setRequestToCancel(req)} disabled={deleteRequestMutation.isPending}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t('cancelRequest')}
+                </Button>
+              )}
+              {req.status === 'accepted' && (
+                <Link to={`/chat/${req.id}`}>
+                  <Button size="sm" variant="outline">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    {t('viewChat')}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    } else if (item.type === 'general_order') {
+      const order = item;
+      const statusKey = order.status === 'new' ? 'statusNewOrder' : order.status;
+      
+      return (
+        <Card key={order.id} className="border-2 border-dashed border-primary/50 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span>{t('placeOrder')}</span>
+              <Badge variant={getStatusVariant(order.status)} className="bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500">
+                {t(statusKey)}
+              </Badge>
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 pt-2">
+              <Plane className="h-4 w-4" />
+              {order.from_country} → {order.to_country} 
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p>
+              <p className="text-sm text-muted-foreground pl-6">{order.description}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <p className="flex items-center gap-2"><Weight className="h-4 w-4" />
+                <span className="font-semibold">{t('packageWeightKg')}:</span> {order.weight_kg} kg</p>
+              {order.has_insurance && (
+                <p className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                  <BadgeCheck className="h-4 w-4" />
+                  <span className="font-semibold">{t('insuranceOption')}</span>
+                </p>
+              )}
+            </div>
+            
+            {/* Cancellation button for 'new' status general orders */}
+            {order.status === 'new' && (
+              <div className="flex gap-2 mt-4">
+                <Button variant="destructive" size="sm" onClick={() => setRequestToCancel(order)} disabled={deleteRequestMutation.isPending}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t('cancelRequest')}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+    return null;
+  };
+
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -294,41 +416,7 @@ const MyRequests = () => {
                   Error loading sent requests: {sentRequestsError.message}
                 </p>
               )}
-              {sentRequests && sentRequests.length > 0 ? sentRequests.map(req => (
-                <Card key={req.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{t('requestTo')} {req.trips?.profiles?.first_name || 'Traveler'}</span>
-                      <Badge variant={getStatusVariant(req.status)}>{t(req.status)}</Badge>
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-2 pt-2">
-                      <Plane className="h-4 w-4" />
-                      {req.trips?.from_country || 'N/A'} → {req.trips?.to_country || 'N/A'} 
-                      {req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-                    {renderAcceptedDetails(req, false)}
-                    <div className="flex gap-2 mt-4">
-                      {req.status === 'pending' && (
-                        <Button variant="destructive" size="sm" onClick={() => setRequestToCancel(req)} disabled={deleteRequestMutation.isPending}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {t('cancelRequest')}
-                        </Button>
-                      )}
-                      {req.status === 'accepted' && (
-                        <Link to={`/chat/${req.id}`}>
-                          <Button size="sm" variant="outline">
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            {t('viewChat')}
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )) : !isLoadingSent && !sentRequestsError && <p>{t('noSentRequests')}</p>}
+              {allSentItems.length > 0 ? allSentItems.map(renderSentItem) : !isLoadingSent && !sentRequestsError && <p>{t('noSentRequests')}</p>}
             </CardContent>
           </Card>
         </TabsContent>
