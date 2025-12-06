@@ -53,8 +53,21 @@ const MyRequests = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      // Relying on RLS policy "Travelers can view requests for their trips" 
-      // which automatically filters requests based on the user's trip ownership.
+      // Step 1: Get IDs of trips owned by the current user
+      const { data: tripsData, error: tripsError } = await supabase
+        .from('trips')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (tripsError) throw new Error(tripsError.message);
+      
+      const tripIds = tripsData.map(trip => trip.id);
+
+      if (tripIds.length === 0) {
+        return []; // No trips, so no received requests possible
+      }
+
+      // Step 2: Fetch requests for those trip IDs
       const { data, error } = await supabase
         .from('requests')
         .select(`
@@ -62,6 +75,7 @@ const MyRequests = () => {
           trips(*), 
           profiles:sender_id(id, first_name, last_name, phone)
         `)
+        .in('trip_id', tripIds) // Explicit client-side filter
         .order('created_at', { ascending: false });
 
       if (error) {
