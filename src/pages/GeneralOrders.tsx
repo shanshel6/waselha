@@ -26,7 +26,7 @@ interface GeneralOrder {
   claimed_by: string | null;
   created_at: string;
   updated_at: string;
-  profiles: {
+  sender_profile: {
     first_name: string | null;
     last_name: string | null;
   } | null;
@@ -43,39 +43,58 @@ const GeneralOrders = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      // Fetch new orders (not claimed) with profile data
+      // Fetch new orders (not claimed) and get sender profiles separately
       const { data: newOrders, error: newOrdersError } = await supabase
         .from('general_orders')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name
-          )
-        `)
+        .select('*')
         .is('claimed_by', null)
         .eq('status', 'new')
         .order('created_at', { ascending: false });
 
       if (newOrdersError) throw new Error(newOrdersError.message);
 
-      // Fetch claimed orders (claimed by current user) with profile data
+      // Fetch claimed orders (claimed by current user)
       const { data: claimedOrders, error: claimedOrdersError } = await supabase
         .from('general_orders')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name
-          )
-        `)
+        .select('*')
         .eq('claimed_by', user.id)
         .order('created_at', { ascending: false });
 
       if (claimedOrdersError) throw new Error(claimedOrdersError.message);
 
+      // Get unique user IDs from all orders
+      const userIds = [...new Set([
+        ...newOrders.map(order => order.user_id),
+        ...claimedOrders.map(order => order.user_id)
+      ])];
+
+      // Fetch profiles for all users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
+
+      if (profilesError) throw new Error(profilesError.message);
+
+      // Create a profile map for easy lookup
+      const profileMap = profiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, { first_name: string | null; last_name: string | null }>);
+
+      // Attach profiles to orders
+      const newOrdersWithProfiles = newOrders.map(order => ({
+        ...order,
+        sender_profile: profileMap[order.user_id] || null
+      }));
+
+      const claimedOrdersWithProfiles = claimedOrders.map(order => ({
+        ...order,
+        sender_profile: profileMap[order.user_id] || null
+      }));
+
       // Combine and return both
-      return [...newOrders, ...claimedOrders];
+      return [...newOrdersWithProfiles, ...claimedOrdersWithProfiles];
     },
     enabled: !!user,
   });
@@ -185,7 +204,9 @@ const GeneralOrders = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span>{order.profiles?.first_name || 'N/A'} {order.profiles?.last_name || ''}</span>
+                        <span>
+                          {order.sender_profile?.first_name || 'N/A'} {order.sender_profile?.last_name || ''}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -246,7 +267,9 @@ const GeneralOrders = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span>{order.profiles?.first_name || 'N/A'} {order.profiles?.last_name || ''}</span>
+                        <span>
+                          {order.sender_profile?.first_name || 'N/A'} {order.sender_profile?.last_name || ''}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
