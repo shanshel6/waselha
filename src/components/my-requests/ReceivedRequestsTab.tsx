@@ -61,7 +61,7 @@ type ReceivedItem = Request; // Only trip requests now
 
 interface RequestWithProfiles extends Request {
   sender_profile: Profile | null;
-  traveler_profile: Profile | null;
+  // traveler_profile is not needed here as the current user is the traveler
 }
 
 interface ReceivedRequestsTabProps {
@@ -406,8 +406,9 @@ export const ReceivedRequestsTab = ({
       if (requestsError) throw new Error(requestsError.message);
 
       // Filter client-side to ensure we only show requests where the current user is the trip owner (received requests)
+      // We also ensure that the trips object is present before filtering on user_id
       const tripRequests = allRequests
-        .filter(req => req.trips?.user_id === user.id)
+        .filter(req => req.trips && req.trips.user_id === user.id)
         .map(req => ({
           ...req,
           type: 'trip_request' as const
