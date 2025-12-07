@@ -119,6 +119,7 @@ const MyTripsPage = () => {
 
   // Get status badge component
   const getStatusBadge = (trip: Trip) => {
+    // If trip is approved, show approved status
     if (trip.is_approved === true) {
       return (
         <Badge variant="default" className="bg-green-500 hover:bg-green-500/90">
@@ -126,26 +127,27 @@ const MyTripsPage = () => {
           {t('approved')}
         </Badge>
       );
-    } else if (trip.is_approved === false) {
-      // Check if there are admin review notes to determine if it was rejected
-      if (trip.admin_review_notes) {
-        return (
-          <Badge variant="destructive">
-            <XCircle className="h-3 w-3 mr-1" />
-            {t('rejected')}
-          </Badge>
-        );
-      } else {
-        // No admin notes means it's still pending approval
-        return (
-          <Badge variant="secondary">
-            <Clock className="h-3 w-3 mr-1" />
-            {t('waitingForConfirmation')}
-          </Badge>
-        );
-      }
-    } else {
-      // Default case (shouldn't happen with the current schema)
+    }
+    // If trip is not approved but has admin review notes, it's rejected
+    else if (trip.is_approved === false && trip.admin_review_notes) {
+      return (
+        <Badge variant="destructive">
+          <XCircle className="h-3 w-3 mr-1" />
+          {t('rejected')}
+        </Badge>
+      );
+    }
+    // If trip is not approved and has no admin review notes, it's pending
+    else if (trip.is_approved === false && !trip.admin_review_notes) {
+      return (
+        <Badge variant="secondary">
+          <Clock className="h-3 w-3 mr-1" />
+          {t('waitingForConfirmation')}
+        </Badge>
+      );
+    }
+    // Default case (shouldn't happen with the current schema)
+    else {
       return (
         <Badge variant="secondary">
           <Clock className="h-3 w-3 mr-1" />

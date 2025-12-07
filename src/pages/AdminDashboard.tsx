@@ -173,7 +173,7 @@ const AdminDashboard = () => {
   // Mutation for rejecting trips
   const rejectTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
-      // Update trip status to rejected
+      // Update trip status to rejected (is_approved stays false, but we add notes)
       const { error } = await supabase
         .from('trips')
         .update({ 
