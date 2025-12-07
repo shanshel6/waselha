@@ -160,11 +160,45 @@ const AdminDashboard = () => {
           });
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_, { tripId }) => {
       queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
       queryClient.invalidateQueries({ queryKey: ['reviewedTrips'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       showSuccess(t('tripApprovedSuccess'));
+
+      // Fetch the trip again to get the user_id (traveler_id)
+      const { data: tripData, error: tripError } = await supabase
+        .from('trips')
+        .select('user_id, from_country, to_country') // Also get countries for potential general order match
+        .eq('id', tripId)
+        .single();
+
+      if (tripError) {
+        console.error("Error fetching trip data for invalidation:", tripError);
+        return;
+      }
+
+      if (tripData?.user_id) {
+        // Invalidate the traveler's received requests query
+        queryClient.invalidateQueries({ queryKey: ['receivedRequests', tripData.user_id] });
+      }
+
+      // Also, if a general order was matched, invalidate the sender's sent requests
+      // This is done by checking if a request linked to this trip has a general_order_id
+      const { data: matchedRequest, error: requestError } = await supabase
+        .from('requests')
+        .select('sender_id')
+        .eq('trip_id', tripId)
+        .not('general_order_id', 'is', null)
+        .single();
+
+      if (requestError && requestError.code !== 'PGRST116') { // PGRST116 means no rows found
+        console.error("Error checking for matched general order:", requestError);
+      }
+
+      if (matchedRequest?.sender_id) {
+        queryClient.invalidateQueries({ queryKey: ['sentRequests', matchedRequest.sender_id] });
+      }
     },
     onError: (error: any) => {
       showError(error.message);
