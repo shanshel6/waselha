@@ -33,6 +33,21 @@ interface Request {
   proposed_changes: { weight_kg: number; description: string } | null; 
   sender_item_photos: string[] | null; 
   tracking_status: RequestTrackingStatus;
+  type?: 'trip_request';
+}
+interface GeneralOrder {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  description: string;
+  is_valuable: boolean;
+  insurance_requested: boolean;
+  status: string;
+  claimed_by: string | null;
+  created_at: string;
+  updated_at: string;
+  type: 'general_order';
 }
 interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
 
@@ -48,8 +63,8 @@ interface SentRequestsTabProps {
 }
 
 const CompactSentRequestCard: React.FC<{ 
-  req: RequestWithProfiles; 
-  priceCalculation: ReturnType<typeof calculateShippingCost>;
+  req: RequestWithProfiles | GeneralOrder; 
+  priceCalculation: ReturnType<typeof calculateShippingCost> | null;
   onCancelRequest: (request: any) => void;
   deleteRequestMutation: any;
   onCancelAcceptedRequest: (request: Request) => void;
@@ -73,13 +88,109 @@ const CompactSentRequestCard: React.FC<{
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
-  const travelerName = req.traveler_profile?.first_name || t('traveler');
-  const fromCountry = req.trips?.from_country || 'N/A';
-  const toCountry = req.trips?.to_country || 'N/A';
-  const tripDate = req.trips?.trip_date;
-  const isRejected = req.status === 'rejected';
-  const currentTrackingStatus = req.tracking_status;
-  const hasPendingChanges = !!req.proposed_changes;
+  // Type guard to differentiate between trip requests and general orders
+  const isGeneralOrder = (item: any): item is GeneralOrder => {
+    return item.type === 'general_order';
+  };
+
+  if (isGeneralOrder(req)) {
+    // Render general order card with distinct styling
+    return (
+      <Card className="border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+        <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Package className="h-5 w-5 text-blue-500" />
+              <div>
+                <CardTitle className="text-base font-semibold">
+                  {t('generalOrder')}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <CountryFlag country={req.from_country} showName={false} />
+                  <span className="text-xs">→</span>
+                  <CountryFlag country={req.to_country} showName={false} />
+                  {` • ${format(new Date(req.created_at), 'MMM d')}`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-300">
+                {req.claimed_by ? t('claimed') : t('new')}
+              </Badge>
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </div>
+          </div>
+        </CardHeader>
+
+        {expanded && (
+          <CardContent className="p-4 pt-0 space-y-3">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <span>{t('generalOrder')}</span>
+              </div>
+              {req.is_valuable && (
+                <div className="flex items-center gap-2">
+                  <BadgeCheck className="h-4 w-4 text-yellow-500" />
+                  <span>{t('isValuable')}</span>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-between text-xs" 
+                onClick={() => setDetailsExpanded(!detailsExpanded)}
+              >
+                <span>{t('viewDetails')}</span>
+                {detailsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </Button>
+              
+              {detailsExpanded && (
+                <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
+                  <div>
+                    <p className="font-medium">{t('packageContents')}:</p>
+                    <p className="text-muted-foreground">{req.description}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => onCancelRequest({...req, type: 'general_order'})}
+                disabled={deleteRequestMutation.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('cancelRequest')}
+              </Button>
+              <Link to={`/edit-general-order/${req.id}`}>
+                <Button variant="secondary" size="sm">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t('editRequest')}
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    );
+  }
+
+  // Render regular trip request
+  const tripReq = req as RequestWithProfiles;
+  
+  const travelerName = tripReq.traveler_profile?.first_name || t('traveler');
+  const fromCountry = tripReq.trips?.from_country || 'N/A';
+  const toCountry = tripReq.trips?.to_country || 'N/A';
+  const tripDate = tripReq.trips?.trip_date;
+  const isRejected = tripReq.status === 'rejected';
+  const currentTrackingStatus = tripReq.tracking_status;
+  const hasPendingChanges = !!tripReq.proposed_changes;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -213,11 +324,11 @@ const CompactSentRequestCard: React.FC<{
   };
 
   return (
-    <Card className={getStatusCardClass(req.status)}>
+    <Card className={getStatusCardClass(tripReq.status)}>
       <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {getStatusIcon(req.status)}
+            {getStatusIcon(tripReq.status)}
             <div>
               <CardTitle className="text-base font-semibold">
                 {t('requestTo')} {travelerName}
@@ -232,8 +343,8 @@ const CompactSentRequestCard: React.FC<{
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={getStatusVariant(req.status)} className="text-xs">
-              {hasPendingChanges ? t('pendingChanges') : t(req.status)}
+            <Badge variant={getStatusVariant(tripReq.status)} className="text-xs">
+              {hasPendingChanges ? t('pendingChanges') : t(tripReq.status)}
             </Badge>
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </div>
@@ -242,7 +353,7 @@ const CompactSentRequestCard: React.FC<{
 
       {expanded && (
         <CardContent className="p-4 pt-0 space-y-3">
-          {req.status !== 'pending' && (
+          {tripReq.status !== 'pending' && (
             <div className="pt-2">
               <RequestTracking 
                 currentStatus={currentTrackingStatus} 
@@ -254,11 +365,11 @@ const CompactSentRequestCard: React.FC<{
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Weight className="h-4 w-4 text-muted-foreground" />
-              <span>{req.weight_kg} kg</span>
+              <span>{tripReq.weight_kg} kg</span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate">{req.destination_city}</span>
+              <span className="truncate">{tripReq.destination_city}</span>
             </div>
           </div>
 
@@ -286,25 +397,25 @@ const CompactSentRequestCard: React.FC<{
               <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
                 <div>
                   <p className="font-medium">{t('packageContents')}:</p>
-                  <p className="text-muted-foreground">{req.description}</p>
+                  <p className="text-muted-foreground">{tripReq.description}</p>
                 </div>
                 <div>
                   <p className="font-medium">{t('receiverDetails')}:</p>
-                  <p className="text-muted-foreground">{req.receiver_details}</p>
+                  <p className="text-muted-foreground">{tripReq.receiver_details}</p>
                 </div>
               </div>
             )}
           </div>
 
-          {renderAcceptedDetails(req)}
+          {renderAcceptedDetails(tripReq)}
           
-          {req.status === 'pending' && (
+          {tripReq.status === 'pending' && (
             <div className="flex gap-2 pt-2">
-              <Button variant="destructive" size="sm" onClick={() => onCancelRequest(req)} disabled={deleteRequestMutation.isPending}>
+              <Button variant="destructive" size="sm" onClick={() => onCancelRequest(tripReq)} disabled={deleteRequestMutation.isPending}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t('cancelRequest')}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => onEditRequest(req)} disabled={hasPendingChanges}>
+              <Button variant="secondary" size="sm" onClick={() => onEditRequest(tripReq)} disabled={hasPendingChanges}>
                 <Pencil className="mr-2 h-4 w-4" />
                 {t('editRequest')}
               </Button>
@@ -370,14 +481,39 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
       return requests.map(request => ({
         ...request,
         sender_profile: null,
-        traveler_profile: profileMap[request.trips?.user_id] || null
+        traveler_profile: profileMap[request.trips?.user_id] || null,
+        type: 'trip_request' as const
       })) as RequestWithProfiles[];
     },
     enabled: !!user,
   });
 
-  const isLoadingSent = isLoadingTripRequests;
-  const sentRequestsError = tripRequestsError;
+  const { data: generalOrders, isLoading: isLoadingGeneralOrders, error: generalOrdersError } = useQuery({
+    queryKey: ['sentGeneralOrders', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data: orders, error } = await supabase
+        .from('general_orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching general orders:", error);
+        throw new Error(error.message);
+      }
+
+      return orders.map(order => ({
+        ...order,
+        type: 'general_order' as const
+      }));
+    },
+    enabled: !!user,
+  });
+
+  const isLoadingSent = isLoadingTripRequests || isLoadingGeneralOrders;
+  const sentRequestsError = tripRequestsError || generalOrdersError;
 
   if (isLoadingSent) return <p className="p-4 text-center">{t('loading')}</p>;
 
@@ -387,15 +523,28 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     </div>
   );
 
+  // Combine trip requests and general orders
+  const allSentRequests = [
+    ...(tripRequests || []),
+    ...(generalOrders || [])
+  ].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
   return (
     <div className="space-y-3">
-      {tripRequests && tripRequests.length > 0 ? (
-        tripRequests.map(req => {
-          const priceCalculation = calculateShippingCost(
-            req.trips?.from_country || '',
-            req.trips?.to_country || '',
-            req.weight_kg
-          );
+      {allSentRequests && allSentRequests.length > 0 ? (
+        allSentRequests.map(req => {
+          // Calculate price only for trip requests
+          let priceCalculation = null;
+          if ('trips' in req) {
+            const tripReq = req as RequestWithProfiles;
+            priceCalculation = calculateShippingCost(
+              tripReq.trips?.from_country || '',
+              tripReq.trips?.to_country || '',
+              tripReq.weight_kg
+            );
+          }
 
           return (
             <CompactSentRequestCard

@@ -16,6 +16,8 @@ import { EditRequestModal } from '@/components/my-requests/EditRequestModal';
 import TravelerInspectionModal from '@/components/my-requests/TravelerInspectionModal';
 import SenderPhotoUploadModal from '@/components/my-requests/SenderPhotoUploadModal';
 import { RequestTrackingStatus, TRACKING_STAGES } from '@/lib/tracking-stages';
+import { Link } from 'react-router-dom';
+import { Package, PlusCircle } from 'lucide-react';
 
 // Define types for our data
 interface Trip {
@@ -42,13 +44,27 @@ interface Request {
   handover_location: string | null;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
-  updated_at: string | null; // Added updated_at
+  updated_at: string | null;
   trips: Trip;
   cancellation_requested_by: string | null;
   proposed_changes: { weight_kg: number; description: string } | null;
   traveler_inspection_photos?: string[] | null;
   sender_item_photos?: string[] | null;
   tracking_status: RequestTrackingStatus;
+}
+
+interface GeneralOrder {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  description: string;
+  is_valuable: boolean;
+  insurance_requested: boolean;
+  status: string;
+  claimed_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Profile {
@@ -156,16 +172,29 @@ const MyRequests = () => {
 
   const deleteRequestMutation = useMutation({
     mutationFn: async (item: any) => {
-      // Only handles trip requests now
-      const { error } = await supabase
-        .from('requests')
-        .delete()
-        .eq('id', item.id);
+      // Handle both trip requests and general orders
+      if (item.type === 'general_order') {
+        const { error } = await supabase
+          .from('general_orders')
+          .delete()
+          .eq('id', item.id);
+        if (error) throw error;
+      } else {
+        // Only handles trip requests now
+        const { error } = await supabase
+          .from('requests')
+          .delete()
+          .eq('id', item.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+    onSuccess: (_, variables) => {
+      if (variables.type === 'general_order') {
+        queryClient.invalidateQueries({ queryKey: ['sentGeneralOrders'] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      }
       showSuccess(t('requestCancelledSuccess'));
     },
     onError: (err: any) => showError(t('requestCancelledError')),
@@ -325,7 +354,15 @@ const MyRequests = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myRequests')}</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('myRequests')}</h1>
+        <Link to="/place-order">
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {t('placeOrder')}
+          </Button>
+        </Link>
+      </div>
       
       <Tabs defaultValue="received" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
