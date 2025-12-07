@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2, Inbox, ArrowRight, Shield, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { format, differenceInDays } from 'date-fns'; // Added differenceInDays
+import { format, differenceInDays } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
@@ -46,7 +46,7 @@ interface Request {
   handover_location: string | null;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
-  updated_at: string | null; // Added updated_at
+  updated_at: string | null;
   trips: Trip;
   cancellation_requested_by: string | null;
   proposed_changes: { weight_kg: number; description: string } | null;
@@ -90,8 +90,6 @@ export const ReceivedRequestsTab = ({
     queryFn: async () => {
       if (!user) return [];
 
-      // 1. Fetch all requests visible to the user (RLS handles this: sender OR traveler)
-      // We explicitly select all trip columns to ensure we get the traveler's user_id
       const { data: allRequests, error: requestsError } = await supabase
         .from('requests')
         .select(`
@@ -104,10 +102,8 @@ export const ReceivedRequestsTab = ({
 
       if (requestsError) throw new Error(requestsError.message);
 
-      // 2. Client-side filter: Keep only requests where the current user is the traveler (owner of the trip)
       const receivedRequests = allRequests.filter(req => req.trips?.user_id === user.id);
 
-      // 3. Fetch sender profiles for the filtered requests
       const senderIds = [...new Set(receivedRequests.map(r => r.sender_id))];
       const { data: senderProfiles, error: profilesError } = await supabase
         .from('profiles')
@@ -201,9 +197,6 @@ export const ReceivedRequestsTab = ({
     const otherParty = req.sender_profile;
     const trip = req.trips;
 
-    // NOTE: Removed the early exit condition based on missing otherParty or trip data.
-    // We will conditionally render the details, but ensure the action buttons always show.
-
     const otherPartyName = `${otherParty?.first_name || ''} ${otherParty?.last_name || ''}`.trim() || t('user');
     const otherPartyPhone = otherParty?.phone || t('noPhoneProvided');
 
@@ -216,11 +209,9 @@ export const ReceivedRequestsTab = ({
     const isCompleted = currentTrackingStatus === 'completed';
     const isChatExpired = isCompleted && req.updated_at && differenceInDays(new Date(), new Date(req.updated_at)) >= 7;
 
-    // Traveler controls the flow from item_accepted up to delivered
     let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
 
     if (currentTrackingStatus === 'sender_photos_uploaded') {
-      // Traveler must inspect before moving to the next stage
       travelerAction = { status: 'traveler_inspection_complete', tKey: 'completeInspection', icon: Shield };
     } else if (currentTrackingStatus === 'traveler_inspection_complete') {
       travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
@@ -235,41 +226,37 @@ export const ReceivedRequestsTab = ({
           {t('requestAcceptedTitle')}
         </h4>
         
-        {/* Contact and Trip Details (Conditional on data existence) */}
-        {(otherParty && trip) && (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <p className="flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" />
-                <span className="font-semibold">{t('sender')}:</span>
-                {otherPartyName}
-              </p>
-              <p className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-primary" />
-                <span className="font-semibold">{t('phone')}:</span>
-                {otherPartyPhone}
-              </p>
-            </div>
-            
-            <div className="border-t pt-3 space-y-2 text-sm">
-              <p className="flex items-center gap-2">
-                <Plane className="h-4 w-4 text-primary" />
-                <span className="font-semibold">{t('tripRoute')}:</span>
-                <CountryFlag country={trip.from_country} showName /> → <CountryFlag country={trip.to_country} showName />
-              </p>
-              <p className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-primary" />
-                <span className="font-semibold">{t('tripDate')}:</span>
-                {trip.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
-              </p>
-              <p className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-primary" />
-                <span className="font-semibold">{t('handoverLocation')}:</span>
-                {req.handover_location || t('toBeDeterminedInChat')}
-              </p>
-            </div>
-          </>
-        )}
+        {/* Contact and Trip Details */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <p className="flex items-center gap-2">
+            <User className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('sender')}:</span>
+            {otherPartyName}
+          </p>
+          <p className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('phone')}:</span>
+            {otherPartyPhone}
+          </p>
+        </div>
+        
+        <div className="border-t pt-3 space-y-2 text-sm">
+          <p className="flex items-center gap-2">
+            <Plane className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('tripRoute')}:</span>
+            <CountryFlag country={trip?.from_country || 'N/A'} showName /> → <CountryFlag country={trip?.to_country || 'N/A'} showName />
+          </p>
+          <p className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('tripDate')}:</span>
+            {trip?.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
+          </p>
+          <p className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('handoverLocation')}:</span>
+            {req.handover_location || t('toBeDeterminedInChat')}
+          </p>
+        </div>
         
         {cancellationRequested && (
           <div className={`p-3 rounded-md text-sm ${
@@ -283,7 +270,6 @@ export const ReceivedRequestsTab = ({
           </div>
         )}
         
-        {/* Guidance for Traveler when waiting for Sender photos */}
         {currentTrackingStatus === 'item_accepted' && !isCompleted && (
           <div className="p-3 rounded-md text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 flex items-center gap-2">
             <Camera className="h-4 w-4" />
@@ -291,9 +277,7 @@ export const ReceivedRequestsTab = ({
           </div>
         )}
 
-        {/* ACTION BUTTONS BLOCK - GUARANTEED TO RENDER */}
         <div className="flex flex-wrap gap-2 pt-2">
-          {/* 1. Chat Button (Always visible if accepted) */}
           {!isChatExpired && (
             <Link to={`/chat/${req.id}`}>
               <Button size="sm" variant="outline">
@@ -303,7 +287,6 @@ export const ReceivedRequestsTab = ({
             </Link>
           )}
           
-          {/* 2. Inspection Button (Visible when Sender has uploaded photos) */}
           {currentTrackingStatus === 'sender_photos_uploaded' && onUploadInspectionPhotos && !isCompleted && (
             <Button 
               size="sm" 
@@ -315,7 +298,6 @@ export const ReceivedRequestsTab = ({
             </Button>
           )}
           
-          {/* 3. Traveler Tracking Buttons */}
           {!isCompleted && travelerAction && travelerAction.status !== 'traveler_inspection_complete' && (
             <Button 
               size="sm" 
@@ -327,7 +309,6 @@ export const ReceivedRequestsTab = ({
             </Button>
           )}
           
-          {/* 4. Cancellation Button (Always visible if accepted) */}
           {!isCompleted && (
             <Button 
               size="sm" 
@@ -456,7 +437,6 @@ export const ReceivedRequestsTab = ({
                     </Badge>
                   </CardTitle>
                   
-                  {/* Always show trip route for context */}
                   <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
                     <Plane className="h-4 w-4" />
                     <CountryFlag country={fromCountry} showName />
@@ -467,7 +447,6 @@ export const ReceivedRequestsTab = ({
                 </CardHeader>
                 
                 <CardContent className="space-y-3">
-                  {/* 1. Tracking component for accepted/rejected requests */}
                   {req.status !== 'pending' && (
                     <div className="pt-2">
                       <RequestTracking 
@@ -477,10 +456,8 @@ export const ReceivedRequestsTab = ({
                     </div>
                   )}
                   
-                  {/* 2. Proposed Changes Review (If accepted and changes exist) */}
                   {req.status === 'accepted' && hasPendingChanges && renderProposedChanges(req)}
 
-                  {/* 3. Core Details Block (Always visible) */}
                   <div className="space-y-3">
                     <div>
                       <p className="font-semibold text-sm flex items-center gap-2">
@@ -516,10 +493,8 @@ export const ReceivedRequestsTab = ({
                     {renderPriceBlock(priceCalculation)}
                   </div>
                   
-                  {/* 4. Accepted Details (Contact Info & Tracking Actions) - Always visible if accepted */}
                   {req.status === 'accepted' && renderAcceptedDetails(req)}
                   
-                  {/* 5. Pending Actions (Accept/Reject) - Only visible if pending */}
                   {req.status === 'pending' && (
                     <div className="flex gap-2 pt-2">
                       <Button 
