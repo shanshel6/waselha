@@ -198,6 +198,14 @@ const CompactRequestCard: React.FC<{
 
       {expanded && (
         <CardContent className="p-4 pt-0 space-y-3">
+          {/* General Order Match Alert for Pending Requests */}
+          {reqWithProfiles.status === 'pending' && isGeneralOrderMatch && (
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-md text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-2">
+              <Inbox className="h-4 w-4" />
+              {t('newOrders')} - {t('generalOrderTitle')}
+            </div>
+          )}
+          
           {/* Tracking status */}
           {reqWithProfiles.status !== 'pending' && (
             <div className="pt-2">
