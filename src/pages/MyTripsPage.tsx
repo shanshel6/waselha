@@ -6,7 +6,7 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plane, Package, CalendarDays, Link as LinkIcon, User, BadgeCheck, Trash2 } from 'lucide-react';
+import { Plane, Package, CalendarDays, Link as LinkIcon, User, BadgeCheck, Trash2, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import CountryFlag from '@/components/CountryFlag';
 import { Link } from 'react-router-dom';
@@ -26,6 +26,8 @@ interface Trip {
   traveler_location: string | null;
   notes: string | null;
   created_at: string;
+  is_approved: boolean;
+  admin_review_notes: string | null;
   profiles: {
     first_name: string | null;
     last_name: string | null;
@@ -43,6 +45,7 @@ const MyTripsPage = () => {
     queryKey: ['userTrips', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
+      
       const { data, error } = await supabase
         .from('trips')
         .select(`
@@ -60,6 +63,7 @@ const MyTripsPage = () => {
         console.error("Error fetching user trips:", error);
         throw new Error(error.message);
       }
+      
       return data;
     },
     enabled: !!user?.id,
@@ -72,7 +76,7 @@ const MyTripsPage = () => {
         .delete()
         .eq('id', tripId)
         .eq('user_id', user?.id); // Ensure only the owner can delete
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -104,7 +108,7 @@ const MyTripsPage = () => {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
@@ -112,6 +116,32 @@ const MyTripsPage = () => {
       </div>
     );
   }
+
+  // Get status badge component
+  const getStatusBadge = (trip: Trip) => {
+    if (trip.is_approved === true) {
+      return (
+        <Badge variant="default" className="bg-green-500 hover:bg-green-500/90">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          {t('approved')}
+        </Badge>
+      );
+    } else if (trip.is_approved === false) {
+      return (
+        <Badge variant="destructive">
+          <XCircle className="h-3 w-3 mr-1" />
+          {t('rejected')}
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="secondary">
+          <Clock className="h-3 w-3 mr-1" />
+          {t('pendingApproval')}
+        </Badge>
+      );
+    }
+  };
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -130,27 +160,44 @@ const MyTripsPage = () => {
                       <span className="text-xl">→</span>
                       <CountryFlag country={trip.to_country} showName />
                     </CardTitle>
-                    <Badge variant="secondary" className="text-sm">
-                      {trip.free_kg} kg {t('availableWeight')}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2">
+                      {getStatusBadge(trip)}
+                      <Badge variant="secondary" className="text-sm">
+                        {trip.free_kg} kg {t('availableWeight')}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
+                
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
                     <p className="flex items-center gap-2 text-muted-foreground">
-                      <CalendarDays className="h-4 w-4" /> 
+                      <CalendarDays className="h-4 w-4" />
                       {t('tripDate')}: {format(new Date(trip.trip_date), 'PPP')}
                     </p>
                     <p className="flex items-center gap-2 text-muted-foreground">
-                      <Package className="h-4 w-4" /> 
+                      <Package className="h-4 w-4" />
                       {t('pricePerKg')}: ${trip.charge_per_kg?.toFixed(2) || 'N/A'}
                     </p>
                     <div className="flex items-center gap-2 text-muted-foreground col-span-full">
                       <User className="h-4 w-4" />
                       <span>{trip.profiles?.first_name || t('you')}</span>
-                      {trip.profiles?.is_verified && <Badge variant="secondary" className="text-green-600 border-green-600"><BadgeCheck className="h-3 w-3 mr-1" /> {t('verified')}</Badge>}
+                      {trip.profiles?.is_verified && 
+                        <Badge variant="secondary" className="text-green-600 border-green-600">
+                          <BadgeCheck className="h-3 w-3 mr-1" />
+                          {t('verified')}
+                        </Badge>
+                      }
                     </div>
                   </div>
+                  
+                  {trip.admin_review_notes && (
+                    <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+                      <p className="text-sm font-medium mb-1">{t('adminReviewNotes')}:</p>
+                      <p className="text-sm">{trip.admin_review_notes}</p>
+                    </div>
+                  )}
+                  
                   <div className="flex gap-2">
                     <Link to={`/trips/${trip.id}`}>
                       <Button variant="outline" size="sm">
@@ -191,9 +238,12 @@ const MyTripsPage = () => {
           </Card>
         )}
       </div>
-
+      
       {/* Deletion Confirmation Dialog */}
-      <AlertDialog open={!!tripToDelete} onOpenChange={(open) => !open && setTripToDelete(null)}>
+      <AlertDialog 
+        open={!!tripToDelete} 
+        onOpenChange={(open) => !open && setTripToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('areYouSureDeleteTrip')}</AlertDialogTitle>
@@ -202,7 +252,9 @@ const MyTripsPage = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setTripToDelete(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setTripToDelete(null)}>
+              {t('cancel')}
+            </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteConfirm} 
               disabled={deleteTripMutation.isPending}

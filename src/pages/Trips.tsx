@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -30,7 +31,7 @@ const Trips = () => {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
   const { user } = useSession();
-  
+
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),
     defaultValues: {
@@ -43,13 +44,14 @@ const Trips = () => {
     queryKey: ['trips', filters, user?.id],
     queryFn: async () => {
       let tripIdsToExclude: string[] = [];
+      
       if (user) {
         const { data: activeRequests } = await supabase
           .from('requests')
           .select('trip_id')
           .eq('sender_id', user.id)
           .in('status', ['pending', 'accepted']);
-        
+          
         if (activeRequests) {
           tripIdsToExclude = activeRequests.map(r => r.trip_id);
         }
@@ -57,19 +59,21 @@ const Trips = () => {
 
       let query = supabase
         .from('trips')
-        .select(
-          `*, profiles (
+        .select(`
+          *,
+          profiles (
             first_name,
             last_name,
             is_verified
-          )`
-        )
+          )
+        `)
+        .eq('is_approved', true) // Only show approved trips
         .gte('trip_date', format(new Date(), 'yyyy-MM-dd'));
 
       if (filters.from_country) {
         query = query.eq('from_country', filters.from_country);
       }
-      
+
       if (filters.to_country) {
         query = query.eq('to_country', filters.to_country);
       }
@@ -78,12 +82,13 @@ const Trips = () => {
         query = query.not('id', 'in', `(${tripIdsToExclude.join(',')})`);
       }
 
-      const { data, error: queryError } = await query.order('trip_date', { ascending: true });
-      
+      const { data, error: queryError } = await query
+        .order('trip_date', { ascending: true });
+
       if (queryError) {
         throw new Error(queryError.message);
       }
-      
+
       return data;
     },
     enabled: !!filters.from_country || !!filters.to_country,
@@ -102,20 +107,16 @@ const Trips = () => {
     if (isLoading) {
       return <p>{t('loadingTrips')}</p>;
     }
-    
+
     if (error) {
       return <p className="text-red-500">{t('errorLoadingTrips')}: {error.message}</p>;
     }
-    
+
     if (trips && trips.length > 0) {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {trips.map((trip) => (
-            <Link 
-              key={trip.id} 
-              to={`/trips/${trip.id}`} 
-              className="block h-full group"
-            >
+          {trips.map((trip: any) => (
+            <Link key={trip.id} to={`/trips/${trip.id}`} className="block h-full group">
               <Card className="flex flex-col transition-all duration-300 h-full group-hover:shadow-xl group-hover:-translate-y-1">
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -134,7 +135,12 @@ const Trips = () => {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <User className="h-4 w-4" />
                     <span>{trip.profiles?.first_name || 'N/A'}</span>
-                    {trip.profiles?.is_verified && <Badge variant="secondary" className="text-green-600 border-green-600"><BadgeCheck className="h-3 w-3 mr-1" /> Verified</Badge>}
+                    {trip.profiles?.is_verified && 
+                      <Badge variant="secondary" className="text-green-600 border-green-600">
+                        <BadgeCheck className="h-3 w-3 mr-1" /> 
+                        Verified
+                      </Badge>
+                    }
                   </div>
                   <div className="border-t pt-4 flex items-center gap-2">
                     <Package className="h-5 w-5 text-primary/80" />
@@ -143,7 +149,12 @@ const Trips = () => {
                       <p className="text-xs text-muted-foreground">{t('availableWeight')}</p>
                     </div>
                   </div>
-                  {trip.traveler_location && <p className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /> {trip.traveler_location}</p>}
+                  {trip.traveler_location && 
+                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4" /> 
+                      {trip.traveler_location}
+                    </p>
+                  }
                 </CardContent>
                 {/* Footer element acting as a button visual cue */}
                 <div className="p-4 pt-0 mt-auto">
@@ -157,7 +168,7 @@ const Trips = () => {
         </div>
       );
     }
-    
+
     return (
       <Card className="text-center p-12">
         <h3 className="text-xl font-semibold">{t('noTripsFound')}</h3>
@@ -174,7 +185,10 @@ const Trips = () => {
           <p className="text-muted-foreground">Find travelers who can carry your packages.</p>
         </div>
         <Link to="/add-trip">
-          <Button size="lg"><PlusCircle className="mr-2 h-5 w-5" />{t('addTrip')}</Button>
+          <Button size="lg">
+            <PlusCircle className="mr-2 h-5 w-5" />
+            {t('addTrip')}
+          </Button>
         </Link>
       </div>
       
@@ -205,6 +219,7 @@ const Trips = () => {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
                 name="to_country"
@@ -228,9 +243,15 @@ const Trips = () => {
                   </FormItem>
                 )}
               />
+              
               <div className="flex gap-2 col-span-1 md:col-span-1 lg:col-span-2">
-                <Button type="submit" className="w-full"><Search className="mr-2 h-4 w-4" />{t('searchNow')}</Button>
-                <Button type="button" variant="outline" onClick={resetFilters} className="w-full">{t('resetFilters')}</Button>
+                <Button type="submit" className="w-full">
+                  <Search className="mr-2 h-4 w-4" />
+                  {t('searchNow')}
+                </Button>
+                <Button type="button" variant="outline" onClick={resetFilters} className="w-full">
+                  {t('resetFilters')}
+                </Button>
               </div>
             </form>
           </Form>

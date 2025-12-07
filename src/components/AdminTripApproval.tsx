@@ -2,9 +2,6 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { showSuccess, showError } from '@/utils/toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,56 +25,29 @@ interface Trip {
 
 interface AdminTripApprovalProps {
   trip: Trip;
+  onApprove?: (notes: string) => void;
+  onReject?: (notes: string) => void;
 }
 
-const AdminTripApproval: React.FC<AdminTripApprovalProps> = ({ trip }) => {
+const AdminTripApproval: React.FC<AdminTripApprovalProps> = ({ 
+  trip,
+  onApprove,
+  onReject
+}) => {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [reviewNotes, setReviewNotes] = React.useState(trip.admin_review_notes || '');
 
-  const approveMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from('trips')
-        .update({ 
-          is_approved: true,
-          admin_review_notes: reviewNotes || null
-        })
-        .eq('id', trip.id);
+  const handleApprove = () => {
+    if (onApprove) {
+      onApprove(reviewNotes);
+    }
+  };
 
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      showSuccess(t('tripApprovedSuccess'));
-      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-    },
-    onError: (err: any) => {
-      showError(err.message);
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase
-        .from('trips')
-        .update({ 
-          is_approved: false,
-          admin_review_notes: reviewNotes || null
-        })
-        .eq('id', trip.id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      showSuccess(t('tripRejectedSuccess'));
-      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-    },
-    onError: (err: any) => {
-      showError(err.message);
-    },
-  });
+  const handleReject = () => {
+    if (onReject) {
+      onReject(reviewNotes);
+    }
+  };
 
   return (
     <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
@@ -88,23 +58,20 @@ const AdminTripApproval: React.FC<AdminTripApprovalProps> = ({ trip }) => {
             {trip.is_approved ? t('approved') : t('pendingApproval')}
           </Badge>
         </div>
-        
         {!trip.is_approved && (
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending || rejectMutation.isPending}
+            <Button 
+              size="sm" 
+              onClick={handleApprove}
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               {t('approve')}
             </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => rejectMutation.mutate()}
-              disabled={approveMutation.isPending || rejectMutation.isPending}
+            <Button 
+              size="sm" 
+              variant="destructive" 
+              onClick={handleReject}
             >
               <XCircle className="h-4 w-4 mr-2" />
               {t('reject')}
@@ -112,7 +79,7 @@ const AdminTripApproval: React.FC<AdminTripApprovalProps> = ({ trip }) => {
           </div>
         )}
       </div>
-
+      
       {trip.ticket_file_url && (
         <div>
           <p className="text-sm font-medium mb-2 flex items-center gap-2">
@@ -129,21 +96,21 @@ const AdminTripApproval: React.FC<AdminTripApprovalProps> = ({ trip }) => {
           </a>
         </div>
       )}
-
+      
       {!trip.ticket_file_url && (
         <div className="flex items-center gap-2 text-amber-600 text-sm">
           <AlertTriangle className="h-4 w-4" />
           {t('noTicketUploaded')}
         </div>
       )}
-
+      
       <div>
         <label className="text-sm font-medium mb-2 block">
           {t('reviewNotes')}
         </label>
-        <Textarea
-          value={reviewNotes}
-          onChange={(e) => setReviewNotes(e.target.value)}
+        <Textarea 
+          value={reviewNotes} 
+          onChange={(e) => setReviewNotes(e.target.value)} 
           placeholder={t('reviewNotesPlaceholder')}
           className="min-h-[80px]"
         />

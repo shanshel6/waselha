@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert, Loader2, Plane } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { arabicCountries } from '@/lib/countries-ar';
+import { showSuccess, showError } from '@/utils/toast';
 
 interface VerificationRequest {
   id: string;
@@ -51,6 +52,7 @@ interface Trip {
 const AdminDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
+  const queryClient = useQueryClient();
 
   const { data: verificationRequests, isLoading: isRequestsLoading, error: verificationError } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
@@ -99,6 +101,90 @@ const AdminDashboard = () => {
       return data as Trip[];
     },
     enabled: isAdmin,
+  });
+
+  // Mutation for approving trips
+  const approveTripMutation = useMutation({
+    mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
+      const { error } = await supabase
+        .from('trips')
+        .update({ 
+          is_approved: true, 
+          admin_review_notes: notes || null 
+        })
+        .eq('id', tripId);
+
+      if (error) throw error;
+
+      // Create notification for the user
+      const { data: tripData } = await supabase
+        .from('trips')
+        .select('user_id, from_country, to_country')
+        .eq('id', tripId)
+        .single();
+
+      if (tripData) {
+        const fromCountryName = arabicCountries[tripData.from_country] || tripData.from_country;
+        const toCountryName = arabicCountries[tripData.to_country] || tripData.to_country;
+        
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: tripData.user_id,
+            message: `تمت الموافقة على رحلتك من ${fromCountryName} إلى ${toCountryName}`,
+            link: '/my-flights'
+          });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      showSuccess(t('tripApprovedSuccess'));
+    },
+    onError: (error: any) => {
+      showError(error.message);
+    }
+  });
+
+  // Mutation for rejecting trips
+  const rejectTripMutation = useMutation({
+    mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
+      // Create notification for the user before deleting
+      const { data: tripData } = await supabase
+        .from('trips')
+        .select('user_id, from_country, to_country')
+        .eq('id', tripId)
+        .single();
+
+      if (tripData) {
+        const fromCountryName = arabicCountries[tripData.from_country] || tripData.from_country;
+        const toCountryName = arabicCountries[tripData.to_country] || tripData.to_country;
+        
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: tripData.user_id,
+            message: `تم رفض رحلتك من ${fromCountryName} إلى ${toCountryName}`,
+            link: '/my-flights'
+          });
+      }
+
+      // Delete the trip
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      showSuccess(t('tripRejectedSuccess'));
+    },
+    onError: (error: any) => {
+      showError(error.message);
+    }
   });
 
   if (isAdminLoading) {
@@ -174,7 +260,11 @@ const AdminDashboard = () => {
                         </p>
                       </div>
                     </div>
-                    <AdminTripApproval trip={trip} />
+                    <AdminTripApproval 
+                      trip={trip} 
+                      onApprove={(notes) => approveTripMutation.mutate({ tripId: trip.id, notes })}
+                      onReject={(notes) => rejectTripMutation.mutate({ tripId: trip.id, notes })}
+                    />
                   </Card>
                 ))
               ) : (
