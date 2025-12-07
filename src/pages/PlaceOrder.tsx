@@ -15,7 +15,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import CountryFlag from '@/components/CountryFlag';
@@ -27,8 +26,7 @@ const orderSchema = z.object({
   to_country: z.string().min(1, { message: "requiredField" }),
   description: z.string().min(10, { message: "descriptionTooShort" }),
   weight_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }),
-  is_valuable: z.boolean().default(false),
-  insurance_requested: z.boolean().default(false),
+  insurance_percentage: z.coerce.number().min(0).max(100).default(0),
 });
 
 const PlaceOrder = () => {
@@ -43,12 +41,11 @@ const PlaceOrder = () => {
       to_country: "",
       description: "",
       weight_kg: 1,
-      is_valuable: false,
-      insurance_requested: false,
+      insurance_percentage: 0,
     },
   });
 
-  const { from_country, to_country, is_valuable, weight_kg } = form.watch();
+  const { from_country, to_country, weight_kg, insurance_percentage } = form.watch();
 
   // Auto-manage Iraq selection
   React.useEffect(() => {
@@ -61,13 +58,36 @@ const PlaceOrder = () => {
     }
   }, [from_country, to_country, form]);
 
-  // Calculate estimated cost
-  const estimatedCost = React.useMemo(() => {
+  // Calculate base shipping cost
+  const baseCost = React.useMemo(() => {
     if (from_country && to_country) {
       return calculateShippingCost(from_country, to_country, weight_kg);
     }
     return null;
   }, [from_country, to_country, weight_kg]);
+
+  // Calculate insurance multiplier based on percentage
+  const insuranceMultiplier = React.useMemo(() => {
+    const percentage = insurance_percentage;
+    if (percentage === 0) return 1;
+    if (percentage === 25) return 1.5;
+    if (percentage === 50) return 2;
+    if (percentage === 75) return 2.5;
+    if (percentage === 100) return 3;
+    return 1;
+  }, [insurance_percentage]);
+
+  // Calculate final cost with insurance
+  const finalCost = React.useMemo(() => {
+    if (!baseCost || baseCost.error) return null;
+    
+    return {
+      totalPriceUSD: baseCost.totalPriceUSD * insuranceMultiplier,
+      totalPriceIQD: baseCost.totalPriceIQD * insuranceMultiplier,
+      pricePerKgUSD: baseCost.pricePerKgUSD * insuranceMultiplier,
+      error: null
+    };
+  }, [baseCost, insuranceMultiplier]);
 
   const onSubmit = async (values: z.infer<typeof orderSchema>) => {
     if (!user) {
@@ -84,19 +104,30 @@ const PlaceOrder = () => {
           from_country: values.from_country,
           to_country: values.to_country,
           description: values.description,
-          is_valuable: values.is_valuable,
-          insurance_requested: values.insurance_requested && values.is_valuable,
+          is_valuable: values.insurance_percentage > 0,
+          insurance_requested: values.insurance_percentage > 0,
+          insurance_percentage: values.insurance_percentage,
           status: 'new',
         });
 
       if (error) throw error;
 
       showSuccess(t('orderSubmittedSuccess'));
-      // Redirect to My Requests page instead of General Orders
       navigate('/my-requests');
     } catch (error: any) {
       console.error('Error placing order:', error);
       showError(t('orderSubmittedError'));
+    }
+  };
+
+  const getInsuranceLabel = (percentage: number) => {
+    switch (percentage) {
+      case 0: return t('noInsurance');
+      case 25: return t('insurance25');
+      case 50: return t('insurance50');
+      case 75: return t('insurance75');
+      case 100: return t('insurance100');
+      default: return `${percentage}%`;
     }
   };
 
@@ -190,31 +221,68 @@ const PlaceOrder = () => {
                   )}
                 />
                 
-                {estimatedCost && estimatedCost.totalPriceUSD > 0 && (
+                <FormField
+                  control={form.control}
+                  name="insurance_percentage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('insuranceCoverage')} ({getInsuranceLabel(field.value)})
+                      </FormLabel>
+                      <FormControl>
+                        <Slider
+                          min={0}
+                          max={100}
+                          step={25}
+                          value={[field.value]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          className="mt-4"
+                        />
+                      </FormControl>
+                      <div className="text-sm text-muted-foreground mt-2">
+                        {field.value === 0 && t('noExtraCost')}
+                        {field.value === 25 && t('insurance25Description')}
+                        {field.value === 50 && t('insurance50Description')}
+                        {field.value === 75 && t('insurance75Description')}
+                        {field.value === 100 && t('insurance100Description')}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {finalCost && finalCost.totalPriceUSD > 0 && (
                   <Card className="bg-primary/10 dark:bg-primary/20 p-6 rounded-lg space-y-4 border border-primary/20">
                     <h3 className="text-xl font-semibold text-center text-primary">{t('estimatedCost')}</h3>
-                    {estimatedCost.error ? (
-                      <p className="text-red-500 text-center font-medium">{estimatedCost.error}</p>
+                    {finalCost.error ? (
+                      <p className="text-red-500 text-center font-medium">{finalCost.error}</p>
                     ) : (
                       <>
                         <div className="text-center">
                           <span className="text-sm text-muted-foreground">Total (USD)</span>
                           <p className="text-4xl font-bold text-foreground flex items-center justify-center">
                             <DollarSign className="h-7 w-7 mr-1 text-primary" />
-                            {estimatedCost.totalPriceUSD.toFixed(2)}
+                            {finalCost.totalPriceUSD.toFixed(2)}
                           </p>
                         </div>
                         <div className="text-center">
                           <span className="text-sm text-muted-foreground">Total (IQD)</span>
                           <p className="text-2xl font-bold text-foreground">
-                            {estimatedCost.totalPriceIQD.toLocaleString('en-US')} IQD
+                            {finalCost.totalPriceIQD.toLocaleString('en-US')} IQD
                           </p>
                         </div>
                         <div className="text-center border-t pt-2 mt-2">
                           <span className="text-xs text-muted-foreground">
-                            {t('pricePerKg')}: ${estimatedCost.pricePerKgUSD.toFixed(2)}
+                            {t('pricePerKg')}: ${finalCost.pricePerKgUSD.toFixed(2)}
                           </span>
                         </div>
+                        {insurance_percentage > 0 && (
+                          <div className="text-center">
+                            <span className="text-xs text-muted-foreground">
+                              {t('includesInsurance')} ({insurance_percentage}%)
+                            </span>
+                          </div>
+                        )}
                       </>
                     )}
                     <p className="text-xs text-center text-muted-foreground pt-4">
@@ -240,48 +308,6 @@ const PlaceOrder = () => {
                     </FormItem>
                   )}
                 />
-                
-                <FormField
-                  control={form.control}
-                  name="is_valuable"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          {t('isValuable')}
-                        </FormLabel>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                {is_valuable && (
-                  <FormField
-                    control={form.control}
-                    name="insurance_requested"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-blue-50 dark:bg-blue-900/20">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">
-                            {t('insuranceOption')}
-                          </FormLabel>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                )}
                 
                 <Button type="submit" className="w-full">
                   {t('submit')}
