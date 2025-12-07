@@ -251,6 +251,10 @@ const PlaceOrder = () => {
                   )}
                 />
                 
+                <div className="text-sm text-muted-foreground p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                  {t('insuranceExplanation')}
+                </div>
+                
                 {finalCost && finalCost.totalPriceUSD > 0 && (
                   <Card className="bg-primary/10 dark:bg-primary/20 p-6 rounded-lg space-y-4 border border-primary/20">
                     <h3 className="text-xl font-semibold text-center text-primary">{t('estimatedCost')}</h3>

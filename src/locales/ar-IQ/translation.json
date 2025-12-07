@@ -361,5 +361,6 @@
   "insurance50Description": "+100% من سعر الشحن (ضعف السعر)",
   "insurance75Description": "+150% من سعر الشحن",
   "insurance100Description": "+200% من سعر الشحن (ثلاثة أضعاف السعر)",
-  "includesInsurance": "يشمل التأمين"
+  "includesInsurance": "يشمل التأمين",
+  "insuranceExplanation": "اختر التأمين فقط إذا كانت بضائعك ذات قيمة عالية. ستحصل على المبلغ المحدد إذا لم تصل بضائعك إلى الوجهة المطلوبة."
 }
