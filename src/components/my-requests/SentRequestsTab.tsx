@@ -6,15 +6,33 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Send, Pencil, Camera } from 'lucide-react';
+import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Send, Pencil, Camera, PackageCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
+import RequestTracking from '@/components/RequestTracking';
+import { RequestTrackingStatus } from '@/lib/tracking-stages';
 
 interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
-interface Request { id: string; trip_id: string; sender_id: string; description: string; weight_kg: number; destination_city: string; receiver_details: string; handover_location: string | null; status: 'pending' | 'accepted' | 'rejected'; created_at: string; trips: Trip; cancellation_requested_by: string | null; proposed_changes: { weight_kg: number; description: string } | null; sender_item_photos: string[] | null; }
+interface Request { 
+  id: string; 
+  trip_id: string; 
+  sender_id: string; 
+  description: string; 
+  weight_kg: number; 
+  destination_city: string; 
+  receiver_details: string; 
+  handover_location: string | null; 
+  status: 'pending' | 'accepted' | 'rejected'; 
+  created_at: string; 
+  trips: Trip; 
+  cancellation_requested_by: string | null; 
+  proposed_changes: { weight_kg: number; description: string } | null; 
+  sender_item_photos: string[] | null; 
+  tracking_status: RequestTrackingStatus;
+}
 interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
 
 interface SentRequestsTabProps {
@@ -24,9 +42,11 @@ interface SentRequestsTabProps {
   onCancelAcceptedRequest: (request: Request) => void;
   onEditRequest: (request: Request) => void;
   onUploadSenderPhotos: (request: Request) => void;
+  onTrackingUpdate: (request: Request, newStatus: RequestTrackingStatus) => void;
+  trackingUpdateMutation: any;
 }
 
-export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onUploadSenderPhotos }: SentRequestsTabProps) => {
+export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onUploadSenderPhotos, onTrackingUpdate, trackingUpdateMutation }: SentRequestsTabProps) => {
   const { t } = useTranslation();
 
   const { data: tripRequests, isLoading: isLoadingTripRequests, error: tripRequestsError } = useQuery({
@@ -118,6 +138,14 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     const isOtherUserRequester = cancellationRequested && cancellationRequested !== user?.id;
     
     const hasSenderPhotos = req.sender_item_photos && req.sender_item_photos.length > 0;
+    const currentTrackingStatus = req.tracking_status;
+    
+    // Sender controls the final 'completed' status
+    let senderAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
+
+    if (currentTrackingStatus === 'delivered') {
+      senderAction = { status: 'completed', tKey: 'markAsCompleted', icon: PackageCheck };
+    }
 
     return (
       <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
@@ -134,15 +162,31 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         <div className="flex flex-wrap gap-2 pt-2">
           <Link to={`/chat/${req.id}`}><Button size="sm" variant="outline"><MessageSquare className="mr-2 h-4 w-4" />{t('viewChat')}</Button></Link>
           
-          <Button 
-            size="sm" 
-            variant="secondary"
-            onClick={() => onUploadSenderPhotos(req)}
-          >
-            <Camera className="mr-2 h-4 w-4" />
-            {hasSenderPhotos ? t('updateItemPhotos') : t('uploadItemPhotos')}
-          </Button>
+          {/* Sender Photo Upload Button */}
+          {currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded' ? (
+            <Button 
+              size="sm" 
+              variant="secondary"
+              onClick={() => onUploadSenderPhotos(req)}
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              {hasSenderPhotos ? t('updateItemPhotos') : t('uploadItemPhotos')}
+            </Button>
+          ) : null}
           
+          {/* Sender Tracking Button (Complete) */}
+          {senderAction && (
+            <Button 
+              size="sm" 
+              onClick={() => onTrackingUpdate(req, senderAction!.status)}
+              disabled={trackingUpdateMutation.isPending}
+            >
+              <senderAction.icon className="mr-2 h-4 w-4" />
+              {t(senderAction.tKey)}
+            </Button>
+          )}
+          
+          {/* Cancellation Button */}
           <Button size="sm" variant="destructive" onClick={() => onCancelAcceptedRequest(req)} disabled={isCurrentUserRequester}><Trash2 className="mr-2 h-4 w-4" />{isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}</Button>
         </div>
       </div>
@@ -154,6 +198,9 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     const req = item as RequestWithProfiles;
     const travelerName = req.traveler_profile?.first_name || t('traveler');
     const hasPendingChanges = !!req.proposed_changes;
+    const isRejected = req.status === 'rejected';
+    const currentTrackingStatus = req.tracking_status;
+
     return (
       <Card key={req.id} className={getStatusCardClass(req.status)}>
         <CardHeader>
@@ -164,6 +211,16 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
           {(req.status === 'pending' || req.status === 'rejected') && <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><Plane className="h-4 w-4" /><CountryFlag country={req.trips?.from_country || 'N/A'} showName /> → <CountryFlag country={req.trips?.to_country || 'N/A'} showName />{req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}</div>}
         </CardHeader>
         <CardContent>
+          {/* Tracking component for accepted/rejected requests */}
+          {req.status !== 'pending' && (
+            <div className="pt-2">
+              <RequestTracking 
+                currentStatus={currentTrackingStatus} 
+                isRejected={isRejected} 
+              />
+            </div>
+          )}
+          
           {(req.status === 'pending' || req.status === 'rejected') && (
             <div className="space-y-3">
               <div><p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p><p className="text-sm text-muted-foreground pl-6">{req.description}</p></div>

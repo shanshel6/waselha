@@ -50,6 +50,7 @@ const Chat = () => {
           receiver_details,
           sender_item_photos,
           traveler_inspection_photos,
+          tracking_status,
           created_at,
           trips(
             id,
@@ -241,6 +242,8 @@ const Chat = () => {
   const tripDate = requestData.trips?.trip_date ? format(new Date(requestData.trips.trip_date), 'PPP') : t('dateNotSet');
   const priceDisplay = priceCalculation ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)` : t('calculatingPrice');
   const weightDisplay = requestData.weight_kg ? `${requestData.weight_kg} kg` : t('weightNotSet');
+  
+  const trackingStatus = requestData.tracking_status;
 
   return (
     <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
@@ -289,6 +292,14 @@ const Chat = () => {
               </div>
             )}
           </div>
+          
+          {/* Tracking Status */}
+          {requestData.status === 'accepted' && (
+            <div className="mt-2 p-2 bg-primary/10 rounded-md text-sm font-medium text-primary flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              {t('trackingStatus')}: {t(trackingStatus)}
+            </div>
+          )}
         </CardHeader>
         
         <CardContent className="flex-grow overflow-y-auto p-4 flex flex-col">

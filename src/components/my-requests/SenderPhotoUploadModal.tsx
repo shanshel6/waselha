@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Camera, Package } from 'lucide-react';
 import PhotoUpload from '@/components/PhotoUpload';
+import { RequestTrackingStatus } from '@/lib/tracking-stages';
 
 interface SenderPhotoUploadModalProps {
   request: any;
@@ -40,19 +41,27 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
     mutationFn: async (photos: string[]) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
       
+      const updateData: { sender_item_photos: string[], tracking_status?: RequestTrackingStatus } = {
+        sender_item_photos: photos
+      };
+      
+      // Only update tracking status if it's currently 'item_accepted' (i.e., first time uploading photos after acceptance)
+      if (request.tracking_status === 'item_accepted') {
+        updateData.tracking_status = 'sender_photos_uploaded';
+      }
+      
       const { error } = await supabase
         .from('requests')
-        .update({
-          sender_item_photos: photos
-        })
+        .update(updateData)
         .eq('id', request.id)
-        .eq('sender_id', user.id); // Ensure only sender can update their photos
+        .eq('sender_id', user.id);
 
       if (error) throw error;
     },
     onSuccess: () => {
       showSuccess(t('photosUploadedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['sentTripRequests', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests', user?.id] }); // Invalidate received requests too
       onOpenChange(false);
     },
     onError: (err: any) => {

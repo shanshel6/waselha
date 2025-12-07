@@ -7,11 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2, Inbox, ArrowRight, Camera, Shield } from 'lucide-react';
+import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2, Inbox, ArrowRight, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
+import RequestTracking from '@/components/RequestTracking';
+import { RequestTrackingStatus, getNextStage } from '@/lib/tracking-stages';
 
 interface Profile {
   id: string;
@@ -48,6 +50,8 @@ interface Request {
   cancellation_requested_by: string | null;
   proposed_changes: { weight_kg: number; description: string } | null;
   traveler_inspection_photos?: string[] | null;
+  sender_item_photos?: string[] | null;
+  tracking_status: RequestTrackingStatus;
 }
 
 interface RequestWithProfiles extends Request {
@@ -63,6 +67,8 @@ interface ReceivedRequestsTabProps {
   onReviewChanges: (args: { request: Request; accept: boolean }) => void;
   reviewChangesMutation: any;
   onUploadInspectionPhotos?: (request: Request) => void;
+  onTrackingUpdate: (request: Request, newStatus: RequestTrackingStatus) => void;
+  trackingUpdateMutation: any;
 }
 
 export const ReceivedRequestsTab = ({ 
@@ -72,7 +78,9 @@ export const ReceivedRequestsTab = ({
   onCancelAcceptedRequest,
   onReviewChanges,
   reviewChangesMutation,
-  onUploadInspectionPhotos
+  onUploadInspectionPhotos,
+  onTrackingUpdate,
+  trackingUpdateMutation
 }: ReceivedRequestsTabProps) => {
   const { t } = useTranslation();
 
@@ -191,6 +199,19 @@ export const ReceivedRequestsTab = ({
     const isCurrentUserRequester = cancellationRequested === user?.id;
     const isOtherUserRequester = cancellationRequested && cancellationRequested !== user?.id;
 
+    const currentTrackingStatus = req.tracking_status;
+    
+    // Traveler controls the flow from item_accepted up to delivered
+    let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
+
+    if (currentTrackingStatus === 'item_accepted' && req.sender_item_photos && req.sender_item_photos.length > 0) {
+      // Traveler needs to inspect next. Button handled below.
+    } else if (currentTrackingStatus === 'traveler_inspection_complete') {
+      travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
+    } else if (currentTrackingStatus === 'traveler_on_the_way') {
+      travelerAction = { status: 'delivered', tKey: 'markAsDelivered', icon: MapPin };
+    }
+
     return (
       <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
         <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
@@ -241,7 +262,7 @@ export const ReceivedRequestsTab = ({
           </div>
         )}
         
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-2">
           <Link to={`/chat/${req.id}`}>
             <Button size="sm" variant="outline">
               <MessageSquare className="mr-2 h-4 w-4" />
@@ -249,19 +270,31 @@ export const ReceivedRequestsTab = ({
             </Button>
           </Link>
           
-          {onUploadInspectionPhotos && (
+          {/* Inspection Button */}
+          {currentTrackingStatus === 'sender_photos_uploaded' && onUploadInspectionPhotos && (
             <Button 
               size="sm" 
               variant="secondary"
               onClick={() => onUploadInspectionPhotos(req)}
             >
-              <Camera className="mr-2 h-4 w-4" />
-              {req.traveler_inspection_photos && req.traveler_inspection_photos.length > 0
-                ? t('updateInspectionPhotos')
-                : t('uploadInspectionPhotos')}
+              <Shield className="mr-2 h-4 w-4" />
+              {t('completeInspection')}
             </Button>
           )}
           
+          {/* Traveler Tracking Buttons */}
+          {travelerAction && (
+            <Button 
+              size="sm" 
+              onClick={() => onTrackingUpdate(req, travelerAction!.status)}
+              disabled={trackingUpdateMutation.isPending}
+            >
+              <travelerAction.icon className="mr-2 h-4 w-4" />
+              {t(travelerAction.tKey)}
+            </Button>
+          )}
+          
+          {/* Cancellation Button */}
           <Button 
             size="sm" 
             variant="destructive" 
@@ -373,6 +406,9 @@ export const ReceivedRequestsTab = ({
             const fromCountry = req.trips?.from_country || 'N/A';
             const toCountry = req.trips?.to_country || 'N/A';
             const tripDate = req.trips?.trip_date;
+            
+            const isRejected = req.status === 'rejected';
+            const currentTrackingStatus = req.tracking_status;
 
             return (
               <Card key={req.id} className={getStatusCardClass(req.status)}>
@@ -399,6 +435,16 @@ export const ReceivedRequestsTab = ({
                 </CardHeader>
                 
                 <CardContent className="space-y-3">
+                  {/* Tracking component for accepted/rejected requests */}
+                  {req.status !== 'pending' && (
+                    <div className="pt-2">
+                      <RequestTracking 
+                        currentStatus={currentTrackingStatus} 
+                        isRejected={isRejected} 
+                      />
+                    </div>
+                  )}
+                  
                   {hasPendingChanges ? renderProposedChanges(req) : (
                     <>
                       {(req.status === 'pending' || req.status === 'rejected') && (

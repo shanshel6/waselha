@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import PhotoUpload from '@/components/PhotoUpload';
+import { RequestTrackingStatus } from '@/lib/tracking-stages';
 
 interface TravelerInspectionModalProps {
   request: any;
@@ -26,8 +27,14 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { user } = useSession();
-  const [inspectionPhotos, setInspectionPhotos] = useState<string[]>([]);
+  const [inspectionPhotos, setInspectionPhotos] = useState<string[]>(request?.traveler_inspection_photos || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  React.useEffect(() => {
+    if (request) {
+      setInspectionPhotos(request.traveler_inspection_photos || []);
+    }
+  }, [request]);
 
   const handleCompleteInspection = async () => {
     if (!user) {
@@ -43,11 +50,18 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      const updateData: { traveler_inspection_photos: string[], tracking_status?: RequestTrackingStatus } = {
+        traveler_inspection_photos: inspectionPhotos
+      };
+      
+      // Only update tracking status if it's currently 'sender_photos_uploaded'
+      if (request.tracking_status === 'sender_photos_uploaded') {
+        updateData.tracking_status = 'traveler_inspection_complete';
+      }
+      
       const { error } = await supabase
         .from('requests')
-        .update({
-          traveler_inspection_photos: inspectionPhotos
-        })
+        .update(updateData)
         .eq('id', request.id);
 
       if (error) throw error;
@@ -89,6 +103,7 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
             maxPhotos={3}
             minPhotos={1}
             label={t('inspectionPhotos')}
+            existingPhotos={inspectionPhotos}
           />
           
           <Button 

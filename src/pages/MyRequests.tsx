@@ -15,6 +15,7 @@ import { SentRequestsTab } from '@/components/my-requests/SentRequestsTab';
 import { EditRequestModal } from '@/components/my-requests/EditRequestModal';
 import TravelerInspectionModal from '@/components/my-requests/TravelerInspectionModal';
 import SenderPhotoUploadModal from '@/components/my-requests/SenderPhotoUploadModal';
+import { RequestTrackingStatus, TRACKING_STAGES } from '@/lib/tracking-stages';
 
 // Define types for our data
 interface Trip {
@@ -46,6 +47,7 @@ interface Request {
   proposed_changes: { weight_kg: number; description: string } | null;
   traveler_inspection_photos?: string[] | null;
   sender_item_photos?: string[] | null;
+  tracking_status: RequestTrackingStatus;
 }
 
 interface Profile {
@@ -68,6 +70,7 @@ const MyRequests = () => {
   const [requestToEdit, setRequestToEdit] = useState<Request | null>(null);
   const [requestForInspection, setRequestForInspection] = useState<Request | null>(null);
   const [requestForSenderPhotos, setRequestForSenderPhotos] = useState<Request | null>(null);
+  const [requestForTrackingUpdate, setRequestForTrackingUpdate] = useState<{ request: Request; newStatus: RequestTrackingStatus } | null>(null);
 
   // --- Mutations ---
   const updateRequestMutation = useMutation({
@@ -83,11 +86,20 @@ const MyRequests = () => {
         });
 
         if (error) throw error;
+        
+        // Manually update tracking status for accepted requests
+        const { error: trackingError } = await supabase
+          .from('requests')
+          .update({ tracking_status: 'item_accepted' as RequestTrackingStatus })
+          .eq('id', request.id);
+          
+        if (trackingError) console.error("Failed to set tracking status to item_accepted:", trackingError);
+
       } else {
-        // For 'rejected' status
+        // For 'rejected' status, also set tracking status to waiting_approval (or keep it, as it's the default for pending/rejected)
         const { error: updateError } = await supabase
           .from('requests')
-          .update({ status })
+          .update({ status, tracking_status: 'waiting_approval' as RequestTrackingStatus })
           .eq('id', request.id);
 
         if (updateError) throw updateError;
@@ -200,6 +212,47 @@ const MyRequests = () => {
     },
     onError: (err: any) => showError(err.message),
   });
+  
+  const trackingUpdateMutation = useMutation({
+    mutationFn: async ({ request, newStatus }: { request: Request; newStatus: RequestTrackingStatus }) => {
+      if (!user) throw new Error(t('mustBeLoggedIn'));
+      
+      // Validation based on current status
+      const currentStage = TRACKING_STAGES.find(s => s.key === request.tracking_status);
+      const nextStage = TRACKING_STAGES.find(s => s.key === newStatus);
+      
+      if (!currentStage || !nextStage || nextStage.order !== currentStage.order + 1) {
+        throw new Error(t('cannotUpdateTrackingStatus'));
+      }
+      
+      // Specific checks before moving forward
+      if (newStatus === 'traveler_on_the_way' && (!request.traveler_inspection_photos || request.traveler_inspection_photos.length === 0)) {
+        throw new Error(t('inspectionRequiredBeforeTravel'));
+      }
+      if (newStatus === 'completed' && request.tracking_status !== 'delivered') {
+        throw new Error(t('deliveryRequiredBeforeComplete'));
+      }
+
+      const { error } = await supabase
+        .from('requests')
+        .update({ tracking_status: newStatus })
+        .eq('id', request.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { newStatus }) => {
+      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      
+      let successMessageKey = 'requestUpdatedSuccess';
+      if (newStatus === 'traveler_on_the_way') successMessageKey = 'travelerOnTheWaySuccess';
+      if (newStatus === 'delivered') successMessageKey = 'deliveredSuccess';
+      if (newStatus === 'completed') successMessageKey = 'completedSuccess';
+      
+      showSuccess(t(successMessageKey));
+    },
+    onError: (err: any) => showError(err.message),
+  });
 
   const handleUpdateRequest = (request: any, status: string) => {
     updateRequestMutation.mutate({ request, status });
@@ -235,10 +288,39 @@ const MyRequests = () => {
   const handleSenderPhotoUpload = (request: Request) => {
     setRequestForSenderPhotos(request);
   };
+  
+  const handleTrackingUpdate = (request: Request, newStatus: RequestTrackingStatus) => {
+    setRequestForTrackingUpdate({ request, newStatus });
+  };
+
+  const handleConfirmTrackingUpdate = () => {
+    if (requestForTrackingUpdate) {
+      trackingUpdateMutation.mutate(requestForTrackingUpdate);
+      setRequestForTrackingUpdate(null);
+    }
+  };
 
   const isAcceptedRequest = itemToCancel?.type === 'accepted_trip_request';
   const isFirstPartyRequesting = isAcceptedRequest && itemToCancel.cancellation_requested_by && itemToCancel.cancellation_requested_by === user?.id;
   const isSecondPartyConfirming = isAcceptedRequest && itemToCancel.cancellation_requested_by && itemToCancel.cancellation_requested_by !== user?.id;
+  
+  const trackingUpdateStatus = requestForTrackingUpdate?.newStatus;
+  const trackingUpdateStage = trackingUpdateStatus ? TRACKING_STAGES.find(s => s.key === trackingUpdateStatus) : null;
+  
+  // Determine dialog content based on status
+  let dialogTitleKey = '';
+  let dialogDescriptionKey = '';
+  
+  if (trackingUpdateStatus === 'traveler_on_the_way') {
+    dialogTitleKey = 'confirmOnTheWayTitle';
+    dialogDescriptionKey = 'confirmOnTheWayDescription';
+  } else if (trackingUpdateStatus === 'delivered') {
+    dialogTitleKey = 'confirmDeliveredTitle';
+    dialogDescriptionKey = 'confirmDeliveredDescription';
+  } else if (trackingUpdateStatus === 'completed') {
+    dialogTitleKey = 'confirmCompletedTitle';
+    dialogDescriptionKey = 'confirmCompletedDescription';
+  }
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -259,6 +341,8 @@ const MyRequests = () => {
             onReviewChanges={reviewChangesMutation.mutate}
             reviewChangesMutation={reviewChangesMutation}
             onUploadInspectionPhotos={setRequestForInspection}
+            onTrackingUpdate={handleTrackingUpdate}
+            trackingUpdateMutation={trackingUpdateMutation}
           />
         </TabsContent>
         
@@ -270,6 +354,8 @@ const MyRequests = () => {
             onCancelAcceptedRequest={handleAcceptedRequestCancel}
             onEditRequest={setRequestToEdit}
             onUploadSenderPhotos={handleSenderPhotoUpload}
+            onTrackingUpdate={handleTrackingUpdate}
+            trackingUpdateMutation={trackingUpdateMutation}
           />
         </TabsContent>
       </Tabs>
@@ -306,6 +392,27 @@ const MyRequests = () => {
                     ? t('confirmCancellation') 
                     : t('requestCancellation'))
                 : t('confirmDelete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Tracking Update Confirmation Dialog */}
+      <AlertDialog open={!!requestForTrackingUpdate} onOpenChange={(open) => !open && setRequestForTrackingUpdate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(dialogTitleKey)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(dialogDescriptionKey)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRequestForTrackingUpdate(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmTrackingUpdate} 
+              disabled={trackingUpdateMutation.isPending}
+            >
+              {t(trackingUpdateStage?.tKey || 'confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
