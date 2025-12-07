@@ -269,7 +269,7 @@ export const ReceivedRequestsTab = ({
         )}
 
         <div className="flex flex-wrap gap-2 pt-2">
-          {/* 1. Chat Button */}
+          {/* 1. Chat Button (Always visible if accepted) */}
           <Link to={`/chat/${req.id}`}>
             <Button size="sm" variant="outline">
               <MessageSquare className="mr-2 h-4 w-4" />
@@ -301,7 +301,7 @@ export const ReceivedRequestsTab = ({
             </Button>
           )}
           
-          {/* 4. Cancellation Button */}
+          {/* 4. Cancellation Button (Always visible if accepted) */}
           <Button 
             size="sm" 
             variant="destructive" 
@@ -402,14 +402,12 @@ export const ReceivedRequestsTab = ({
           receivedRequests.map(req => {
             const priceCalculation = calculatePriceDisplay(req);
             
-            // FIX: Calculate full sender name
             const senderFirstName = req.sender_profile?.first_name || '';
             const senderLastName = req.sender_profile?.last_name || '';
             const senderName = `${senderFirstName} ${senderLastName}`.trim() || t('user');
             
             const hasPendingChanges = !!req.proposed_changes;
             
-            // Trip details for display
             const fromCountry = req.trips?.from_country || 'N/A';
             const toCountry = req.trips?.to_country || 'N/A';
             const tripDate = req.trips?.trip_date;
@@ -441,7 +439,7 @@ export const ReceivedRequestsTab = ({
                 </CardHeader>
                 
                 <CardContent className="space-y-3">
-                  {/* Tracking component for accepted/rejected requests */}
+                  {/* 1. Tracking component for accepted/rejected requests */}
                   {req.status !== 'pending' && (
                     <div className="pt-2">
                       <RequestTracking 
@@ -451,67 +449,67 @@ export const ReceivedRequestsTab = ({
                     </div>
                   )}
                   
-                  {hasPendingChanges ? renderProposedChanges(req) : (
-                    <>
-                      {/* Details block for all statuses */}
-                      <div className="space-y-3">
-                        <div>
-                          <p className="font-semibold text-sm flex items-center gap-2">
-                            <Package className="h-4 w-4" />
-                            {t('packageContents')}:
-                          </p>
-                          <p className="text-sm text-muted-foreground pl-6">
-                            {req.description}
-                          </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                          <p className="flex items-center gap-2">
-                            <Weight className="h-4 w-4" />
-                            <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg
-                          </p>
-                          <p className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <p className="font-semibold text-sm flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            {t('receiverDetails')}:
-                          </p>
-                          <p className="text-sm text-muted-foreground pl-6">
-                            {req.receiver_details}
-                          </p>
-                        </div>
-                        
-                        {renderPriceBlock(priceCalculation)}
-                      </div>
-                      
-                      {/* Accepted Details (Contact Info & Tracking Actions) */}
-                      {renderAcceptedDetails(req)}
-                      
-                      {req.status === 'pending' && (
-                        <div className="flex gap-2 pt-2">
-                          <Button 
-                            size="sm" 
-                            onClick={() => onUpdateRequest(req, 'accepted')}
-                            disabled={updateRequestMutation.isPending}
-                          >
-                            {t('accept')}
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
-                            onClick={() => onUpdateRequest(req, 'rejected')}
-                            disabled={updateRequestMutation.isPending}
-                          >
-                            {t('reject')}
-                          </Button>
-                        </div>
-                      )}
-                    </>
+                  {/* 2. Proposed Changes Review (If accepted and changes exist) */}
+                  {req.status === 'accepted' && hasPendingChanges && renderProposedChanges(req)}
+
+                  {/* 3. Core Details Block (Always visible) */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-semibold text-sm flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        {t('packageContents')}:
+                      </p>
+                      <p className="text-sm text-muted-foreground pl-6">
+                        {req.description}
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <p className="flex items-center gap-2">
+                        <Weight className="h-4 w-4" />
+                        <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg
+                      </p>
+                      <p className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="font-semibold text-sm flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {t('receiverDetails')}:
+                      </p>
+                      <p className="text-sm text-muted-foreground pl-6">
+                        {req.receiver_details}
+                      </p>
+                    </div>
+                    
+                    {renderPriceBlock(priceCalculation)}
+                  </div>
+                  
+                  {/* 4. Accepted Details (Contact Info & Tracking Actions) - Always visible if accepted */}
+                  {req.status === 'accepted' && renderAcceptedDetails(req)}
+                  
+                  {/* 5. Pending Actions (Accept/Reject) - Only visible if pending */}
+                  {req.status === 'pending' && (
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => onUpdateRequest(req, 'accepted')}
+                        disabled={updateRequestMutation.isPending}
+                      >
+                        {t('accept')}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        onClick={() => onUpdateRequest(req, 'rejected')}
+                        disabled={updateRequestMutation.isPending}
+                      >
+                        {t('reject')}
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
