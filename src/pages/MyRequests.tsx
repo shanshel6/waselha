@@ -14,6 +14,7 @@ import { ReceivedRequestsTab } from '@/components/my-requests/ReceivedRequestsTa
 import { SentRequestsTab } from '@/components/my-requests/SentRequestsTab';
 import { EditRequestModal } from '@/components/my-requests/EditRequestModal';
 import TravelerInspectionModal from '@/components/my-requests/TravelerInspectionModal';
+import SenderPhotoUploadModal from '@/components/my-requests/SenderPhotoUploadModal';
 
 // Define types for our data
 interface Trip {
@@ -44,6 +45,7 @@ interface Request {
   cancellation_requested_by: string | null;
   proposed_changes: { weight_kg: number; description: string } | null;
   traveler_inspection_photos?: string[] | null;
+  sender_item_photos?: string[] | null;
 }
 
 interface Profile {
@@ -65,6 +67,7 @@ const MyRequests = () => {
   const [itemToCancel, setItemToCancel] = useState<any | null>(null);
   const [requestToEdit, setRequestToEdit] = useState<Request | null>(null);
   const [requestForInspection, setRequestForInspection] = useState<Request | null>(null);
+  const [requestForSenderPhotos, setRequestForSenderPhotos] = useState<Request | null>(null);
 
   // --- Mutations ---
   const updateRequestMutation = useMutation({
@@ -228,6 +231,10 @@ const MyRequests = () => {
     queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
     queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
   };
+  
+  const handleSenderPhotoUpload = (request: Request) => {
+    setRequestForSenderPhotos(request);
+  };
 
   const isAcceptedRequest = itemToCancel?.type === 'accepted_trip_request';
   const isFirstPartyRequesting = isAcceptedRequest && itemToCancel.cancellation_requested_by && itemToCancel.cancellation_requested_by === user?.id;
@@ -262,6 +269,7 @@ const MyRequests = () => {
             deleteRequestMutation={deleteRequestMutation} 
             onCancelAcceptedRequest={handleAcceptedRequestCancel}
             onEditRequest={setRequestToEdit}
+            onUploadSenderPhotos={handleSenderPhotoUpload}
           />
         </TabsContent>
       </Tabs>
@@ -319,6 +327,14 @@ const MyRequests = () => {
           isOpen={!!requestForInspection}
           onOpenChange={() => setRequestForInspection(null)}
           onInspectionComplete={handleInspectionComplete}
+        />
+      )}
+      
+      {requestForSenderPhotos && (
+        <SenderPhotoUploadModal
+          request={requestForSenderPhotos}
+          isOpen={!!requestForSenderPhotos}
+          onOpenChange={() => setRequestForSenderPhotos(null)}
         />
       )}
     </div>

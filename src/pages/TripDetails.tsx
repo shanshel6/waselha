@@ -22,7 +22,7 @@ import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-re
 import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
-import PhotoUpload from '@/components/PhotoUpload';
+// Removed PhotoUpload import
 
 // Define the expected structure of the fetched trip data
 interface TripData {
@@ -46,7 +46,7 @@ const TripDetails = () => {
   const navigate = useNavigate();
   const { user } = useSession();
   const [isForbiddenItemsDialogOpen, setIsForbiddenItemsDialogOpen] = useState(false);
-  const [senderItemPhotos, setSenderItemPhotos] = useState<string[]>([]);
+  // Removed senderItemPhotos state
 
   const { data: trip, isLoading, error } = useQuery<TripData, Error>({
     queryKey: ['trip', tripId],
@@ -73,7 +73,7 @@ const TripDetails = () => {
       description: z.string().min(10, { message: t("descriptionTooShort") }),
       destination_city: z.string().min(2, { message: t("requiredField") }),
       receiver_details: z.string().min(10, { message: t("requiredField") }),
-      sender_item_photos: z.array(z.string()).min(2, { message: t("atLeastTwoPhotos") }).max(4, { message: t("maxFourPhotos") }),
+      // sender_item_photos removed
     });
   }, [trip, t]);
 
@@ -84,7 +84,7 @@ const TripDetails = () => {
       description: "",
       destination_city: "",
       receiver_details: "",
-      sender_item_photos: [],
+      // sender_item_photos removed
     },
   });
 
@@ -120,7 +120,7 @@ const TripDetails = () => {
         trip_id: trip.id,
         sender_id: user.id,
         ...values,
-        sender_item_photos: senderItemPhotos,
+        // sender_item_photos is now null by default in DB
       });
 
     if (error) {
@@ -319,33 +319,12 @@ const TripDetails = () => {
                     )}
                   />
                   
-                  <div className="space-y-4">
-                    <div className="font-medium">{t('itemPhotos')}</div>
-                    <PhotoUpload
-                      onPhotosChange={setSenderItemPhotos}
-                      maxPhotos={4}
-                      minPhotos={2}
-                      label={t('senderItemPhotos')}
-                      existingPhotos={senderItemPhotos}
-                    />
-                    <input 
-                      type="hidden" 
-                      {...form.register('sender_item_photos', { 
-                        value: senderItemPhotos 
-                      })} 
-                    />
-                    {form.formState.errors.sender_item_photos && (
-                      <p className="text-sm text-destructive">
-                        {form.formState.errors.sender_item_photos.message}
-                      </p>
-                    )}
-                  </div>
+                  {/* Removed Photo Upload Section */}
                   
                   <Button 
                     type="button" 
                     onClick={handleRequestSubmit} 
                     className="w-full"
-                    disabled={senderItemPhotos.length < 2}
                   >
                     {t('sendRequest')}
                   </Button>

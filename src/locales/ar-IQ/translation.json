@@ -238,8 +238,6 @@
   "proposedChanges": "التغييرات المقترحة من المرسل",
   "acceptChanges": "قبول التغييرات",
   "rejectChanges": "رفض التغييرات",
-  "changesAcceptedSuccess": "تم قبول التغييرات بنجاح.",
-  "changesRejectedSuccess": "تم رفض التغييرات.",
   "editOrder": "تعديل الطلب العام",
   "editClaimedOrderDescription": "سيتم إرسال تغييراتك إلى المسافر للموافقة عليها.",
   "editNewOrderDescription": "سيتم تحديث طلبك على الفور.",
@@ -280,11 +278,11 @@
   "inspectionCompleteSuccess": "اكتمل فحص الطرد بنجاح!",
   "inspectionCompleteError": "حدث خطأ أثناء إكمال الفحص",
   "inspectionInstructions": "قبل تسليم الطرد، يجب عليك فتحه وفحصه للتأكد من محتوياته. قم بتحميل صور للفحص كدليل على التحقق.",
-  "senderItemPhotosDescription": "هذه الصور تم تحميلها من قبل المرسل كدليل على محتويات الطرد قبل التسليم",
+  "senderItemPhotosDescription": "يرجى تحميل صور واضحة للطرد ومحتوياته قبل تسليمه للمسافر.",
   "beforeHandoff": "قبل التسليم",
   "noSenderItemPhotos": "لم يقم المرسل بتحميل أي صور للطرد",
   "travelerInspection": "فحص الطرد من قبل المسافر",
-  "inspectionDescription": "يرجى فتح الطرد وفحص محتوياته، ثم تحميل صور للفحص كدليل على التحقق",
+  "inspectionDescription": "يرجى فتح الطرد وفحص محتوياته، ثم تحميل صور للفحص كدليل على التحقق قبل إكمال العملية",
   "completeInspection": "إكمال الفحص",
   "completingInspection": "جاري إكمال الفحص...",
   "inspectionRequired": "فحص الطرد مطلوب",
@@ -292,5 +290,9 @@
   "safetyVerification": "التحقق من الأمان",
   "safetyVerificationDescription": "يرجى تحميل صور للبضائع للتحقق من الأمان بعد قبول الطلب",
   "uploadInspectionPhotos": "تحميل صور الفحص",
-  "updateInspectionPhotos": "تحديث صور الفحص"
+  "updateInspectionPhotos": "تحديث صور الفحص",
+  "photosUploadedSuccess": "تم تحميل صور الطرد بنجاح.",
+  "photosUploadedError": "فشل تحميل صور الطرد.",
+  "uploadItemPhotos": "تحميل صور الطرد",
+  "updateItemPhotos": "تحديث صور الطرد"
 }
