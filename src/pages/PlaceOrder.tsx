@@ -16,13 +16,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import CountryFlag from '@/components/CountryFlag';
+import { calculateShippingCost } from '@/lib/pricing';
 
 const orderSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
   to_country: z.string().min(1, { message: "requiredField" }),
   description: z.string().min(10, { message: "descriptionTooShort" }),
+  weight_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }),
   is_valuable: z.boolean().default(false),
   insurance_requested: z.boolean().default(false),
 });
@@ -38,12 +41,13 @@ const PlaceOrder = () => {
       from_country: "Iraq",
       to_country: "",
       description: "",
+      weight_kg: 1,
       is_valuable: false,
       insurance_requested: false,
     },
   });
 
-  const { from_country, to_country, is_valuable } = form.watch();
+  const { from_country, to_country, is_valuable, weight_kg } = form.watch();
 
   // Auto-manage Iraq selection
   React.useEffect(() => {
@@ -55,6 +59,14 @@ const PlaceOrder = () => {
       form.setValue("to_country", "");
     }
   }, [from_country, to_country, form]);
+
+  // Calculate estimated cost
+  const estimatedCost = React.useMemo(() => {
+    if (from_country && to_country) {
+      return calculateShippingCost(from_country, to_country, weight_kg);
+    }
+    return null;
+  }, [from_country, to_country, weight_kg]);
 
   const onSubmit = async (values: z.infer<typeof orderSchema>) => {
     if (!user) {
@@ -153,6 +165,50 @@ const PlaceOrder = () => {
                 <div className="text-sm text-muted-foreground p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
                   {t('eitherFromOrToIraq')}
                 </div>
+                
+                <FormField
+                  control={form.control}
+                  name="weight_kg"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('packageWeightKg')} ({field.value} kg)
+                      </FormLabel>
+                      <FormControl>
+                        <Slider
+                          min={1}
+                          max={50}
+                          step={1}
+                          value={[field.value]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          className="mt-4"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {estimatedCost && estimatedCost.totalPriceUSD > 0 && (
+                  <Card className="bg-primary/10 p-4">
+                    <CardTitle className="text-lg mb-2 text-center">
+                      {t('estimatedCost')}
+                    </CardTitle>
+                    <div className="flex justify-around text-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total (USD)</p>
+                        <p className="font-bold text-xl">${estimatedCost.totalPriceUSD.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total (IQD)</p>
+                        <p className="font-bold text-xl">{estimatedCost.totalPriceIQD.toLocaleString('en-US')}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      {t('pricePerKg')}: ${estimatedCost.pricePerKgUSD.toFixed(2)}
+                    </p>
+                  </Card>
+                )}
                 
                 <FormField
                   control={form.control}
