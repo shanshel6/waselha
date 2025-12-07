@@ -181,12 +181,6 @@ const Trips = () => {
               {t('addTrip')}
             </Button>
           </Link>
-          <Link to="/place-order">
-            <Button size="lg" variant="secondary">
-              <Package className="mr-2 h-5 w-5" />
-              {t('placeOrderLink')}
-            </Button>
-          </Link>
         </div>
       </Card>
     );
@@ -206,12 +200,7 @@ const Trips = () => {
               {t('addTrip')}
             </Button>
           </Link>
-          <Link to="/place-order">
-            <Button size="lg" variant="secondary">
-              <Package className="mr-2 h-5 w-5" />
-              {t('placeOrderLink')}
-            </Button>
-          </Link>
+          {/* Removed the top Place Order button */}
         </div>
       </div>
       
@@ -283,14 +272,11 @@ const Trips = () => {
       
       {renderContent()}
       
-      {/* New section at the bottom */}
+      {/* New section at the bottom - now using the descriptive text */}
       <div className="mt-12 text-center">
-        <p className="text-lg font-semibold mb-4">{t('cantFindTrip')}</p>
-        <Link to="/place-order">
-          <Button size="lg" variant="secondary">
-            <Package className="mr-2 h-5 w-5" />
-            {t('placeOrderLink')}
-          </Button>
+        <Link to="/place-order" className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors underline underline-offset-4 flex items-center justify-center gap-2">
+          <Package className="h-5 w-5" />
+          {t('cantFindTrip')} {t('placeOrderLink')}
         </Link>
       </div>
     </div>
