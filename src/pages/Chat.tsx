@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import { Send, Plane, User, MessageSquare, DollarSign, Phone, AlertTriangle } from 'lucide-react';
+import { Send, Plane, User, MessageSquare, DollarSign, Phone, AlertTriangle, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 
@@ -30,67 +30,7 @@ const Chat = () => {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Query 1: Get the request details (traveler, sender, trip)
-  const { data: requestData, isLoading: isLoadingRequest, error: requestError } = useQuery({
-    queryKey: ['requestDetailsForChat', requestId],
-    queryFn: async () => {
-      if (!requestId || !user) return null;
-
-      // First get the request with all related data
-      const { data: request, error: requestError } = await supabase
-        .from('requests')
-        .select(`
-          id,
-          trip_id,
-          sender_id,
-          description,
-          weight_kg,
-          status,
-          destination_city,
-          receiver_details,
-          sender_item_photos,
-          traveler_inspection_photos,
-          tracking_status,
-          created_at,
-          trips(
-            id,
-            from_country,
-            to_country,
-            trip_date,
-            user_id,
-            free_kg
-          )
-        `)
-        .eq('id', requestId)
-        .single();
-
-      if (requestError) throw requestError;
-      if (!request) return null;
-
-      // Get sender profile
-      const { data: senderProfile } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, phone')
-        .eq('id', request.sender_id)
-        .single();
-
-      // Get traveler profile
-      const { data: travelerProfile } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, phone')
-        .eq('id', request.trips?.user_id)
-        .single();
-
-      return {
-        ...request,
-        sender: senderProfile,
-        traveler: travelerProfile,
-      };
-    },
-    enabled: !!requestId && !!user,
-  });
-
-  // Query 2: Get the chat ID
+  // Query 1: Get the chat ID
   const { data: chatData, isLoading: isLoadingChat } = useQuery({
     queryKey: ['chatIdForRequest', requestId],
     queryFn: async () => {
@@ -98,7 +38,7 @@ const Chat = () => {
 
       const { data, error } = await supabase
         .from('chats')
-        .select('id')
+        .select('id, request_id')
         .eq('request_id', requestId)
         .single();
 
@@ -109,6 +49,70 @@ const Chat = () => {
   });
 
   const chatId = chatData?.id;
+
+  // Query 2: Determine if it's a regular request or a general order, and fetch details
+  const { data: itemDetails, isLoading: isLoadingDetails, error: detailsError } = useQuery({
+    queryKey: ['itemDetailsForChat', requestId],
+    queryFn: async () => {
+      if (!requestId || !user) return null;
+
+      // Try fetching as a regular trip request
+      const { data: request } = await supabase
+        .from('requests')
+        .select(`
+          id, trip_id, sender_id, description, weight_kg, status, destination_city, receiver_details, tracking_status, created_at,
+          trips( id, from_country, to_country, trip_date, user_id, free_kg )
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (request) {
+        const isCurrentUserSender = user.id === request.sender_id;
+        const otherUserId = isCurrentUserSender ? request.trips?.user_id : request.sender_id;
+        
+        const { data: otherProfile } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, phone')
+          .eq('id', otherUserId)
+          .single();
+
+        return {
+          type: 'trip_request',
+          data: request,
+          isCurrentUserSender,
+          otherUser: otherProfile,
+        };
+      }
+
+      // Try fetching as a claimed general order
+      const { data: order } = await supabase
+        .from('general_orders')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (order) {
+        const isCurrentUserSender = user.id === order.user_id;
+        const otherUserId = isCurrentUserSender ? order.claimed_by : order.user_id;
+        
+        const { data: otherProfile } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, phone')
+          .eq('id', otherUserId)
+          .single();
+
+        return {
+          type: 'general_order',
+          data: order,
+          isCurrentUserSender,
+          otherUser: otherProfile,
+        };
+      }
+
+      return null;
+    },
+    enabled: !!requestId && !!user,
+  });
 
   // Query 3: Get messages, only enabled when we have a chat ID
   const { data: messages, isLoading: isLoadingMessages } = useQuery({
@@ -128,15 +132,19 @@ const Chat = () => {
     enabled: !!chatId,
   });
 
-  // Calculate Price
+  // Calculate Price (only for trip requests)
   const priceCalculation = useMemo(() => {
-    if (!requestData || !requestData.trips) return null;
-    return calculateShippingCost(
-      requestData.trips.from_country,
-      requestData.trips.to_country,
-      requestData.weight_kg
-    );
-  }, [requestData]);
+    if (itemDetails?.type === 'trip_request') {
+      const request = itemDetails.data;
+      if (!request.trips) return null;
+      return calculateShippingCost(
+        request.trips.from_country,
+        request.trips.to_country,
+        request.weight_kg
+      );
+    }
+    return null;
+  }, [itemDetails]);
 
   // Real-time subscription for new messages
   useEffect(() => {
@@ -218,32 +226,47 @@ const Chat = () => {
     },
   });
 
-  const isLoading = isLoadingRequest || isLoadingChat;
+  const isLoading = isLoadingDetails || isLoadingChat;
 
   if (isLoading) {
     return <div className="container p-4 flex items-center justify-center h-full">{t('loading')}...</div>;
   }
 
-  if (requestError) {
-    return <div className="container p-4 flex items-center justify-center h-full text-red-500">Error loading chat data: {requestError.message}</div>;
+  if (detailsError) {
+    return <div className="container p-4 flex items-center justify-center h-full text-red-500">Error loading chat data: {detailsError.message}</div>;
   }
 
-  if (!requestData) {
+  if (!itemDetails) {
     return <div className="container p-4 flex items-center justify-center h-full">{t('tripDetailsNotAvailable')}</div>;
   }
 
-  // Determine the other user based on who is viewing the chat
-  const isCurrentUserSender = user?.id === requestData.sender_id;
-  const otherUser = isCurrentUserSender ? requestData.traveler : requestData.sender;
-  const otherUserName = otherUser ? `${otherUser.first_name || ''} ${otherUser.last_name || ''}`.trim() || t('user') : t('user');
-  const otherUserPhone = otherUser?.phone || t('noPhoneProvided');
-
-  const tripRoute = requestData.trips ? `${requestData.trips.from_country || t('undefined')} → ${requestData.trips.to_country || t('undefined')}` : t('tripDetailsNotAvailable');
-  const tripDate = requestData.trips?.trip_date ? format(new Date(requestData.trips.trip_date), 'PPP') : t('dateNotSet');
-  const priceDisplay = priceCalculation ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)` : t('calculatingPrice');
-  const weightDisplay = requestData.weight_kg ? `${requestData.weight_kg} kg` : t('weightNotSet');
+  const otherUserName = itemDetails.otherUser ? `${itemDetails.otherUser.first_name || ''} ${itemDetails.otherUser.last_name || ''}`.trim() || t('user') : t('user');
+  const otherUserPhone = itemDetails.otherUser?.phone || t('noPhoneProvided');
   
-  const trackingStatus = requestData.tracking_status;
+  const isTripRequest = itemDetails.type === 'trip_request';
+  const request = isTripRequest ? itemDetails.data : null;
+  const order = !isTripRequest ? itemDetails.data : null;
+
+  const tripRoute = isTripRequest && request?.trips 
+    ? `${request.trips.from_country || t('undefined')} → ${request.trips.to_country || t('undefined')}` 
+    : order 
+    ? `${order.from_country || t('undefined')} → ${order.to_country || t('undefined')}`
+    : t('tripDetailsNotAvailable');
+    
+  const tripDate = isTripRequest && request?.trips?.trip_date 
+    ? format(new Date(request.trips.trip_date), 'PPP') 
+    : t('dateNotSet');
+    
+  const priceDisplay = priceCalculation 
+    ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)` 
+    : t('calculatingPrice');
+    
+  const weightDisplay = isTripRequest && request?.weight_kg 
+    ? `${request.weight_kg} kg` 
+    : t('weightNotSet');
+    
+  const trackingStatus = isTripRequest ? request?.tracking_status : order?.status;
+  const isAccepted = isTripRequest ? request?.status === 'accepted' : order?.status === 'claimed';
 
   return (
     <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
@@ -257,7 +280,7 @@ const Chat = () => {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-primary/80" />
-              <span>{otherUserName}</span>
+              <span>{otherUserName} ({itemDetails.isCurrentUserSender ? t('sender') : t('traveler')})</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-primary/80" />
@@ -265,36 +288,38 @@ const Chat = () => {
             </div>
           </div>
           
-          {/* Trip Details */}
+          {/* Item Details */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
             <div className="flex items-center gap-2">
               <Plane className="h-4 w-4 text-primary/80" />
               <span>{tripRoute}</span>
-              {requestData.trips?.trip_date && (
+              {isTripRequest && request?.trips?.trip_date && (
                 <span>({tripDate})</span>
               )}
             </div>
             <div className="flex items-center gap-2 font-semibold">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              <span>{t('packageWeightKg')}: {weightDisplay}</span>
+              <Package className="h-4 w-4 text-primary/80" />
+              <span>{isTripRequest ? t('packageWeightKg') : t('generalOrderTitle')}: {weightDisplay}</span>
             </div>
           </div>
           
-          {/* Price Details */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2 pt-2 border-t">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">{t('estimatedCost')}:</span>
-              <span>{priceDisplay}</span>
-            </div>
-            {priceCalculation && (
-              <div className="flex items-center gap-2 text-xs">
-                <span>{t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}</span>
+          {/* Price Details (Only for Trip Requests) */}
+          {isTripRequest && (
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2 pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">{t('estimatedCost')}:</span>
+                <span>{priceDisplay}</span>
               </div>
-            )}
-          </div>
+              {priceCalculation && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span>{t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Tracking Status */}
-          {requestData.status === 'accepted' && (
+          {isAccepted && (
             <div className="mt-2 p-2 bg-primary/10 rounded-md text-sm font-medium text-primary flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               {t('trackingStatus')}: {t(trackingStatus)}
