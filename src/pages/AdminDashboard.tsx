@@ -116,8 +116,8 @@ const AdminDashboard = () => {
             last_name
           )
         `)
-        .or('is_approved.eq.true,admin_review_notes.not.is.null')
-        .order('created_at', { ascending: true });
+        .not('admin_review_notes', 'is', null)
+        .order('created_at', { ascending: false });
 
       if (error) throw new Error(error.message);
       return data as Trip[];
@@ -177,7 +177,7 @@ const AdminDashboard = () => {
         .from('trips')
         .update({ 
           is_approved: false, 
-          admin_review_notes: notes || null 
+          admin_review_notes: notes || 'تم رفض الرحلة' 
         })
         .eq('id', tripId);
 
