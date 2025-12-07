@@ -79,7 +79,8 @@ const PlaceOrder = () => {
       if (error) throw error;
 
       showSuccess(t('orderSubmittedSuccess'));
-      navigate('/general-orders');
+      // Redirect to My Requests page instead of General Orders
+      navigate('/my-requests');
     } catch (error: any) {
       console.error('Error placing order:', error);
       showError(t('orderSubmittedError'));
