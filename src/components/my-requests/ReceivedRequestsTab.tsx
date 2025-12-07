@@ -136,25 +136,34 @@ const CompactRequestCard: React.FC<{
   // Traveler actions for accepted requests
   let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
   let secondaryAction: { tKey: string, onClick: () => void, icon: React.ElementType } | null = null;
+  let inspectionRequired = false;
 
   if (reqWithProfiles.status === 'accepted') {
-    if (currentTrackingStatus === 'item_accepted' && (!reqWithProfiles.sender_item_photos || reqWithProfiles.sender_item_photos.length === 0)) {
-      // Waiting for sender photos
-    } else if (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') {
-      secondaryAction = { 
-        tKey: reqWithProfiles.traveler_inspection_photos?.length ? 'updateInspectionPhotos' : 'uploadInspectionPhotos', 
-        onClick: () => onUploadInspectionPhotos && onUploadInspectionPhotos(reqWithProfiles), 
-        icon: Camera 
-      };
-      if (currentTrackingStatus === 'sender_photos_uploaded' && (!reqWithProfiles.traveler_inspection_photos || reqWithProfiles.traveler_inspection_photos.length === 0)) {
-        // Inspection required before moving to next stage
-      } else if (currentTrackingStatus === 'sender_photos_uploaded' || currentTrackingStatus === 'traveler_inspection_complete') {
-        travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
+    const hasSenderPhotos = reqWithProfiles.sender_item_photos && reqWithProfiles.sender_item_photos.length > 0;
+    const hasInspectionPhotos = reqWithProfiles.traveler_inspection_photos && reqWithProfiles.traveler_inspection_photos.length > 0;
+
+    if (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') {
+      if (hasSenderPhotos) {
+        // Sender uploaded photos, traveler needs to inspect
+        inspectionRequired = true;
+        secondaryAction = { 
+          tKey: hasInspectionPhotos ? 'updateInspectionPhotos' : 'uploadInspectionPhotos', 
+          onClick: () => onUploadInspectionPhotos && onUploadInspectionPhotos(reqWithProfiles), 
+          icon: Camera 
+        };
+      } else {
+        // Waiting for sender to upload photos
       }
+    } 
+    
+    if (currentTrackingStatus === 'traveler_inspection_complete') {
+      // Inspection complete, ready to travel
+      travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
     } else if (currentTrackingStatus === 'traveler_on_the_way') {
+      // Ready to deliver
       travelerAction = { status: 'delivered', tKey: 'markAsDelivered', icon: MapPin };
     } else if (currentTrackingStatus === 'delivered') {
-      // Waiting for sender to mark as completed
+      // Waiting for sender to complete
     }
   }
 
