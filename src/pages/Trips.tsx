@@ -282,6 +282,17 @@ const Trips = () => {
       </Card>
       
       {renderContent()}
+      
+      {/* New section at the bottom */}
+      <div className="mt-12 text-center">
+        <p className="text-lg font-semibold mb-4">{t('cantFindTrip')}</p>
+        <Link to="/place-order">
+          <Button size="lg" variant="secondary">
+            <Package className="mr-2 h-5 w-5" />
+            {t('placeOrderLink')}
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };
