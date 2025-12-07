@@ -16,7 +16,7 @@ import MyRequests from "./pages/MyRequests";
 import Chat from "./pages/Chat";
 import CompleteProfile from "./pages/CompleteProfile";
 import AdminDashboard from "./pages/AdminDashboard";
-import MyTripsPage from "./pages/MyTripsPage"; // Import new page
+import MyTripsPage from "./pages/MyTripsPage";
 import Navbar from "./components/Navbar";
 import ChatNotificationListener from "./components/ChatNotificationListener";
 import ProfileCheckWrapper from "./components/ProfileCheckWrapper";
@@ -37,7 +37,7 @@ const MainLayout = () => (
         <Route path="/verification" element={<Verification />} />
         <Route path="/add-trip" element={<AddTrip />} />
         <Route path="/my-requests" element={<MyRequests />} />
-        <Route path="/my-flights" element={<MyTripsPage />} /> {/* New Route */}
+        <Route path="/my-flights" element={<MyTripsPage />} />
         <Route path="/chat/:requestId" element={<Chat />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="*" element={<NotFound />} />
@@ -56,7 +56,7 @@ const AppContent = () => {
       </div>
     );
   }
-
+  
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

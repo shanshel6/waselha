@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -21,6 +22,7 @@ import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-re
 import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
+import PhotoUpload from '@/components/PhotoUpload';
 
 // Define the expected structure of the fetched trip data
 interface TripData {
@@ -44,6 +46,7 @@ const TripDetails = () => {
   const navigate = useNavigate();
   const { user } = useSession();
   const [isForbiddenItemsDialogOpen, setIsForbiddenItemsDialogOpen] = useState(false);
+  const [senderItemPhotos, setSenderItemPhotos] = useState<string[]>([]);
 
   const { data: trip, isLoading, error } = useQuery<TripData, Error>({
     queryKey: ['trip', tripId],
@@ -63,10 +66,14 @@ const TripDetails = () => {
   const requestSchema = useMemo(() => {
     const maxWeight = trip ? Number(trip.free_kg) : 50;
     return z.object({
-      weight_kg: z.coerce.number().min(1, { message: t("positiveNumber") }).max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
+      weight_kg: z.coerce
+        .number()
+        .min(1, { message: t("positiveNumber") })
+        .max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
       description: z.string().min(10, { message: t("descriptionTooShort") }),
       destination_city: z.string().min(2, { message: t("requiredField") }),
       receiver_details: z.string().min(10, { message: t("requiredField") }),
+      sender_item_photos: z.array(z.string()).min(2, { message: t("atLeastTwoPhotos") }).max(4, { message: t("maxFourPhotos") }),
     });
   }, [trip, t]);
 
@@ -77,10 +84,12 @@ const TripDetails = () => {
       description: "",
       destination_city: "",
       receiver_details: "",
+      sender_item_photos: [],
     },
   });
 
   const weight = form.watch('weight_kg');
+
   const priceCalculation = useMemo(() => {
     if (!trip) return null;
     return calculateShippingCost(trip.from_country, trip.to_country, weight || 0);
@@ -99,15 +108,21 @@ const TripDetails = () => {
       navigate('/login');
       return;
     }
+
     if (!trip) {
       showError(t('tripNotFound'));
       return;
     }
-    const { error } = await supabase.from('requests').insert({
-      trip_id: trip.id,
-      sender_id: user.id,
-      ...values,
-    });
+
+    const { error } = await supabase
+      .from('requests')
+      .insert({
+        trip_id: trip.id,
+        sender_id: user.id,
+        ...values,
+        sender_item_photos: senderItemPhotos,
+      });
+
     if (error) {
       console.error("Error creating request:", error);
       showError(t('requestFailed'));
@@ -117,9 +132,23 @@ const TripDetails = () => {
     }
   });
 
-  if (isLoading) return <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (error) return <div className="container p-4 text-red-500">{t('errorLoadingTrips')}: {error.message}</div>;
-  if (!trip) return <div className="container p-4">{t('tripNotFound')}</div>;
+  if (isLoading) return (
+    <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+
+  if (error) return (
+    <div className="container p-4 text-red-500">
+      {t('errorLoadingTrips')}: {error.message}
+    </div>
+  );
+
+  if (!trip) return (
+    <div className="container p-4">
+      {t('tripNotFound')}
+    </div>
+  );
 
   const isOwner = user?.id === trip.user_id;
   const travelerName = `${trip.profiles?.first_name || 'N/A'} ${trip.profiles?.last_name || ''}`.trim();
@@ -141,37 +170,197 @@ const TripDetails = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="flex items-center gap-2"><User className="h-5 w-5 text-gray-500" />{t('traveler')}: {travelerName}</p>
-            <p className="flex items-center gap-2"><Package className="h-5 w-5 text-gray-500" />{t('availableWeight')}: {trip.free_kg} kg</p>
-            {trip.traveler_location && (<p className="flex items-center gap-2"><MapPin className="h-5 w-5 text-gray-500" />{t('travelerLocation')}: {trip.traveler_location}</p>)}
-            {trip.notes && (<div className="pt-2"><h3 className="font-semibold flex items-center gap-2 mb-2"><Info className="h-5 w-5 text-gray-500" />{t('notesFromTraveler')}</h3><p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-md border">{trip.notes}</p></div>)}
+            <p className="flex items-center gap-2">
+              <User className="h-5 w-5 text-gray-500" />
+              {t('traveler')}: {travelerName}
+            </p>
+            <p className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-gray-500" />
+              {t('availableWeight')}: {trip.free_kg} kg
+            </p>
+            {trip.traveler_location && (
+              <p className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-gray-500" />
+                {t('travelerLocation')}: {trip.traveler_location}
+              </p>
+            )}
+            {trip.notes && (
+              <div className="pt-2">
+                <h3 className="font-semibold flex items-center gap-2 mb-2">
+                  <Info className="h-5 w-5 text-gray-500" />
+                  {t('notesFromTraveler')}
+                </h3>
+                <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-md border">
+                  {trip.notes}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
         
         {isOwner ? (
           <Card>
-            <CardHeader><CardTitle>{t('yourTrip')}</CardTitle><CardDescription>{t('yourTripDescription')}</CardDescription></CardHeader>
-            <CardContent><p className="text-muted-foreground">{t('cannotRequestOwnTrip')}</p><Link to="/my-requests"><Button className="w-full mt-4">{t('manageMyRequests')}</Button></Link></CardContent>
+            <CardHeader>
+              <CardTitle>{t('yourTrip')}</CardTitle>
+              <CardDescription>{t('yourTripDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">{t('cannotRequestOwnTrip')}</p>
+              <Link to="/my-requests">
+                <Button className="w-full mt-4">
+                  {t('manageMyRequests')}
+                </Button>
+              </Link>
+            </CardContent>
           </Card>
         ) : (
           <Card>
-            <CardHeader><CardTitle>{t('sendRequestToTraveler')}</CardTitle><CardDescription>{t('fillFormToSend')}</CardDescription></CardHeader>
+            <CardHeader>
+              <CardTitle>{t('sendRequestToTraveler')}</CardTitle>
+              <CardDescription>{t('fillFormToSend')}</CardDescription>
+            </CardHeader>
             <CardContent>
               <Form {...form}>
                 <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                  <FormField control={form.control} name="weight_kg" render={({ field }) => (<FormItem><FormLabel>{t('packageWeightKg')} ({field.value} kg)</FormLabel><FormControl><Slider min={1} max={trip.free_kg} step={1} value={[field.value]} onValueChange={(value) => field.onChange(value[0])} className="mt-4" /></FormControl><FormMessage /></FormItem>)} />
-                  {priceCalculation && priceCalculation.totalPriceUSD > 0 && (<Card className="bg-primary/10 p-4"><CardTitle className="text-lg mb-2 text-center">{t('estimatedCost')}</CardTitle><div className="flex justify-around text-center"><div><p className="text-sm text-muted-foreground">Total (USD)</p><p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p></div><div><p className="text-sm text-muted-foreground">Total (IQD)</p><p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p></div></div><p className="text-xs text-muted-foreground text-center mt-2">{t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}</p></Card>)}
-                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>{t('packageContents')}</FormLabel><FormControl><Textarea placeholder={t('packageContentsPlaceholder')} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="destination_city" render={({ field }) => (<FormItem><FormLabel>{t('destinationCity')}</FormLabel><FormControl><Input placeholder={t('destinationCityPlaceholder', { country: arabicCountries[trip.to_country] || trip.to_country })} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="receiver_details" render={({ field }) => (<FormItem><FormLabel>{t('receiverDetails')}</FormLabel><FormControl><Textarea placeholder={t('receiverDetailsPlaceholder')} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <Button type="button" onClick={handleRequestSubmit} className="w-full">{t('sendRequest')}</Button>
+                  <FormField
+                    control={form.control}
+                    name="weight_kg"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('packageWeightKg')} ({field.value} kg)
+                        </FormLabel>
+                        <FormControl>
+                          <Slider
+                            min={1}
+                            max={trip.free_kg}
+                            step={1}
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            className="mt-4"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {priceCalculation && priceCalculation.totalPriceUSD > 0 && (
+                    <Card className="bg-primary/10 p-4">
+                      <CardTitle className="text-lg mb-2 text-center">
+                        {t('estimatedCost')}
+                      </CardTitle>
+                      <div className="flex justify-around text-center">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total (USD)</p>
+                          <p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total (IQD)</p>
+                          <p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        {t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}
+                      </p>
+                    </Card>
+                  )}
+                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('packageContents')}</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder={t('packageContentsPlaceholder')} 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="destination_city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('destinationCity')}</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder={t('destinationCityPlaceholder', { 
+                              country: arabicCountries[trip.to_country] || trip.to_country 
+                            })} 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="receiver_details"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('receiverDetails')}</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder={t('receiverDetailsPlaceholder')} 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="space-y-4">
+                    <div className="font-medium">{t('itemPhotos')}</div>
+                    <PhotoUpload
+                      onPhotosChange={setSenderItemPhotos}
+                      maxPhotos={4}
+                      minPhotos={2}
+                      label={t('senderItemPhotos')}
+                      existingPhotos={senderItemPhotos}
+                    />
+                    <input 
+                      type="hidden" 
+                      {...form.register('sender_item_photos', { 
+                        value: senderItemPhotos 
+                      })} 
+                    />
+                    {form.formState.errors.sender_item_photos && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors.sender_item_photos.message}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    onClick={handleRequestSubmit} 
+                    className="w-full"
+                    disabled={senderItemPhotos.length < 2}
+                  >
+                    {t('sendRequest')}
+                  </Button>
                 </form>
               </Form>
             </CardContent>
           </Card>
         )}
       </div>
-      <ForbiddenItemsDialog isOpen={isForbiddenItemsDialogOpen} onOpenChange={setIsForbiddenItemsDialogOpen} onConfirm={onConfirmSubmit} />
+      
+      <ForbiddenItemsDialog 
+        isOpen={isForbiddenItemsDialogOpen} 
+        onOpenChange={setIsForbiddenItemsDialogOpen} 
+        onConfirm={onConfirmSubmit} 
+      />
     </div>
   );
 };

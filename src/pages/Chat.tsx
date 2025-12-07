@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useRef, useMemo } from 'react';
+
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,9 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import { Send, Plane, User, MessageSquare, DollarSign, Phone } from 'lucide-react';
+import { Send, Plane, User, MessageSquare, DollarSign, Phone, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
+import TravelerInspection from '@/components/TravelerInspection';
 
 const messageSchema = z.object({
   content: z.string().min(1),
@@ -28,13 +30,14 @@ const Chat = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showInspection, setShowInspection] = useState(false);
 
   // Query 1: Get the request details (traveler, sender, trip)
   const { data: requestData, isLoading: isLoadingRequest, error: requestError } = useQuery({
     queryKey: ['requestDetailsForChat', requestId],
     queryFn: async () => {
       if (!requestId || !user) return null;
-      
+
       // First get the request with all related data
       const { data: request, error: requestError } = await supabase
         .from('requests')
@@ -47,6 +50,8 @@ const Chat = () => {
           status,
           destination_city,
           receiver_details,
+          sender_item_photos,
+          traveler_inspection_photos,
           created_at,
           trips(
             id,
@@ -80,7 +85,7 @@ const Chat = () => {
       return {
         ...request,
         sender: senderProfile,
-        traveler: travelerProfile
+        traveler: travelerProfile,
       };
     },
     enabled: !!requestId && !!user,
@@ -91,11 +96,13 @@ const Chat = () => {
     queryKey: ['chatIdForRequest', requestId],
     queryFn: async () => {
       if (!requestId) return null;
+
       const { data, error } = await supabase
         .from('chats')
         .select('id')
         .eq('request_id', requestId)
         .single();
+
       if (error && error.code !== 'PGRST116') throw error;
       return data;
     },
@@ -109,11 +116,13 @@ const Chat = () => {
     queryKey: ['messages', chatId],
     queryFn: async () => {
       if (!chatId) return [];
+
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('chat_id', chatId)
         .order('created_at', { ascending: true });
+
       if (error) throw error;
       return data;
     },
@@ -133,6 +142,7 @@ const Chat = () => {
   // Real-time subscription for new messages
   useEffect(() => {
     if (!chatId) return;
+
     const channel = supabase
       .channel(`public:chat_messages:chat_id=eq.${chatId}`)
       .on(
@@ -148,6 +158,7 @@ const Chat = () => {
         }
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -168,6 +179,7 @@ const Chat = () => {
   const sendMessageMutation = useMutation({
     mutationFn: async (values: z.infer<typeof messageSchema>) => {
       if (!chatId || !user) throw new Error('Chat not ready');
+
       const { error } = await supabase
         .from('chat_messages')
         .insert({
@@ -175,11 +187,13 @@ const Chat = () => {
           sender_id: user.id,
           content: values.content,
         });
+
       if (error) throw error;
     },
     onMutate: async (newMessage) => {
       await queryClient.cancelQueries({ queryKey: ['messages', chatId] });
       const previousMessages = queryClient.getQueryData(['messages', chatId]);
+
       queryClient.setQueryData(['messages', chatId], (old: any[] | undefined) => {
         const optimisticMessage = {
           id: Date.now(),
@@ -190,6 +204,7 @@ const Chat = () => {
         };
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
+
       return { previousMessages };
     },
     onError: (err: any, newMessage, context) => {
@@ -222,28 +237,23 @@ const Chat = () => {
   const isCurrentUserSender = user?.id === requestData.sender_id;
   const isCurrentUserTraveler = user?.id === requestData.trips?.user_id;
   const otherUser = isCurrentUserSender ? requestData.traveler : requestData.sender;
-  
-  const otherUserName = otherUser 
-    ? `${otherUser.first_name || ''} ${otherUser.last_name || ''}`.trim() || t('user')
-    : t('user');
-    
+  const otherUserName = otherUser ? `${otherUser.first_name || ''} ${otherUser.last_name || ''}`.trim() || t('user') : t('user');
   const otherUserPhone = otherUser?.phone || t('noPhoneProvided');
-  
-  const tripRoute = requestData.trips 
-    ? `${requestData.trips.from_country || t('undefined')} → ${requestData.trips.to_country || t('undefined')}`
-    : t('tripDetailsNotAvailable');
-    
-  const tripDate = requestData.trips?.trip_date 
-    ? format(new Date(requestData.trips.trip_date), 'PPP')
-    : t('dateNotSet');
-    
-  const priceDisplay = priceCalculation 
-    ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)`
-    : t('calculatingPrice');
-    
-  const weightDisplay = requestData.weight_kg 
-    ? `${requestData.weight_kg} kg`
-    : t('weightNotSet');
+
+  const tripRoute = requestData.trips ? `${requestData.trips.from_country || t('undefined')} → ${requestData.trips.to_country || t('undefined')}` : t('tripDetailsNotAvailable');
+  const tripDate = requestData.trips?.trip_date ? format(new Date(requestData.trips.trip_date), 'PPP') : t('dateNotSet');
+  const priceDisplay = priceCalculation ? `$${priceCalculation.totalPriceUSD.toFixed(2)} (${priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD)` : t('calculatingPrice');
+  const weightDisplay = requestData.weight_kg ? `${requestData.weight_kg} kg` : t('weightNotSet');
+
+  // Check if traveler needs to do inspection
+  const needsInspection = isCurrentUserTraveler && 
+    requestData.status === 'accepted' && 
+    (!requestData.traveler_inspection_photos || requestData.traveler_inspection_photos.length === 0);
+
+  const handleInspectionComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['requestDetailsForChat', requestId] });
+    setShowInspection(false);
+  };
 
   return (
     <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
@@ -292,65 +302,103 @@ const Chat = () => {
               </div>
             )}
           </div>
+          
+          {/* Inspection Alert for Traveler */}
+          {needsInspection && (
+            <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-800 dark:text-yellow-300 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-yellow-800 dark:text-yellow-300">
+                  {t('inspectionRequired')}
+                </p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                  {t('inspectionRequiredDescription')}
+                </p>
+                <Button 
+                  onClick={() => setShowInspection(true)}
+                  className="mt-2"
+                  size="sm"
+                >
+                  {t('startInspection')}
+                </Button>
+              </div>
+            </div>
+          )}
         </CardHeader>
         
         <CardContent className="flex-grow overflow-y-auto p-4 flex flex-col">
-          {isLoadingMessages ? (
-            <div className="m-auto text-center text-muted-foreground">{t('loading')}...</div>
-          ) : messages && messages.length > 0 ? (
-            <div className="space-y-4 mt-auto">
-              {messages.map((message) => (
-                <div 
-                  key={message.id} 
-                  className={cn(
-                    'flex flex-col w-fit max-w-[75%]',
-                    message.sender_id === user?.id ? 'ml-auto items-end' : 'mr-auto items-start'
-                  )}
-                >
-                  <div 
-                    className={cn(
-                      'p-3 rounded-lg',
-                      message.sender_id === user?.id ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted rounded-bl-none'
-                    )}
-                  >
-                    <p className="break-words">{message.content}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground mt-1 px-1">
-                    {format(new Date(message.created_at), 'p')}
-                  </span>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
+          {showInspection ? (
+            <TravelerInspection 
+              requestId={requestData.id}
+              senderItemPhotos={requestData.sender_item_photos || []}
+              onInspectionComplete={handleInspectionComplete}
+            />
           ) : (
-            <div className="m-auto text-center text-muted-foreground">
-              <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-semibold">{t('noMessagesYet')}</p>
-              <p>{t('startTheConversation')}</p>
-            </div>
+            <>
+              {isLoadingMessages ? (
+                <div className="m-auto text-center text-muted-foreground">{t('loading')}...</div>
+              ) : messages && messages.length > 0 ? (
+                <div className="space-y-4 mt-auto">
+                  {messages.map((message) => (
+                    <div 
+                      key={message.id} 
+                      className={cn(
+                        'flex flex-col w-fit max-w-[75%]',
+                        message.sender_id === user?.id ? 'ml-auto items-end' : 'mr-auto items-start'
+                      )}
+                    >
+                      <div 
+                        className={cn(
+                          'p-3 rounded-lg',
+                          message.sender_id === user?.id ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted rounded-bl-none'
+                        )}
+                      >
+                        <p className="break-words">{message.content}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground mt-1 px-1">
+                        {format(new Date(message.created_at), 'p')}
+                      </span>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              ) : (
+                <div className="m-auto text-center text-muted-foreground">
+                  <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                  <p className="text-lg font-semibold">{t('noMessagesYet')}</p>
+                  <p>{t('startTheConversation')}</p>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
         
-        <div className="p-4 border-t bg-background">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit((d) => sendMessageMutation.mutate(d))} className="flex gap-2">
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem className="flex-grow">
-                    <FormControl>
-                      <Input placeholder={t('typeMessage')} {...field} autoComplete="off" />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" disabled={sendMessageMutation.isPending || !chatId}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </Form>
-        </div>
+        {!showInspection && (
+          <div className="p-4 border-t bg-background">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit((d) => sendMessageMutation.mutate(d))} className="flex gap-2">
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem className="flex-grow">
+                      <FormControl>
+                        <Input 
+                          placeholder={t('typeMessage')} 
+                          {...field} 
+                          autoComplete="off" 
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={sendMessageMutation.isPending || !chatId}>
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </Form>
+          </div>
+        )}
       </Card>
     </div>
   );
