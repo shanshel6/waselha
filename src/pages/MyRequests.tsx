@@ -42,6 +42,7 @@ interface Request {
   handover_location: string | null;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
+  updated_at: string | null; // Added updated_at
   trips: Trip;
   cancellation_requested_by: string | null;
   proposed_changes: { weight_kg: number; description: string } | null;

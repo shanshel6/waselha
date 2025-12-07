@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2, Inbox, ArrowRight, Shield, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns'; // Added differenceInDays
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
@@ -46,6 +46,7 @@ interface Request {
   handover_location: string | null;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
+  updated_at: string | null; // Added updated_at
   trips: Trip;
   cancellation_requested_by: string | null;
   proposed_changes: { weight_kg: number; description: string } | null;
@@ -202,6 +203,9 @@ export const ReceivedRequestsTab = ({
 
     const currentTrackingStatus = req.tracking_status;
     
+    const isCompleted = currentTrackingStatus === 'completed';
+    const isChatExpired = isCompleted && req.updated_at && differenceInDays(new Date(), new Date(req.updated_at)) >= 7;
+
     // Traveler controls the flow from item_accepted up to delivered
     let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
 
@@ -267,7 +271,7 @@ export const ReceivedRequestsTab = ({
         )}
         
         {/* Guidance for Traveler when waiting for Sender photos */}
-        {currentTrackingStatus === 'item_accepted' && (
+        {currentTrackingStatus === 'item_accepted' && !isCompleted && (
           <div className="p-3 rounded-md text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 flex items-center gap-2">
             <Camera className="h-4 w-4" />
             {t('safetyVerificationDescription')}
@@ -277,15 +281,17 @@ export const ReceivedRequestsTab = ({
         {/* ACTION BUTTONS BLOCK - GUARANTEED TO RENDER */}
         <div className="flex flex-wrap gap-2 pt-2">
           {/* 1. Chat Button (Always visible if accepted) */}
-          <Link to={`/chat/${req.id}`}>
-            <Button size="sm" variant="outline">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              {t('viewChat')}
-            </Button>
-          </Link>
+          {!isChatExpired && (
+            <Link to={`/chat/${req.id}`}>
+              <Button size="sm" variant="outline">
+                <MessageSquare className="mr-2 h-4 w-4" />
+                {t('viewChat')}
+              </Button>
+            </Link>
+          )}
           
           {/* 2. Inspection Button (Visible when Sender has uploaded photos) */}
-          {currentTrackingStatus === 'sender_photos_uploaded' && onUploadInspectionPhotos && (
+          {currentTrackingStatus === 'sender_photos_uploaded' && onUploadInspectionPhotos && !isCompleted && (
             <Button 
               size="sm" 
               variant="secondary"
@@ -297,7 +303,7 @@ export const ReceivedRequestsTab = ({
           )}
           
           {/* 3. Traveler Tracking Buttons */}
-          {travelerAction && (
+          {!isCompleted && travelerAction && (
             <Button 
               size="sm" 
               onClick={() => onTrackingUpdate(req, travelerAction!.status)}
@@ -309,15 +315,17 @@ export const ReceivedRequestsTab = ({
           )}
           
           {/* 4. Cancellation Button (Always visible if accepted) */}
-          <Button 
-            size="sm" 
-            variant="destructive" 
-            onClick={() => onCancelAcceptedRequest(req)}
-            disabled={isCurrentUserRequester}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
-          </Button>
+          {!isCompleted && (
+            <Button 
+              size="sm" 
+              variant="destructive" 
+              onClick={() => onCancelAcceptedRequest(req)}
+              disabled={isCurrentUserRequester}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
+            </Button>
+          )}
         </div>
       </div>
     );

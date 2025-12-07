@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Send, Pencil, Camera, PackageCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns'; // Added differenceInDays
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
@@ -27,6 +27,7 @@ interface Request {
   handover_location: string | null; 
   status: 'pending' | 'accepted' | 'rejected'; 
   created_at: string; 
+  updated_at: string | null; // Added updated_at
   trips: Trip; 
   cancellation_requested_by: string | null; 
   proposed_changes: { weight_kg: number; description: string } | null; 
@@ -140,6 +141,9 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     const hasSenderPhotos = req.sender_item_photos && req.sender_item_photos.length > 0;
     const currentTrackingStatus = req.tracking_status;
     
+    const isCompleted = currentTrackingStatus === 'completed';
+    const isChatExpired = isCompleted && req.updated_at && differenceInDays(new Date(), new Date(req.updated_at)) >= 7;
+
     // Sender controls the final 'completed' status
     let senderAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
 
@@ -160,10 +164,18 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         </div>
         {cancellationRequested && <div className={`p-3 rounded-md text-sm ${isCurrentUserRequester ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>{isCurrentUserRequester ? t('waitingForOtherPartyCancellation') : t('otherPartyRequestedCancellation')}</div>}
         <div className="flex flex-wrap gap-2 pt-2">
-          <Link to={`/chat/${req.id}`}><Button size="sm" variant="outline"><MessageSquare className="mr-2 h-4 w-4" />{t('viewChat')}</Button></Link>
+          {/* Chat Button */}
+          {!isChatExpired && (
+            <Link to={`/chat/${req.id}`}>
+              <Button size="sm" variant="outline">
+                <MessageSquare className="mr-2 h-4 w-4" />
+                {t('viewChat')}
+              </Button>
+            </Link>
+          )}
           
           {/* Sender Photo Upload Button */}
-          {currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded' ? (
+          {!isCompleted && (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') ? (
             <Button 
               size="sm" 
               variant="secondary"
@@ -175,7 +187,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
           ) : null}
           
           {/* Sender Tracking Button (Complete) */}
-          {senderAction && (
+          {!isCompleted && senderAction && (
             <Button 
               size="sm" 
               onClick={() => onTrackingUpdate(req, senderAction!.status)}
@@ -187,7 +199,12 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
           )}
           
           {/* Cancellation Button */}
-          <Button size="sm" variant="destructive" onClick={() => onCancelAcceptedRequest(req)} disabled={isCurrentUserRequester}><Trash2 className="mr-2 h-4 w-4" />{isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}</Button>
+          {!isCompleted && (
+            <Button size="sm" variant="destructive" onClick={() => onCancelAcceptedRequest(req)} disabled={isCurrentUserRequester}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
+            </Button>
+          )}
         </div>
       </div>
     );
