@@ -43,12 +43,12 @@ const GeneralOrders = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      // Fetch new orders (not claimed)
+      // Fetch new orders (not claimed) with profile data
       const { data: newOrders, error: newOrdersError } = await supabase
         .from('general_orders')
         .select(`
           *,
-          profiles (
+          profiles:user_id (
             first_name,
             last_name
           )
@@ -59,12 +59,12 @@ const GeneralOrders = () => {
 
       if (newOrdersError) throw new Error(newOrdersError.message);
 
-      // Fetch claimed orders (claimed by current user)
+      // Fetch claimed orders (claimed by current user) with profile data
       const { data: claimedOrders, error: claimedOrdersError } = await supabase
         .from('general_orders')
         .select(`
           *,
-          profiles (
+          profiles:user_id (
             first_name,
             last_name
           )
@@ -159,7 +159,7 @@ const GeneralOrders = () => {
       {activeTab === 'new' && (
         <div className="space-y-6">
           {newOrders.length > 0 ? (
-            newOrders.map((order) => (
+            newOrders.map((order: any) => (
               <Card key={order.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -220,7 +220,7 @@ const GeneralOrders = () => {
       {activeTab === 'claimed' && (
         <div className="space-y-6">
           {claimedOrders.length > 0 ? (
-            claimedOrders.map((order) => (
+            claimedOrders.map((order: any) => (
               <Card key={order.id} className="hover:shadow-md transition-shadow border-primary">
                 <CardHeader>
                   <div className="flex justify-between items-start">
