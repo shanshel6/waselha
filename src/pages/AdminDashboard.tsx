@@ -40,7 +40,7 @@ interface Trip {
   trip_date: string;
   free_kg: number;
   ticket_file_url: string | null;
-  is_approved: boolean;
+  is_approved: boolean | null;
   admin_review_notes: string | null;
   created_at: string;
   profiles: {
@@ -94,7 +94,7 @@ const AdminDashboard = () => {
             last_name
           )
         `)
-        .eq('is_approved', false)
+        .eq('is_approved', null)
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
@@ -149,7 +149,18 @@ const AdminDashboard = () => {
   // Mutation for rejecting trips
   const rejectTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
-      // Create notification for the user before deleting
+      // Update trip status to rejected instead of deleting
+      const { error } = await supabase
+        .from('trips')
+        .update({ 
+          is_approved: false, 
+          admin_review_notes: notes || null 
+        })
+        .eq('id', tripId);
+
+      if (error) throw error;
+
+      // Create notification for the user
       const { data: tripData } = await supabase
         .from('trips')
         .select('user_id, from_country, to_country')
@@ -168,14 +179,6 @@ const AdminDashboard = () => {
             link: '/my-flights'
           });
       }
-
-      // Delete the trip
-      const { error } = await supabase
-        .from('trips')
-        .delete()
-        .eq('id', tripId);
-
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });

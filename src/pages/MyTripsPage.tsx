@@ -26,7 +26,7 @@ interface Trip {
   traveler_location: string | null;
   notes: string | null;
   created_at: string;
-  is_approved: boolean;
+  is_approved: boolean | null;
   admin_review_notes: string | null;
   profiles: {
     first_name: string | null;
@@ -137,7 +137,7 @@ const MyTripsPage = () => {
       return (
         <Badge variant="secondary">
           <Clock className="h-3 w-3 mr-1" />
-          {t('pendingApproval')}
+          {t('waitingForConfirmation')}
         </Badge>
       );
     }
