@@ -1,20 +1,15 @@
 "use client";
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Plane, Package, Trash2, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck, Weight } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { format, differenceInDays } from 'date-fns';
+import { Card, CardContent } from '@/components/ui/card';
 import { calculateShippingCost } from '@/lib/pricing';
-import CountryFlag from '@/components/CountryFlag';
-import RequestTracking from '@/components/RequestTracking';
+import GeneralOrderCard from './GeneralOrderCard';
+import TripRequestCard from './TripRequestCard';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
-import { cn } from '@/lib/utils';
 
+// --- Type Definitions (Kept here as the source of truth for the tab) ---
 interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
 interface Request { 
@@ -51,7 +46,7 @@ interface GeneralOrder {
   created_at: string;
   updated_at: string;
   insurance_percentage: number;
-  weight_kg: number; // Added weight_kg
+  weight_kg: number;
   type: 'general_order';
 }
 
@@ -70,384 +65,7 @@ interface SentRequestsTabProps {
   trackingUpdateMutation: any;
 }
 
-const CompactSentRequestCard: React.FC<{ 
-  req: SentItem; 
-  priceCalculation: ReturnType<typeof calculateShippingCost> | null;
-  onCancelRequest: (request: any) => void;
-  deleteRequestMutation: any;
-  onCancelAcceptedRequest: (request: Request) => void;
-  onEditRequest: (request: Request) => void;
-  onUploadSenderPhotos: (request: Request) => void;
-  onTrackingUpdate: (request: Request, newStatus: RequestTrackingStatus) => void;
-  trackingUpdateMutation: any;
-  t: any;
-}> = ({ 
-  req, 
-  priceCalculation, 
-  onCancelRequest, 
-  deleteRequestMutation, 
-  onCancelAcceptedRequest,
-  onEditRequest,
-  onUploadSenderPhotos,
-  onTrackingUpdate,
-  trackingUpdateMutation,
-  t 
-}) => {
-  const [expanded, setExpanded] = useState(false);
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
-
-  const isGeneralOrder = (item: SentItem): item is GeneralOrder => item.type === 'general_order';
-  
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'accepted':
-      case 'claimed':
-      case 'matched': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
-      default: return <Clock className="h-4 w-4 text-yellow-500" />;
-    }
-  };
-
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'accepted':
-      case 'claimed':
-      case 'matched': return 'default';
-      case 'rejected': return 'destructive';
-      default: return 'secondary';
-    }
-  };
-
-  const getStatusCardClass = (status: string) => {
-    switch (status) {
-      case 'accepted':
-      case 'claimed': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
-      case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
-      case 'matched': return 'border-blue-500/30 bg-blue-50 dark:bg-blue-900/20';
-      default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
-    }
-  };
-
-  if (isGeneralOrder(req)) {
-    // --- General Order Card (Created by Sender) ---
-    const order = req;
-    const isMatched = order.status === 'matched' || order.status === 'claimed';
-    const travelerName = order.claimed_by ? t('traveler') : t('noTravelerYet');
-    
-    return (
-      <Card className={cn(getStatusCardClass(order.status), "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20")}>
-        <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {getStatusIcon(order.status)}
-              <div>
-                <CardTitle className="text-base font-semibold">
-                  {t('generalOrderTitle')}
-                </CardTitle>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Plane className="h-3 w-3" />
-                  <CountryFlag country={order.from_country} showName={false} />
-                  <span className="text-xs">→</span>
-                  <CountryFlag country={order.to_country} showName={false} />
-                  {` • ${format(new Date(order.created_at), 'MMM d')}`}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <Badge variant={getStatusVariant(order.status)} className="text-xs">
-                {t(`status${order.status.charAt(0).toUpperCase() + order.status.slice(1)}`)}
-              </Badge>
-              {isMatched && <span className="text-xs text-muted-foreground">{t('matched')}</span>}
-            </div>
-          </div>
-        </CardHeader>
-
-        {expanded && (
-          <CardContent className="p-4 pt-0 space-y-3">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2">
-                <Weight className="h-4 w-4 text-muted-foreground" />
-                <span>{order.weight_kg} kg</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span>{isMatched ? travelerName : t('waitingForMatch')}</span>
-              </div>
-            </div>
-
-            <div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-between text-xs" 
-                onClick={() => setDetailsExpanded(!detailsExpanded)}
-              >
-                <span>{t('viewDetails')}</span>
-                {detailsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </Button>
-              
-              {detailsExpanded && (
-                <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
-                  <div>
-                    <p className="font-medium">{t('packageContents')}:</p>
-                    <p className="text-muted-foreground">{order.description}</p>
-                  </div>
-                  {order.insurance_requested && (
-                    <div>
-                      <p className="font-medium text-blue-600">{t('insuranceCoverage')}:</p>
-                      <p className="text-muted-foreground">{order.insurance_percentage}%</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Actions for General Order */}
-            <div className="flex gap-2 pt-2">
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={() => onCancelRequest({ ...order, type: 'general_order' })} 
-                disabled={deleteRequestMutation.isPending || isMatched}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t('cancelRequest')}
-              </Button>
-              {/* Note: We don't have an edit general order page yet, so we disable the button if matched */}
-              <Button variant="secondary" size="sm" disabled={isMatched}>
-                <Pencil className="mr-2 h-4 w-4" />
-                {t('editOrder')}
-              </Button>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-    );
-  }
-
-  // --- Regular Trip Request Card (Sent by Sender) ---
-  const tripReq = req as RequestWithProfiles;
-  
-  const travelerName = tripReq.traveler_profile?.first_name || t('traveler');
-  const fromCountry = tripReq.trips?.from_country || 'N/A';
-  const toCountry = tripReq.trips?.to_country || 'N/A';
-  const tripDate = tripReq.trips?.trip_date;
-  const isRejected = tripReq.status === 'rejected';
-  const currentTrackingStatus = tripReq.tracking_status;
-  const hasPendingChanges = !!tripReq.proposed_changes;
-  const isGeneralOrderMatch = !!tripReq.general_order_id;
-
-  const renderAcceptedDetails = (req: RequestWithProfiles) => {
-    if (req.status !== 'accepted') return null;
-
-    const otherParty = req.traveler_profile;
-    const trip = req.trips;
-    const otherPartyName = `${otherParty?.first_name || ''} ${otherParty?.last_name || ''}`.trim() || t('user');
-    const otherPartyPhone = otherParty?.phone || t('noPhoneProvided');
-    const cancellationRequested = req.cancellation_requested_by;
-    const isCurrentUserRequester = cancellationRequested === req.sender_id;
-    const isOtherUserRequester = cancellationRequested && cancellationRequested !== req.sender_id;
-    const currentTrackingStatus = req.tracking_status;
-    const isCompleted = currentTrackingStatus === 'completed';
-    const isChatExpired = isCompleted && req.updated_at && differenceInDays(new Date(), new Date(req.updated_at)) >= 7;
-
-    let senderAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
-    if (currentTrackingStatus === 'delivered') {
-      senderAction = { status: 'completed', tKey: 'markAsCompleted', icon: PackageCheck };
-    }
-
-    return (
-      <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
-        <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
-          <BadgeCheck className="h-5 w-5" />
-          {t('requestAcceptedTitle')}
-        </h4>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <p className="flex items-center gap-2">
-            <User className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('traveler')}:</span>
-            {otherPartyName}
-          </p>
-          <p className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('phone')}:</span>
-            {otherPartyPhone}
-          </p>
-        </div>
-        
-        <div className="border-t pt-3 space-y-2 text-sm">
-          <p className="flex items-center gap-2">
-            <Plane className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('tripRoute')}:</span>
-            <CountryFlag country={trip?.from_country || 'N/A'} showName /> → <CountryFlag country={trip?.to_country || 'N/A'} showName />
-          </p>
-          <p className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('tripDate')}:</span>
-            {trip?.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
-          </p>
-        </div>
-        
-        {cancellationRequested && (
-          <div className={`p-3 rounded-md text-sm ${
-            isCurrentUserRequester 
-              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' 
-              : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-          }`}>
-            {isCurrentUserRequester 
-              ? t('waitingForOtherPartyCancellation') 
-              : t('otherPartyRequestedCancellation')}
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 pt-2">
-          {!isChatExpired && (
-            <Link to={`/chat/${req.id}`}>
-              <Button size="sm" variant="outline">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                {t('viewChat')}
-              </Button>
-            </Link>
-          )}
-          
-          {!isCompleted && (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') && (
-            <Button 
-              size="sm" 
-              variant="secondary"
-              onClick={() => onUploadSenderPhotos(req)}
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              {req.sender_item_photos && req.sender_item_photos.length > 0 ? t('updateItemPhotos') : t('uploadItemPhotos')}
-            </Button>
-          )}
-          
-          {!isCompleted && senderAction && (
-            <Button 
-              size="sm" 
-              onClick={() => onTrackingUpdate(req, senderAction!.status)}
-              disabled={trackingUpdateMutation.isPending}
-            >
-              <senderAction.icon className="mr-2 h-4 w-4" />
-              {t(senderAction.tKey)}
-            </Button>
-          )}
-          
-          {!isCompleted && (
-            <Button size="sm" variant="destructive" onClick={() => onCancelAcceptedRequest(req)} disabled={isCurrentUserRequester}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <Card className={cn(getStatusCardClass(tripReq.status), isGeneralOrderMatch && "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20")}>
-      <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {getStatusIcon(tripReq.status)}
-            <div>
-              <CardTitle className="text-base font-semibold">
-                {t('requestTo')} {travelerName}
-                {isGeneralOrderMatch && <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">({t('generalOrderTitle')})</span>}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Plane className="h-3 w-3" />
-                <CountryFlag country={fromCountry} showName={false} />
-                <span className="text-xs">→</span>
-                <CountryFlag country={toCountry} showName={false} />
-                {tripDate && ` • ${format(new Date(tripDate), 'MMM d')}`}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={getStatusVariant(tripReq.status)} className="text-xs">
-              {hasPendingChanges ? t('pendingChanges') : t(tripReq.status)}
-            </Badge>
-            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </div>
-        </div>
-      </CardHeader>
-
-      {expanded && (
-        <CardContent className="p-4 pt-0 space-y-3">
-          {tripReq.status !== 'pending' && (
-            <div className="pt-2">
-              <RequestTracking 
-                currentStatus={currentTrackingStatus} 
-                isRejected={isRejected} 
-              />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Weight className="h-4 w-4 text-muted-foreground" />
-              <span>{tripReq.weight_kg} kg</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate">{tripReq.destination_city}</span>
-            </div>
-          </div>
-
-          {priceCalculation && (
-            <div className="bg-primary/10 p-2 rounded-md">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">{t('estimatedCost')}:</span>
-                <span className="font-bold text-green-700">${priceCalculation.totalPriceUSD.toFixed(2)}</span>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-full justify-between text-xs" 
-              onClick={() => setDetailsExpanded(!detailsExpanded)}
-            >
-              <span>{t('viewDetails')}</span>
-              {detailsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </Button>
-            
-            {detailsExpanded && (
-              <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
-                <div>
-                  <p className="font-medium">{t('packageContents')}:</p>
-                  <p className="text-muted-foreground">{tripReq.description}</p>
-                </div>
-                <div>
-                  <p className="font-medium">{t('receiverDetails')}:</p>
-                  <p className="text-muted-foreground">{tripReq.receiver_details}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {renderAcceptedDetails(tripReq)}
-          
-          {tripReq.status === 'pending' && (
-            <div className="flex gap-2 pt-2">
-              <Button variant="destructive" size="sm" onClick={() => onCancelRequest(tripReq)} disabled={deleteRequestMutation.isPending}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t('cancelRequest')}
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => onEditRequest(tripReq)} disabled={hasPendingChanges}>
-                <Pencil className="mr-2 h-4 w-4" />
-                {t('editRequest')}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      )}
-    </Card>
-  );
-};
+const isGeneralOrder = (item: SentItem): item is GeneralOrder => item.type === 'general_order';
 
 export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onUploadSenderPhotos, onTrackingUpdate, trackingUpdateMutation }: SentRequestsTabProps) => {
   const { t } = useTranslation();
@@ -547,32 +165,41 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     <div className="space-y-3">
       {allSentRequests && allSentRequests.length > 0 ? (
         allSentRequests.map(req => {
-          // Calculate price only for trip requests
-          let priceCalculation = null;
-          if (req.type === 'trip_request') {
+          if (isGeneralOrder(req)) {
+            return (
+              <GeneralOrderCard
+                key={req.id}
+                order={req}
+                onCancelRequest={onCancelRequest}
+                deleteRequestMutation={deleteRequestMutation}
+                t={t}
+              />
+            );
+          } else {
+            // Trip Request
             const tripReq = req as RequestWithProfiles;
-            priceCalculation = calculateShippingCost(
+            const priceCalculation = calculateShippingCost(
               tripReq.trips?.from_country || '',
               tripReq.trips?.to_country || '',
               tripReq.weight_kg
             );
-          }
 
-          return (
-            <CompactSentRequestCard
-              key={req.id}
-              req={req}
-              priceCalculation={priceCalculation}
-              onCancelRequest={onCancelRequest}
-              deleteRequestMutation={deleteRequestMutation}
-              onCancelAcceptedRequest={onCancelAcceptedRequest}
-              onEditRequest={onEditRequest}
-              onUploadSenderPhotos={onUploadSenderPhotos}
-              onTrackingUpdate={onTrackingUpdate}
-              trackingUpdateMutation={trackingUpdateMutation}
-              t={t}
-            />
-          );
+            return (
+              <TripRequestCard
+                key={req.id}
+                req={tripReq}
+                priceCalculation={priceCalculation}
+                onCancelRequest={onCancelRequest}
+                deleteRequestMutation={deleteRequestMutation}
+                onCancelAcceptedRequest={onCancelAcceptedRequest}
+                onEditRequest={onEditRequest}
+                onUploadSenderPhotos={onUploadSenderPhotos}
+                onTrackingUpdate={onTrackingUpdate}
+                trackingUpdateMutation={trackingUpdateMutation}
+                t={t}
+              />
+            );
+          }
         })
       ) : (
         <Card>
