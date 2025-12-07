@@ -103,7 +103,7 @@ const CompactSentRequestCard: React.FC<{
               <Package className="h-5 w-5 text-blue-500" />
               <div>
                 <CardTitle className="text-base font-semibold">
-                  {t('generalOrder')}
+                  {t('generalOrderTitle')} {/* Updated to use translation key */}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <CountryFlag country={req.from_country} showName={false} />
@@ -115,7 +115,7 @@ const CompactSentRequestCard: React.FC<{
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-300">
-                {req.claimed_by ? t('claimed') : t('new')}
+                {req.claimed_by ? t('claimed') : t('statusNew')} {/* Updated to use translation key */}
               </Badge>
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </div>
@@ -127,7 +127,7 @@ const CompactSentRequestCard: React.FC<{
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-muted-foreground" />
-                <span>{t('generalOrder')}</span>
+                <span>{t('generalOrderTitle')}</span>
               </div>
               {req.is_valuable && (
                 <div className="flex items-center gap-2">
