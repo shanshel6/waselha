@@ -94,7 +94,30 @@ const AdminDashboard = () => {
             last_name
           )
         `)
-        .eq('is_approved', false) // Show trips that haven't been approved yet
+        .eq('is_approved', false)
+        .isNull('admin_review_notes') // Only trips without review notes are truly pending
+        .order('created_at', { ascending: true });
+
+      if (error) throw new Error(error.message);
+      return data as Trip[];
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: reviewedTrips, isLoading: isReviewedTripsLoading } = useQuery<Trip[], Error>({
+    queryKey: ['reviewedTrips'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trips')
+        .select(`
+          *,
+          profiles (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('is_approved', false)
+        .not('admin_review_notes', 'is', null) // Trips with review notes are reviewed
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
@@ -138,6 +161,7 @@ const AdminDashboard = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+      queryClient.invalidateQueries({ queryKey: ['reviewedTrips'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       showSuccess(t('tripApprovedSuccess'));
     },
@@ -182,6 +206,7 @@ const AdminDashboard = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+      queryClient.invalidateQueries({ queryKey: ['reviewedTrips'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       showSuccess(t('tripRejectedSuccess'));
     },
@@ -218,11 +243,14 @@ const AdminDashboard = () => {
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
       
-      <Tabs defaultValue="trips" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
-          <TabsTrigger value="trips">
+      <Tabs defaultValue="trips-pending" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsTrigger value="trips-pending">
             <Plane className="h-4 w-4 mr-2" />
             {t('pendingTrips')} ({pendingTrips?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="trips-reviewed">
+            {t('reviewedRequests')} ({reviewedTrips?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="verification-pending">
             {t('pendingVerification')} ({pendingVerificationRequests.length})
@@ -232,7 +260,7 @@ const AdminDashboard = () => {
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="trips" className="mt-6">
+        <TabsContent value="trips-pending" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle>{t('pendingTripApprovals')}</CardTitle>
@@ -272,6 +300,63 @@ const AdminDashboard = () => {
                 ))
               ) : (
                 <p className="text-muted-foreground">{t('noPendingTrips')}</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="trips-reviewed" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('reviewedRequests')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isReviewedTripsLoading ? (
+                <p>{t('loading')}</p>
+              ) : reviewedTrips && reviewedTrips.length > 0 ? (
+                reviewedTrips.map(trip => (
+                  <Card key={trip.id} className="p-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                          <CountryFlag country={trip.from_country} showName={false} />
+                          {getArabicCountryName(trip.from_country)} 
+                          <span className="text-lg">→</span>
+                          <CountryFlag country={trip.to_country} showName={false} />
+                          {getArabicCountryName(trip.to_country)}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {t('traveler')}: {trip.profiles?.first_name} {trip.profiles?.last_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t('availableWeight')}: {trip.free_kg} kg
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        {trip.is_approved ? (
+                          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            {t('approved')}
+                          </span>
+                        ) : (
+                          <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                            {t('rejected')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {trip.admin_review_notes && (
+                      <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                        <p className="text-sm font-medium">{t('adminReviewNotes')}:</p>
+                        <p className="text-sm">{trip.admin_review_notes}</p>
+                      </div>
+                    )}
+                  </Card>
+                ))
+              ) : (
+                <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
               )}
             </CardContent>
           </Card>
