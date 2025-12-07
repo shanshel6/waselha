@@ -288,5 +288,9 @@
   "completeInspection": "إكمال الفحص",
   "completingInspection": "جاري إكمال الفحص...",
   "inspectionRequired": "فحص الطرد مطلوب",
-  "inspectionRequiredDescription": "يرجى فتح الطرد وفحص محتوياته، ثم تحميل صور للفحص كدليل على التحقق قبل إكمال العملية"
+  "inspectionRequiredDescription": "يرجى فتح الطرد وفحص محتوياته، ثم تحميل صور للفحص كدليل على التحقق قبل إكمال العملية",
+  "safetyVerification": "التحقق من الأمان",
+  "safetyVerificationDescription": "يرجى تحميل صور للبضائع للتحقق من الأمان بعد قبول الطلب",
+  "uploadInspectionPhotos": "تحميل صور الفحص",
+  "updateInspectionPhotos": "تحديث صور الفحص"
 }

@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -8,16 +9,54 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { showSuccess, showError } from '@/utils/toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ReceivedRequestsTab } from '@/components/my-requests/ReceivedRequestsTab';
 import { SentRequestsTab } from '@/components/my-requests/SentRequestsTab';
 import { EditRequestModal } from '@/components/my-requests/EditRequestModal';
+import TravelerInspectionModal from '@/components/my-requests/TravelerInspectionModal';
 
 // Define types for our data
-interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
-interface Request { id: string; trip_id: string; sender_id: string; description: string; weight_kg: number; destination_city: string; receiver_details: string; handover_location: string | null; status: 'pending' | 'accepted' | 'rejected'; created_at: string; trips: Trip; cancellation_requested_by: string | null; proposed_changes: { weight_kg: number; description: string } | null; }
-interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
-interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
+interface Trip {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  free_kg: number;
+  charge_per_kg: number | null;
+  traveler_location: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+interface Request {
+  id: string;
+  trip_id: string;
+  sender_id: string;
+  description: string;
+  weight_kg: number;
+  destination_city: string;
+  receiver_details: string;
+  handover_location: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  trips: Trip;
+  cancellation_requested_by: string | null;
+  proposed_changes: { weight_kg: number; description: string } | null;
+  traveler_inspection_photos?: string[] | null;
+}
+
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+}
+
+interface RequestWithProfiles extends Request {
+  sender_profile: Profile | null;
+  traveler_profile: Profile | null;
+}
 
 const MyRequests = () => {
   const { t } = useTranslation();
@@ -25,6 +64,7 @@ const MyRequests = () => {
   const queryClient = useQueryClient();
   const [itemToCancel, setItemToCancel] = useState<any | null>(null);
   const [requestToEdit, setRequestToEdit] = useState<Request | null>(null);
+  const [requestForInspection, setRequestForInspection] = useState<Request | null>(null);
 
   // --- Mutations ---
   const updateRequestMutation = useMutation({
@@ -34,12 +74,19 @@ const MyRequests = () => {
         if (request.trips.free_kg < request.weight_kg) {
           throw new Error(t('notEnoughWeightError'));
         }
+
         const { error } = await supabase.rpc('accept_request_and_update_trip_weight', {
           request_id_param: request.id,
         });
+
         if (error) throw error;
-      } else { // For 'rejected' status
-        const { error: updateError } = await supabase.from('requests').update({ status }).eq('id', request.id);
+      } else {
+        // For 'rejected' status
+        const { error: updateError } = await supabase
+          .from('requests')
+          .update({ status })
+          .eq('id', request.id);
+
         if (updateError) throw updateError;
       }
     },
@@ -56,14 +103,25 @@ const MyRequests = () => {
   const mutualCancelMutation = useMutation({
     mutationFn: async (request: Request) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
+
       if (request.cancellation_requested_by) {
         if (request.cancellation_requested_by !== user.id) {
-          const { error } = await supabase.from('requests').delete().eq('id', request.id);
+          const { error } = await supabase
+            .from('requests')
+            .delete()
+            .eq('id', request.id);
+
           if (error) throw error;
           return 'deleted';
-        } else { throw new Error(t('alreadyRequestedCancellation')); }
+        } else {
+          throw new Error(t('alreadyRequestedCancellation'));
+        }
       } else {
-        const { error } = await supabase.from('requests').update({ cancellation_requested_by: user.id }).eq('id', request.id);
+        const { error } = await supabase
+          .from('requests')
+          .update({ cancellation_requested_by: user.id })
+          .eq('id', request.id);
+
         if (error) throw error;
         return 'requested';
       }
@@ -73,6 +131,7 @@ const MyRequests = () => {
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list
       queryClient.invalidateQueries({ queryKey: ['trip'] }); // Invalidate specific trip details
+
       if (result === 'deleted') showSuccess(t('requestCancelledSuccess'));
       else if (result === 'requested') showSuccess(t('cancellationRequestedSuccess'));
     },
@@ -82,7 +141,11 @@ const MyRequests = () => {
   const deleteRequestMutation = useMutation({
     mutationFn: async (item: any) => {
       // Only handles trip requests now
-      const { error } = await supabase.from('requests').delete().eq('id', item.id);
+      const { error } = await supabase
+        .from('requests')
+        .delete()
+        .eq('id', item.id);
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -94,7 +157,11 @@ const MyRequests = () => {
 
   const editRequestMutation = useMutation({
     mutationFn: async ({ requestId, values }: { requestId: string; values: { weight_kg: number; description: string } }) => {
-      const { error } = await supabase.from('requests').update({ proposed_changes: values }).eq('id', requestId);
+      const { error } = await supabase
+        .from('requests')
+        .update({ proposed_changes: values })
+        .eq('id', requestId);
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -108,8 +175,19 @@ const MyRequests = () => {
 
   const reviewChangesMutation = useMutation({
     mutationFn: async ({ request, accept }: { request: Request; accept: boolean }) => {
-      const updateData = accept ? { weight_kg: request.proposed_changes?.weight_kg, description: request.proposed_changes?.description, proposed_changes: null } : { proposed_changes: null };
-      const { error } = await supabase.from('requests').update(updateData).eq('id', request.id);
+      const updateData = accept 
+        ? { 
+            weight_kg: request.proposed_changes?.weight_kg,
+            description: request.proposed_changes?.description,
+            proposed_changes: null 
+          } 
+        : { proposed_changes: null };
+
+      const { error } = await supabase
+        .from('requests')
+        .update(updateData)
+        .eq('id', request.id);
+
       if (error) throw error;
     },
     onSuccess: (_, { accept }) => {
@@ -120,15 +198,36 @@ const MyRequests = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  const handleUpdateRequest = (request: any, status: string) => updateRequestMutation.mutate({ request, status });
-  const handleAcceptedRequestCancel = (request: Request) => setItemToCancel({ ...request, type: 'accepted_trip_request' });
+  const handleUpdateRequest = (request: any, status: string) => {
+    updateRequestMutation.mutate({ request, status });
+  };
+
+  const handleAcceptedRequestCancel = (request: Request) => {
+    setItemToCancel({ ...request, type: 'accepted_trip_request' });
+  };
+
   const handleConfirmCancellation = () => {
     if (!itemToCancel) return;
-    if (itemToCancel.type === 'accepted_trip_request') mutualCancelMutation.mutate(itemToCancel);
-    else deleteRequestMutation.mutate(itemToCancel);
+
+    if (itemToCancel.type === 'accepted_trip_request') {
+      mutualCancelMutation.mutate(itemToCancel);
+    } else {
+      deleteRequestMutation.mutate(itemToCancel);
+    }
+
     setItemToCancel(null);
   };
-  const handleEditRequest = (values: { weight_kg: number; description: string }) => { if (requestToEdit) editRequestMutation.mutate({ requestId: requestToEdit.id, values }); };
+
+  const handleEditRequest = (values: { weight_kg: number; description: string }) => {
+    if (requestToEdit) {
+      editRequestMutation.mutate({ requestId: requestToEdit.id, values });
+    }
+  };
+
+  const handleInspectionComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+    queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+  };
 
   const isAcceptedRequest = itemToCancel?.type === 'accepted_trip_request';
   const isFirstPartyRequesting = isAcceptedRequest && itemToCancel.cancellation_requested_by && itemToCancel.cancellation_requested_by === user?.id;
@@ -137,37 +236,91 @@ const MyRequests = () => {
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myRequests')}</h1>
+      
       <Tabs defaultValue="received" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="received">{t('receivedRequests')}</TabsTrigger>
           <TabsTrigger value="sent">{t('sentRequests')}</TabsTrigger>
         </TabsList>
+        
         <TabsContent value="received">
-          <ReceivedRequestsTab user={user} onUpdateRequest={handleUpdateRequest} updateRequestMutation={updateRequestMutation} onCancelAcceptedRequest={handleAcceptedRequestCancel} onReviewChanges={reviewChangesMutation.mutate} reviewChangesMutation={reviewChangesMutation} />
+          <ReceivedRequestsTab 
+            user={user} 
+            onUpdateRequest={handleUpdateRequest} 
+            updateRequestMutation={updateRequestMutation} 
+            onCancelAcceptedRequest={handleAcceptedRequestCancel}
+            onReviewChanges={reviewChangesMutation.mutate}
+            reviewChangesMutation={reviewChangesMutation}
+            onUploadInspectionPhotos={setRequestForInspection}
+          />
         </TabsContent>
+        
         <TabsContent value="sent">
           <SentRequestsTab 
             user={user} 
             onCancelRequest={setItemToCancel} 
             deleteRequestMutation={deleteRequestMutation} 
-            onCancelAcceptedRequest={handleAcceptedRequestCancel} 
-            onEditRequest={setRequestToEdit} 
+            onCancelAcceptedRequest={handleAcceptedRequestCancel}
+            onEditRequest={setRequestToEdit}
           />
         </TabsContent>
       </Tabs>
+      
       <AlertDialog open={!!itemToCancel} onOpenChange={(open) => !open && setItemToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isAcceptedRequest ? (isSecondPartyConfirming ? t('confirmMutualCancellation') : t('requestCancellationTitle')) : t('areYouSureCancel')}</AlertDialogTitle>
-            <AlertDialogDescription>{isAcceptedRequest ? (isSecondPartyConfirming ? t('confirmMutualCancellationDescription') : t('requestCancellationDescription')) : t('cannotBeUndone')}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {isAcceptedRequest 
+                ? (isSecondPartyConfirming 
+                    ? t('confirmMutualCancellation') 
+                    : t('requestCancellationTitle'))
+                : t('areYouSureCancel')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAcceptedRequest 
+                ? (isSecondPartyConfirming 
+                    ? t('confirmMutualCancellationDescription') 
+                    : t('requestCancellationDescription'))
+                : t('cannotBeUndone')}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setItemToCancel(null)}>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmCancellation} disabled={deleteRequestMutation.isPending || mutualCancelMutation.isPending || isFirstPartyRequesting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{isAcceptedRequest ? (isSecondPartyConfirming ? t('confirmCancellation') : t('requestCancellation')) : t('confirmDelete')}</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setItemToCancel(null)}>
+              {t('cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmCancellation} 
+              disabled={deleteRequestMutation.isPending || mutualCancelMutation.isPending || isFirstPartyRequesting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isAcceptedRequest 
+                ? (isSecondPartyConfirming 
+                    ? t('confirmCancellation') 
+                    : t('requestCancellation'))
+                : t('confirmDelete')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {requestToEdit && <EditRequestModal isOpen={!!requestToEdit} onOpenChange={() => setRequestToEdit(null)} request={requestToEdit} onSubmit={handleEditRequest} isSubmitting={editRequestMutation.isPending} />}
+      
+      {requestToEdit && (
+        <EditRequestModal 
+          isOpen={!!requestToEdit} 
+          onOpenChange={() => setRequestToEdit(null)} 
+          request={requestToEdit} 
+          onSubmit={handleEditRequest} 
+          isSubmitting={editRequestMutation.isPending} 
+        />
+      )}
+      
+      {requestForInspection && (
+        <TravelerInspectionModal
+          request={requestForInspection}
+          isOpen={!!requestForInspection}
+          onOpenChange={() => setRequestForInspection(null)}
+          onInspectionComplete={handleInspectionComplete}
+        />
+      )}
     </div>
   );
 };
