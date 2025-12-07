@@ -95,7 +95,7 @@ const AdminDashboard = () => {
           )
         `)
         .eq('is_approved', false)
-        .isNull('admin_review_notes') // Only trips without review notes are truly pending
+        .isNull('admin_review_notes')
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
@@ -116,8 +116,7 @@ const AdminDashboard = () => {
             last_name
           )
         `)
-        .eq('is_approved', false)
-        .not('admin_review_notes', 'is', null) // Trips with review notes are reviewed
+        .or('is_approved.eq.true,admin_review_notes.not.is.null')
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
