@@ -104,9 +104,10 @@ const PlaceOrder = () => {
           from_country: values.from_country,
           to_country: values.to_country,
           description: values.description,
+          weight_kg: values.weight_kg, // Include weight_kg
           is_valuable: values.insurance_percentage > 0,
           insurance_requested: values.insurance_percentage > 0,
-          insurance_percentage: values.insurance_percentage, // Include the new field
+          insurance_percentage: values.insurance_percentage,
           status: 'new',
         });
 
