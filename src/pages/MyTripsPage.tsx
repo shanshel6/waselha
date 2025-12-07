@@ -26,7 +26,7 @@ interface Trip {
   traveler_location: string | null;
   notes: string | null;
   created_at: string;
-  is_approved: boolean | null;
+  is_approved: boolean;
   admin_review_notes: string | null;
   profiles: {
     first_name: string | null;
@@ -127,13 +127,25 @@ const MyTripsPage = () => {
         </Badge>
       );
     } else if (trip.is_approved === false) {
-      return (
-        <Badge variant="destructive">
-          <XCircle className="h-3 w-3 mr-1" />
-          {t('rejected')}
-        </Badge>
-      );
+      // Check if there are admin review notes to determine if it was rejected
+      if (trip.admin_review_notes) {
+        return (
+          <Badge variant="destructive">
+            <XCircle className="h-3 w-3 mr-1" />
+            {t('rejected')}
+          </Badge>
+        );
+      } else {
+        // No admin notes means it's still pending approval
+        return (
+          <Badge variant="secondary">
+            <Clock className="h-3 w-3 mr-1" />
+            {t('waitingForConfirmation')}
+          </Badge>
+        );
+      }
     } else {
+      // Default case (shouldn't happen with the current schema)
       return (
         <Badge variant="secondary">
           <Clock className="h-3 w-3 mr-1" />

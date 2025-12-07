@@ -40,7 +40,7 @@ interface Trip {
   trip_date: string;
   free_kg: number;
   ticket_file_url: string | null;
-  is_approved: boolean | null;
+  is_approved: boolean;
   admin_review_notes: string | null;
   created_at: string;
   profiles: {
@@ -94,7 +94,7 @@ const AdminDashboard = () => {
             last_name
           )
         `)
-        .eq('is_approved', null)
+        .eq('is_approved', false) // Show trips that haven't been approved yet
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
@@ -149,7 +149,7 @@ const AdminDashboard = () => {
   // Mutation for rejecting trips
   const rejectTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
-      // Update trip status to rejected instead of deleting
+      // Update trip status to rejected
       const { error } = await supabase
         .from('trips')
         .update({ 
