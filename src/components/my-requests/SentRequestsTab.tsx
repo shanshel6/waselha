@@ -13,6 +13,7 @@ import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
+import { cn } from '@/lib/utils';
 
 interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
@@ -99,7 +100,8 @@ const CompactSentRequestCard: React.FC<{
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'accepted':
-      case 'claimed': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'claimed':
+      case 'matched': return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
       default: return <Clock className="h-4 w-4 text-yellow-500" />;
     }
@@ -108,7 +110,8 @@ const CompactSentRequestCard: React.FC<{
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'accepted':
-      case 'claimed': return 'default';
+      case 'claimed':
+      case 'matched': return 'default';
       case 'rejected': return 'destructive';
       default: return 'secondary';
     }
@@ -119,6 +122,7 @@ const CompactSentRequestCard: React.FC<{
       case 'accepted':
       case 'claimed': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
       case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+      case 'matched': return 'border-blue-500/30 bg-blue-50 dark:bg-blue-900/20';
       default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
     }
   };
@@ -208,12 +212,11 @@ const CompactSentRequestCard: React.FC<{
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t('cancelRequest')}
               </Button>
-              <Link to={`/edit-general-order/${order.id}`}>
-                <Button variant="secondary" size="sm" disabled={isMatched}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  {t('editOrder')}
-                </Button>
-              </Link>
+              {/* Note: We don't have an edit general order page yet, so we disable the button if matched */}
+              <Button variant="secondary" size="sm" disabled={isMatched}>
+                <Pencil className="mr-2 h-4 w-4" />
+                {t('editOrder')}
+              </Button>
             </div>
           </CardContent>
         )}
