@@ -14,6 +14,7 @@ import { ShieldAlert, Loader2, Plane } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { arabicCountries } from '@/lib/countries-ar';
 import { showSuccess, showError } from '@/utils/toast';
+import { fetchAdminEmails } from '@/utils/admin';
 
 interface VerificationRequest {
   id: string;
@@ -72,11 +73,19 @@ const AdminDashboard = () => {
 
       if (error) throw new Error(error.message);
       
-      return data.map(req => ({
+      const requests = data as VerificationRequest[];
+      
+      // Collect user IDs
+      const userIds = requests.map(req => req.user_id);
+      
+      // Fetch emails using the Edge Function
+      const emailMap = await fetchAdminEmails(userIds);
+
+      return requests.map(req => ({
         ...req,
         profiles: {
           ...req.profiles,
-          email: 'Email (Admin access required to fetch)',
+          email: emailMap[req.user_id] || 'N/A', // Inject fetched email
         }
       })) as VerificationRequest[];
     },
