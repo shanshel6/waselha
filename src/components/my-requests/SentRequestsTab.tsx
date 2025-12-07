@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Plane, Package, Trash2, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plane, Package, Trash2, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck, Weight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -323,13 +323,55 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     queryKey: ['sentTripRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data: requests, error: requestsError } = await supabase.from('requests').select(`*, trips(*)`).eq('sender_id', user.id).order('created_at', { ascending: false });
-      if (requestsError) throw new Error(requestsError.message);
-      const travelerIds = [...new Set(requests.map(r => r.trips.user_id).filter(id => id))];
-      const { data: travelerProfiles, error: profilesError } = await supabase.from('profiles').select('id, first_name, last_name, phone').in('id', travelerIds);
-      if (profilesError) throw new Error(profilesError.message);
-      const profileMap = travelerProfiles.reduce((acc, profile) => { acc[profile.id] = profile; return acc; }, {} as Record<string, Profile>);
-      return requests.map(request => ({ ...request, sender_profile: null, traveler_profile: profileMap[request.trips.user_id] || null })) as RequestWithProfiles[];
+      
+      const { data: requests, error: requestsError } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          trips (
+            id, user_id, from_country, to_country, trip_date, free_kg, charge_per_kg, traveler_location, notes, created_at
+          )
+        `)
+        .eq('sender_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (requestsError) {
+        console.error("Error fetching sent requests:", requestsError);
+        throw new Error(requestsError.message);
+      }
+
+      if (!requests || requests.length === 0) return [];
+
+      // Get traveler profiles for accepted requests
+      const travelerIds = requests
+        .filter(req => req.status === 'accepted' && req.trips?.user_id)
+        .map(req => req.trips.user_id)
+        .filter((id, index, self) => self.indexOf(id) === index);
+
+      let travelerProfiles: Profile[] = [];
+      if (travelerIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, phone')
+          .in('id', travelerIds);
+
+        if (profilesError) {
+          console.error("Error fetching traveler profiles:", profilesError);
+        } else {
+          travelerProfiles = profilesData || [];
+        }
+      }
+
+      const profileMap = travelerProfiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, Profile>);
+
+      return requests.map(request => ({
+        ...request,
+        sender_profile: null,
+        traveler_profile: profileMap[request.trips?.user_id] || null
+      })) as RequestWithProfiles[];
     },
     enabled: !!user,
   });
@@ -337,9 +379,13 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
   const isLoadingSent = isLoadingTripRequests;
   const sentRequestsError = tripRequestsError;
 
-  if (isLoadingSent) return <p>{t('loading')}</p>;
+  if (isLoadingSent) return <p className="p-4 text-center">{t('loading')}</p>;
 
-  if (sentRequestsError) return <p className="text-red-500">Error loading sent requests: {sentRequestsError.message}</p>;
+  if (sentRequestsError) return (
+    <div className="p-4">
+      <p className="text-red-500 text-center">Error loading sent requests: {sentRequestsError.message}</p>
+    </div>
+  );
 
   return (
     <div className="space-y-3">
@@ -367,14 +413,14 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
             />
           );
         })
-      ) : !isLoadingSent && !sentRequestsError ? (
+      ) : (
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-lg font-semibold">{t('noSentRequests')}</p>
             <p className="text-muted-foreground mt-2">لم تقم بإرسال أي طلبات بعد.</p>
           </CardContent>
         </Card>
-      ) : null}
+      )}
     </div>
   );
 };
