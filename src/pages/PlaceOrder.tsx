@@ -106,7 +106,7 @@ const PlaceOrder = () => {
           description: values.description,
           is_valuable: values.insurance_percentage > 0,
           insurance_requested: values.insurance_percentage > 0,
-          insurance_percentage: values.insurance_percentage,
+          insurance_percentage: values.insurance_percentage, // Include the new field
           status: 'new',
         });
 
@@ -174,7 +174,7 @@ const PlaceOrder = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('toCountry')}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder={t('selectCountry')} />
