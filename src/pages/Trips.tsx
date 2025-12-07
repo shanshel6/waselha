@@ -9,16 +9,23 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plane, Package, User, MapPin, Search, PlusCircle, BadgeCheck } from 'lucide-react';
+import { Plane, Package, User, MapPin, Search, PlusCircle, BadgeCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { countries } from '@/lib/countries';
-import { arabicCountries } from '@/lib/countries-ar';
 import { Badge } from '@/components/ui/badge';
 import CountryFlag from '@/components/CountryFlag';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 const searchSchema = z.object({
   from_country: z.string().optional(),
@@ -27,9 +34,12 @@ const searchSchema = z.object({
 
 type SearchFilters = z.infer<typeof searchSchema>;
 
+const TRIPS_PER_PAGE = 9;
+
 const Trips = () => {
   const { t } = useTranslation();
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
+  const [currentPage, setCurrentPage] = useState(1);
   const { user } = useSession();
 
   const form = useForm<SearchFilters>({
@@ -40,8 +50,10 @@ const Trips = () => {
     },
   });
 
-  const { data: trips, isLoading, error } = useQuery({
-    queryKey: ['trips', filters, user?.id],
+  const offset = (currentPage - 1) * TRIPS_PER_PAGE;
+
+  const { data: queryResult, isLoading, error } = useQuery({
+    queryKey: ['trips', filters, user?.id, currentPage],
     queryFn: async () => {
       let tripIdsToExclude: string[] = [];
       
@@ -66,7 +78,9 @@ const Trips = () => {
             last_name,
             is_verified
           )
-        `)
+        `, { count: 'exact' }); // Request exact count
+
+      query = query
         .eq('is_approved', true) // Only show approved trips
         .eq('is_deleted_by_user', false) // Exclude trips marked as deleted by user
         .gte('trip_date', format(new Date(), 'yyyy-MM-dd'));
@@ -83,25 +97,79 @@ const Trips = () => {
         query = query.not('id', 'in', `(${tripIdsToExclude.join(',')})`);
       }
 
-      const { data, error: queryError } = await query
-        .order('trip_date', { ascending: true });
+      const { data, error: queryError, count } = await query
+        .order('trip_date', { ascending: true })
+        .range(offset, offset + TRIPS_PER_PAGE - 1); // Apply range for pagination
 
       if (queryError) {
         throw new Error(queryError.message);
       }
 
-      return data;
+      return { trips: data, count: count || 0 };
     },
     enabled: !!filters.from_country || !!filters.to_country,
   });
 
+  const trips = queryResult?.trips || [];
+  const totalTrips = queryResult?.count || 0;
+  const totalPages = Math.ceil(totalTrips / TRIPS_PER_PAGE);
+
   const onSubmit = (values: SearchFilters) => {
     setFilters(values);
+    setCurrentPage(1); // Reset to first page on new search
   };
 
   const resetFilters = () => {
     form.reset({ from_country: "Iraq", to_country: "" });
     setFilters({ from_country: "Iraq" });
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pageNumbers = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <Pagination className="mt-8">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious 
+              onClick={() => handlePageChange(currentPage - 1)} 
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+          
+          {pageNumbers.map(page => (
+            <PaginationItem key={page}>
+              <PaginationLink 
+                onClick={() => handlePageChange(page)}
+                isActive={page === currentPage}
+                className="cursor-pointer"
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+
+          <PaginationItem>
+            <PaginationNext 
+              onClick={() => handlePageChange(currentPage + 1)} 
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
   };
 
   const renderContent = () => {
@@ -115,58 +183,61 @@ const Trips = () => {
 
     if (trips && trips.length > 0) {
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {trips.map((trip: any) => (
-            <Link key={trip.id} to={`/trips/${trip.id}`} className="block h-full group">
-              <Card className="flex flex-col transition-all duration-300 h-full group-hover:shadow-xl group-hover:-translate-y-1">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-xl">
-                        <Plane className="h-5 w-5 text-primary" />
-                        <CountryFlag country={trip.from_country} showName className="text-base" />
-                        <span className="text-lg">→</span>
-                        <CountryFlag country={trip.to_country} showName className="text-base" />
-                      </CardTitle>
-                      <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {trips.map((trip: any) => (
+              <Link key={trip.id} to={`/trips/${trip.id}`} className="block h-full group">
+                <Card className="flex flex-col transition-all duration-300 h-full group-hover:shadow-xl group-hover:-translate-y-1">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                          <Plane className="h-5 w-5 text-primary" />
+                          <CountryFlag country={trip.from_country} showName className="text-base" />
+                          <span className="text-lg">→</span>
+                          <CountryFlag country={trip.to_country} showName className="text-base" />
+                        </CardTitle>
+                        <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-grow space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    <span>{trip.profiles?.first_name || 'N/A'}</span>
-                    {trip.profiles?.is_verified && 
-                      <Badge variant="secondary" className="text-green-600 border-green-600">
-                        <BadgeCheck className="h-3 w-3 mr-1" /> 
-                        Verified
-                      </Badge>
+                  </CardHeader>
+                  <CardContent className="flex-grow space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span>{trip.profiles?.first_name || 'N/A'}</span>
+                      {trip.profiles?.is_verified && 
+                        <Badge variant="secondary" className="text-green-600 border-green-600">
+                          <BadgeCheck className="h-3 w-3 mr-1" /> 
+                          Verified
+                        </Badge>
+                      }
+                    </div>
+                    <div className="border-t pt-4 flex items-center gap-2">
+                      <Package className="h-5 w-5 text-primary/80" />
+                      <div>
+                        <p className="font-semibold">{trip.free_kg} kg</p>
+                        <p className="text-xs text-muted-foreground">{t('availableWeight')}</p>
+                      </div>
+                    </div>
+                    {trip.traveler_location && 
+                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4" /> 
+                        {trip.traveler_location}
+                      </p>
                     }
-                  </div>
-                  <div className="border-t pt-4 flex items-center gap-2">
-                    <Package className="h-5 w-5 text-primary/80" />
-                    <div>
-                      <p className="font-semibold">{trip.free_kg} kg</p>
-                      <p className="text-xs text-muted-foreground">{t('availableWeight')}</p>
+                  </CardContent>
+                  {/* Footer element acting as a button visual cue */}
+                  <div className="p-4 pt-0 mt-auto">
+                    <div className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground group-hover:bg-primary/90">
+                      {t('viewTripAndRequest')}
                     </div>
                   </div>
-                  {trip.traveler_location && 
-                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" /> 
-                      {trip.traveler_location}
-                    </p>
-                  }
-                </CardContent>
-                {/* Footer element acting as a button visual cue */}
-                <div className="p-4 pt-0 mt-auto">
-                  <div className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground group-hover:bg-primary/90">
-                    {t('viewTripAndRequest')}
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+          {renderPagination()}
+        </>
       );
     }
 
@@ -200,7 +271,6 @@ const Trips = () => {
               {t('addTrip')}
             </Button>
           </Link>
-          {/* Removed the top Place Order button */}
         </div>
       </div>
       
