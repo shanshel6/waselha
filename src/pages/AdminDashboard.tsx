@@ -42,6 +42,7 @@ interface Trip {
   ticket_file_url: string | null;
   is_approved: boolean;
   admin_review_notes: string | null;
+  is_deleted_by_user: boolean; // Added new field
   created_at: string;
   profiles: {
     first_name: string | null;
@@ -96,6 +97,7 @@ const AdminDashboard = () => {
         `)
         .eq('is_approved', false)
         .is('admin_review_notes', null)
+        .eq('is_deleted_by_user', false) // Exclude trips marked as deleted by user
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
@@ -116,7 +118,7 @@ const AdminDashboard = () => {
             last_name
           )
         `)
-        .not('admin_review_notes', 'is', null)
+        .not('admin_review_notes', 'is', null) // Reviewed trips have admin_review_notes
         .order('created_at', { ascending: false });
 
       if (error) throw new Error(error.message);
@@ -342,6 +344,11 @@ const AdminDashboard = () => {
                         ) : (
                           <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
                             {t('rejected')}
+                          </span>
+                        )}
+                        {trip.is_deleted_by_user && (
+                          <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full mt-1">
+                            {t('deletedByUser')}
                           </span>
                         )}
                       </div>

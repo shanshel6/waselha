@@ -28,6 +28,7 @@ interface Trip {
   created_at: string;
   is_approved: boolean;
   admin_review_notes: string | null;
+  is_deleted_by_user: boolean; // Added new field
   profiles: {
     first_name: string | null;
     last_name: string | null;
@@ -57,6 +58,7 @@ const MyTripsPage = () => {
           )
         `)
         .eq('user_id', user.id)
+        .eq('is_deleted_by_user', false) // Only show trips not marked as deleted by user
         .order('trip_date', { ascending: true });
 
       if (error) {
@@ -70,19 +72,35 @@ const MyTripsPage = () => {
   });
 
   const deleteTripMutation = useMutation({
-    mutationFn: async (tripId: string) => {
-      const { error } = await supabase
-        .from('trips')
-        .delete()
-        .eq('id', tripId)
-        .eq('user_id', user?.id); // Ensure only the owner can delete
+    mutationFn: async (trip: Trip) => {
+      if (!user) throw new Error(t('mustBeLoggedIn'));
 
-      if (error) throw error;
+      if (trip.admin_review_notes) {
+        // If the trip has been reviewed by an admin, mark it as deleted by user
+        const { error } = await supabase
+          .from('trips')
+          .update({ is_deleted_by_user: true })
+          .eq('id', trip.id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } else {
+        // If the trip has NOT been reviewed by an admin, permanently delete it
+        const { error } = await supabase
+          .from('trips')
+          .delete()
+          .eq('id', trip.id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, trip) => {
       showSuccess(t('tripDeletedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['userTrips', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list too
+      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] }); // Invalidate admin pending trips
+      queryClient.invalidateQueries({ queryKey: ['reviewedTrips'] }); // Invalidate admin reviewed trips
     },
     onError: (err: any) => {
       showError(t('tripDeletedError'));
@@ -92,7 +110,7 @@ const MyTripsPage = () => {
 
   const handleDeleteConfirm = () => {
     if (tripToDelete) {
-      deleteTripMutation.mutate(tripToDelete.id);
+      deleteTripMutation.mutate(tripToDelete);
       setTripToDelete(null);
     }
   };

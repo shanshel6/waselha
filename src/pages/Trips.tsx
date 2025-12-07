@@ -68,6 +68,7 @@ const Trips = () => {
           )
         `)
         .eq('is_approved', true) // Only show approved trips
+        .eq('is_deleted_by_user', false) // Exclude trips marked as deleted by user
         .gte('trip_date', format(new Date(), 'yyyy-MM-dd'));
 
       if (filters.from_country) {
