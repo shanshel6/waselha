@@ -50,6 +50,7 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
     const filePath = `${user.id}/tickets/${fileName}`;
 
     try {
+      // Check if bucket exists by trying to upload
       const { error: uploadError } = await supabase.storage
         .from('trip-documents')
         .upload(filePath, file, {
@@ -58,7 +59,12 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
         });
 
       if (uploadError) {
-        setError(uploadError.message);
+        // If it's a bucket not found error, we'll show a specific message
+        if (uploadError.message.includes('Bucket not found')) {
+          setError('Storage bucket not configured. Please contact administrator.');
+        } else {
+          setError(uploadError.message);
+        }
         setUploading(false);
         return;
       }
@@ -71,7 +77,7 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
       onUploadSuccess(data.publicUrl);
       setProgress(100);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'An error occurred during upload');
     } finally {
       setUploading(false);
     }
@@ -97,7 +103,7 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
       setFileUrl(null);
       onUploadSuccess('');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'An error occurred while removing the file');
     }
   };
 
