@@ -10,10 +10,10 @@ import { CalendarIcon, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger, } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,14 +24,16 @@ import { calculateTravelerProfit } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import { useQueryClient } from '@tanstack/react-query';
 import { Slider } from '@/components/ui/slider';
+import TicketUpload from '@/components/TicketUpload';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
   to_country: z.string().min(1, { message: "requiredField" }),
-  trip_date: z.date({ required_error: "dateRequired", }),
-  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }), // Enforce max weight 50
+  trip_date: z.date({ required_error: "dateRequired" }),
+  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }),
   traveler_location: z.string().min(1, { message: "requiredField" }),
   notes: z.string().optional(),
+  ticket_file_url: z.string().min(1, { message: "ticketRequired" }),
 });
 
 const AddTrip = () => {
@@ -47,6 +49,7 @@ const AddTrip = () => {
       free_kg: 1,
       traveler_location: "",
       notes: "",
+      ticket_file_url: "",
     },
   });
 
@@ -54,16 +57,11 @@ const AddTrip = () => {
   
   // Auto-manage Iraq selection
   React.useEffect(() => {
-    // If from_country is changed and it's not Iraq, set to_country to Iraq
     if (from_country && from_country !== "Iraq" && to_country !== "Iraq") {
       form.setValue("to_country", "Iraq");
-    }
-    // If to_country is changed and it's not Iraq, set from_country to Iraq
-    else if (to_country && to_country !== "Iraq" && from_country !== "Iraq") {
+    } else if (to_country && to_country !== "Iraq" && from_country !== "Iraq") {
       form.setValue("from_country", "Iraq");
-    }
-    // If both are Iraq (somehow), reset to_country
-    else if (from_country === "Iraq" && to_country === "Iraq") {
+    } else if (from_country === "Iraq" && to_country === "Iraq") {
       form.setValue("to_country", "");
     }
   }, [from_country, to_country, form]);
@@ -77,7 +75,7 @@ const AddTrip = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
-      showError(t('tripAddedError'));
+      showError(t('mustBeLoggedIn'));
       navigate('/login');
       return;
     }
@@ -98,14 +96,16 @@ const AddTrip = () => {
         free_kg: values.free_kg,
         traveler_location: values.traveler_location,
         notes: values.notes,
-        charge_per_kg: charge_per_kg, // Store the base price per kg for reference
+        charge_per_kg: charge_per_kg,
+        ticket_file_url: values.ticket_file_url,
+        is_approved: false, // New trips require admin approval
       });
 
     if (error) {
       console.error('Error adding trip:', error);
       showError(t('tripAddedError'));
     } else {
-      showSuccess(t('tripAddedSuccess'));
+      showSuccess(t('tripAddedSuccessPending'));
       queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       navigate('/my-flights');
@@ -255,6 +255,20 @@ const AddTrip = () => {
           
           <FormField
             control={form.control}
+            name="ticket_file_url"
+            render={({ field }) => (
+              <FormItem>
+                <TicketUpload
+                  onUploadSuccess={(url) => field.onChange(url)}
+                  existingFileUrl={field.value}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
             name="traveler_location"
             render={({ field }) => (
               <FormItem>
@@ -283,6 +297,12 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
+          
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              {t('tripPendingApprovalNote')}
+            </p>
+          </div>
           
           <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
             {t('createTrip')}

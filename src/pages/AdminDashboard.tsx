@@ -8,10 +8,10 @@ import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VerificationRequestCard from '@/components/VerificationRequestCard';
+import AdminTripApproval from '@/components/AdminTripApproval';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ShieldAlert, Loader2 } from 'lucide-react';
+import { ShieldAlert, Loader2, Plane } from 'lucide-react';
 
-// Define the structure of the data fetched from Supabase
 interface VerificationRequest {
   id: string;
   user_id: string;
@@ -29,11 +29,28 @@ interface VerificationRequest {
   };
 }
 
+interface Trip {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  free_kg: number;
+  ticket_file_url: string | null;
+  is_approved: boolean;
+  admin_review_notes: string | null;
+  created_at: string;
+  profiles: {
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
+}
+
 const AdminDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
 
-  const { data: requests, isLoading: isRequestsLoading, error } = useQuery<VerificationRequest[], Error>({
+  const { data: verificationRequests, isLoading: isRequestsLoading, error: verificationError } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -50,17 +67,6 @@ const AdminDashboard = () => {
 
       if (error) throw new Error(error.message);
       
-      // NOTE: We need to fetch the email separately using the admin client since email is in auth.users
-      const userIds = data.map(req => req.user_id);
-      
-      // Using supabase.auth.admin.listUsers requires the service role key, which is not available client-side.
-      // Since we are in a client-side context, we must rely on the data available via RLS.
-      // For a real admin dashboard, this query should ideally run server-side (e.g., in an Edge Function).
-      // For now, we will mock the email fetching or rely on the user's profile data if available.
-      
-      // Since we cannot securely fetch all user emails client-side, we will use a placeholder 
-      // and inform the user that for a production environment, this should be moved to an Edge Function.
-      
       return data.map(req => ({
         ...req,
         profiles: {
@@ -68,6 +74,27 @@ const AdminDashboard = () => {
           email: 'Email (Admin access required to fetch)',
         }
       })) as VerificationRequest[];
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: pendingTrips, isLoading: isTripsLoading, error: tripsError } = useQuery<Trip[], Error>({
+    queryKey: ['pendingTrips'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trips')
+        .select(`
+          *,
+          profiles (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('is_approved', false)
+        .order('created_at', { ascending: true });
+
+      if (error) throw new Error(error.message);
+      return data as Trip[];
     },
     enabled: isAdmin,
   });
@@ -88,27 +115,72 @@ const AdminDashboard = () => {
     );
   }
 
-  const pendingRequests = requests?.filter(r => r.status === 'pending') || [];
-  const reviewedRequests = requests?.filter(r => r.status !== 'pending') || [];
+  const pendingVerificationRequests = verificationRequests?.filter(r => r.status === 'pending') || [];
+  const reviewedVerificationRequests = verificationRequests?.filter(r => r.status !== 'pending') || [];
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
       
-      <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-lg">
-          <TabsTrigger value="pending">{t('pendingVerification')} ({pendingRequests.length})</TabsTrigger>
-          <TabsTrigger value="reviewed">{t('reviewedRequests')} ({reviewedRequests.length})</TabsTrigger>
+      <Tabs defaultValue="trips" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+          <TabsTrigger value="trips">
+            <Plane className="h-4 w-4 mr-2" />
+            {t('pendingTrips')} ({pendingTrips?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="verification-pending">
+            {t('pendingVerification')} ({pendingVerificationRequests.length})
+          </TabsTrigger>
+          <TabsTrigger value="verification-reviewed">
+            {t('reviewedRequests')} ({reviewedVerificationRequests.length})
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="pending" className="mt-6">
+        <TabsContent value="trips" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('pendingTripApprovals')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isTripsLoading ? (
+                <p>{t('loading')}</p>
+              ) : pendingTrips && pendingTrips.length > 0 ? (
+                pendingTrips.map(trip => (
+                  <Card key={trip.id} className="p-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          {trip.from_country} → {trip.to_country}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {t('traveler')}: {trip.profiles?.first_name} {trip.profiles?.last_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t('availableWeight')}: {trip.free_kg} kg
+                        </p>
+                      </div>
+                    </div>
+                    <AdminTripApproval trip={trip} />
+                  </Card>
+                ))
+              ) : (
+                <p className="text-muted-foreground">{t('noPendingTrips')}</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="verification-pending" className="mt-6">
           <Card>
             <CardHeader><CardTitle>{t('pendingVerification')}</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
-              ) : pendingRequests.length > 0 ? (
-                pendingRequests.map(req => (
+              ) : pendingVerificationRequests.length > 0 ? (
+                pendingVerificationRequests.map(req => (
                   <VerificationRequestCard key={req.id} request={req} />
                 ))
               ) : (
@@ -118,14 +190,14 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="reviewed" className="mt-6">
+        <TabsContent value="verification-reviewed" className="mt-6">
           <Card>
             <CardHeader><CardTitle>{t('reviewedRequests')}</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
-              ) : reviewedRequests.length > 0 ? (
-                reviewedRequests.map(req => (
+              ) : reviewedVerificationRequests.length > 0 ? (
+                reviewedVerificationRequests.map(req => (
                   <VerificationRequestCard key={req.id} request={req} />
                 ))
               ) : (
