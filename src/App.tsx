@@ -21,6 +21,8 @@ import Navbar from "./components/Navbar";
 import ChatNotificationListener from "./components/ChatNotificationListener";
 import ProfileCheckWrapper from "./components/ProfileCheckWrapper";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
+import PlaceOrder from "./pages/PlaceOrder";
+import GeneralOrders from "./pages/GeneralOrders"; // Import the new page
 
 const queryClient = new QueryClient();
 
@@ -40,6 +42,8 @@ const MainLayout = () => (
         <Route path="/my-flights" element={<MyTripsPage />} />
         <Route path="/chat/:requestId" element={<Chat />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/place-order" element={<PlaceOrder />} />
+        <Route path="/general-orders" element={<GeneralOrders />} /> {/* Add the new route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </ProfileCheckWrapper>

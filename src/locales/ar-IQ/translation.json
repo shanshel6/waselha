@@ -70,7 +70,8 @@
   "errorLoadingProfile": "حدث خطأ أثناء تحميل الملف الشخصي.",
   "searchTrips": "ابحث عن رحلات",
   "searchNow": "ابحث الآن",
-  "noTripsFound": "لم يتم العثور على رحلات تطابق بحثك. حاول تغيير الفلاتر.",
+  "noTripsFound": "لم يتم العثور على رحلات تطابق بحثك.",
+  "noTripsFoundDescription": "حاول تغيير الفلاتر أو اطلب رحلة جديدة!",
   "traveler": "المسافر",
   "availableWeight": "الوزن المتاح",
   "pricePerKg": "السعر للكيلوغرام",
@@ -243,6 +244,7 @@
   "claimedOrders": "الطلبات التي طالبت بها",
   "orderFrom": "طلب من",
   "noClaimedOrders": "لم تقم بالمطالبة بأي طلبات عامة بعد.",
+  "noClaimedOrdersDescription": "ستظهر الطلبات التي تطالب بها هنا.",
   "claimed": "تمت المطالبة به",
   "user": "مستخدم",
   "contactInformation": "معلومات الاتصال",
@@ -347,5 +349,7 @@
   "pendingTripApprovals": "طلبات موافقة الرحلات المعلقة",
   "noPendingTrips": "لا توجد رحلات معلقة حالياً",
   "tripPendingApprovalNote": "سيتم نشر رحلتك بعد مراجعتها وموافقة المسؤول. قد تستغرق هذه العملية حتى 24 ساعة.",
-  "deletedByUser": "تم الحذف بواسطة المستخدم"
+  "deletedByUser": "تم الحذف بواسطة المستخدم",
+  "newOrders": "الطلبات الجديدة",
+  "submit": "إرسال"
 }

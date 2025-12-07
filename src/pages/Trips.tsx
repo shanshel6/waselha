@@ -173,7 +173,21 @@ const Trips = () => {
     return (
       <Card className="text-center p-12">
         <h3 className="text-xl font-semibold">{t('noTripsFound')}</h3>
-        <p className="text-muted-foreground mt-2">Try adjusting your search filters or be the first to add a trip!</p>
+        <p className="text-muted-foreground mt-2">{t('noTripsFoundDescription')}</p>
+        <div className="mt-6 flex flex-col sm:flex-row justify-center gap-4">
+          <Link to="/add-trip">
+            <Button size="lg">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              {t('addTrip')}
+            </Button>
+          </Link>
+          <Link to="/place-order">
+            <Button size="lg" variant="secondary">
+              <Package className="mr-2 h-5 w-5" />
+              {t('placeOrderLink')}
+            </Button>
+          </Link>
+        </div>
       </Card>
     );
   };
@@ -183,14 +197,22 @@ const Trips = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-bold">{t('trips')}</h1>
-          <p className="text-muted-foreground">Find travelers who can carry your packages.</p>
+          <p className="text-muted-foreground">{t('searchDescription')}</p>
         </div>
-        <Link to="/add-trip">
-          <Button size="lg">
-            <PlusCircle className="mr-2 h-5 w-5" />
-            {t('addTrip')}
-          </Button>
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Link to="/add-trip">
+            <Button size="lg">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              {t('addTrip')}
+            </Button>
+          </Link>
+          <Link to="/place-order">
+            <Button size="lg" variant="secondary">
+              <Package className="mr-2 h-5 w-5" />
+              {t('placeOrderLink')}
+            </Button>
+          </Link>
+        </div>
       </div>
       
       <Card className="mb-8">
