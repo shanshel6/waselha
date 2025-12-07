@@ -92,16 +92,38 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         throw new Error(requestsError.message);
       }
 
-      // 2. Fetch general orders created by the user
-      const { data: orders, error: ordersError } = await supabase
-        .from('general_orders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Extract IDs of General Orders that have a corresponding Trip Request
+      const linkedGeneralOrderIds = requests
+        .map(req => req.general_order_id)
+        .filter((id): id is string => !!id);
 
-      if (ordersError) {
-        console.error("Error fetching general orders:", ordersError);
-        throw new Error(ordersError.message);
+      // 2. Fetch general orders created by the user, excluding those linked to a request
+      let orders: GeneralOrder[] = [];
+      if (linkedGeneralOrderIds.length > 0) {
+        const { data: filteredOrders, error: ordersError } = await supabase
+          .from('general_orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .not('id', 'in', `(${linkedGeneralOrderIds.join(',')})`)
+          .order('created_at', { ascending: false });
+        
+        if (ordersError) {
+          console.error("Error fetching filtered general orders:", ordersError);
+          throw new Error(ordersError.message);
+        }
+        orders = filteredOrders as GeneralOrder[];
+      } else {
+        const { data: allOrders, error: ordersError } = await supabase
+          .from('general_orders')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (ordersError) {
+          console.error("Error fetching all general orders:", ordersError);
+          throw new Error(ordersError.message);
+        }
+        orders = allOrders as GeneralOrder[];
       }
 
       // 3. Collect traveler IDs for trip requests
@@ -176,7 +198,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
               />
             );
           } else {
-            // Trip Request
+            // Trip Request (includes those generated from General Orders)
             const tripReq = req as RequestWithProfiles;
             const priceCalculation = calculateShippingCost(
               tripReq.trips?.from_country || '',

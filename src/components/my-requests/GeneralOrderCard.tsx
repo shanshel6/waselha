@@ -37,7 +37,7 @@ interface GeneralOrderCardProps {
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'claimed':
-    case 'matched': return <CheckCircle className="h-4 w-4 text-green-500" />;
+    case 'matched': return <CheckCircle className="h-4 w-4 text-blue-500" />;
     case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
     default: return <Clock className="h-4 w-4 text-yellow-500" />;
   }
@@ -54,9 +54,9 @@ const getStatusVariant = (status: string) => {
 
 const getStatusCardClass = (status: string) => {
   switch (status) {
-    case 'claimed': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
-    case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+    case 'claimed':
     case 'matched': return 'border-blue-500/30 bg-blue-50 dark:bg-blue-900/20';
+    case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
     default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
   }
 };
@@ -74,7 +74,7 @@ const GeneralOrderCard: React.FC<GeneralOrderCardProps> = ({
   const travelerName = order.claimed_by ? t('traveler') : t('waitingForMatch');
   
   return (
-    <Card className={cn(getStatusCardClass(order.status), "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20")}>
+    <Card className={cn(getStatusCardClass(order.status), "border-2 border-dashed")}>
       <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
