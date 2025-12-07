@@ -20,6 +20,7 @@ import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import CountryFlag from '@/components/CountryFlag';
 import { calculateShippingCost } from '@/lib/pricing';
+import { DollarSign } from 'lucide-react';
 
 const orderSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -190,22 +191,34 @@ const PlaceOrder = () => {
                 />
                 
                 {estimatedCost && estimatedCost.totalPriceUSD > 0 && (
-                  <Card className="bg-primary/10 p-4">
-                    <CardTitle className="text-lg mb-2 text-center">
-                      {t('estimatedCost')}
-                    </CardTitle>
-                    <div className="flex justify-around text-center">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total (USD)</p>
-                        <p className="font-bold text-xl">${estimatedCost.totalPriceUSD.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total (IQD)</p>
-                        <p className="font-bold text-xl">{estimatedCost.totalPriceIQD.toLocaleString('en-US')}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      {t('pricePerKg')}: ${estimatedCost.pricePerKgUSD.toFixed(2)}
+                  <Card className="bg-primary/10 dark:bg-primary/20 p-6 rounded-lg space-y-4 border border-primary/20">
+                    <h3 className="text-xl font-semibold text-center text-primary">{t('estimatedCost')}</h3>
+                    {estimatedCost.error ? (
+                      <p className="text-red-500 text-center font-medium">{estimatedCost.error}</p>
+                    ) : (
+                      <>
+                        <div className="text-center">
+                          <span className="text-sm text-muted-foreground">Total (USD)</span>
+                          <p className="text-4xl font-bold text-foreground flex items-center justify-center">
+                            <DollarSign className="h-7 w-7 mr-1 text-primary" />
+                            {estimatedCost.totalPriceUSD.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-sm text-muted-foreground">Total (IQD)</span>
+                          <p className="text-2xl font-bold text-foreground">
+                            {estimatedCost.totalPriceIQD.toLocaleString('en-US')} IQD
+                          </p>
+                        </div>
+                        <div className="text-center border-t pt-2 mt-2">
+                          <span className="text-xs text-muted-foreground">
+                            {t('pricePerKg')}: ${estimatedCost.pricePerKgUSD.toFixed(2)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    <p className="text-xs text-center text-muted-foreground pt-4">
+                      {t('priceCalculatorNote')}
                     </p>
                   </Card>
                 )}
