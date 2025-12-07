@@ -191,7 +191,7 @@
   "orderSubmittedSuccess": "تم إرسال طلب الشحن العام بنجاح! سنتواصل معك قريباً.",
   "orderSubmittedError": "فشل إرسال طلب الشحن.",
   "cantFindTrip": "لم تجد الرحلة المطلوبة؟",
-  "placeOrderLink": "سوي طلب رحلة جديدة",
+  "placeOrderLink": "لم تجد الرحلة المطلوبة؟ قم بإنشاء طلب شحن عام",
   "packageDetails": "تفاصيل الطرد",
   "statusNewOrder": "في انتظار مسافر لاستلام طلبك",
   "generalOrders": "طلبات الشحن العامة",
