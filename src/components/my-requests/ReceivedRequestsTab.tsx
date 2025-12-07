@@ -204,7 +204,7 @@ export const ReceivedRequestsTab = ({
     // Traveler controls the flow from item_accepted up to delivered
     let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
 
-    if (currentTrackingStatus === 'item_accepted' && req.sender_item_photos && req.sender_item_photos.length > 0) {
+    if (currentTrackingStatus === 'sender_photos_uploaded' && onUploadInspectionPhotos) {
       // Traveler needs to inspect next. Button handled below.
     } else if (currentTrackingStatus === 'traveler_inspection_complete') {
       travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
@@ -423,15 +423,14 @@ export const ReceivedRequestsTab = ({
                     </Badge>
                   </CardTitle>
                   
-                  {(req.status === 'pending' || req.status === 'rejected') && (
-                    <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
-                      <Plane className="h-4 w-4" />
-                      <CountryFlag country={fromCountry} showName />
-                      <span className="text-base">→</span>
-                      <CountryFlag country={toCountry} showName />
-                      {tripDate && ` on ${format(new Date(tripDate), 'PPP')}`}
-                    </div>
-                  )}
+                  {/* Always show trip route for context */}
+                  <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
+                    <Plane className="h-4 w-4" />
+                    <CountryFlag country={fromCountry} showName />
+                    <span className="text-base">→</span>
+                    <CountryFlag country={toCountry} showName />
+                    {tripDate && ` on ${format(new Date(tripDate), 'PPP')}`}
+                  </div>
                 </CardHeader>
                 
                 <CardContent className="space-y-3">
@@ -447,43 +446,43 @@ export const ReceivedRequestsTab = ({
                   
                   {hasPendingChanges ? renderProposedChanges(req) : (
                     <>
-                      {(req.status === 'pending' || req.status === 'rejected') && (
-                        <>
-                          <div>
-                            <p className="font-semibold text-sm flex items-center gap-2">
-                              <Package className="h-4 w-4" />
-                              {t('packageContents')}:
-                            </p>
-                            <p className="text-sm text-muted-foreground pl-6">
-                              {req.description}
-                            </p>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                            <p className="flex items-center gap-2">
-                              <Weight className="h-4 w-4" />
-                              <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg
-                            </p>
-                            <p className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4" />
-                              <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <p className="font-semibold text-sm flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              {t('receiverDetails')}:
-                            </p>
-                            <p className="text-sm text-muted-foreground pl-6">
-                              {req.receiver_details}
-                            </p>
-                          </div>
-                          
-                          {renderPriceBlock(priceCalculation)}
-                        </>
-                      )}
+                      {/* Details block for all statuses */}
+                      <div className="space-y-3">
+                        <div>
+                          <p className="font-semibold text-sm flex items-center gap-2">
+                            <Package className="h-4 w-4" />
+                            {t('packageContents')}:
+                          </p>
+                          <p className="text-sm text-muted-foreground pl-6">
+                            {req.description}
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                          <p className="flex items-center gap-2">
+                            <Weight className="h-4 w-4" />
+                            <span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg
+                          </p>
+                          <p className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            <span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-semibold text-sm flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            {t('receiverDetails')}:
+                          </p>
+                          <p className="text-sm text-muted-foreground pl-6">
+                            {req.receiver_details}
+                          </p>
+                        </div>
+                        
+                        {renderPriceBlock(priceCalculation)}
+                      </div>
                       
+                      {/* Accepted Details (Contact Info & Tracking Actions) */}
                       {renderAcceptedDetails(req)}
                       
                       {req.status === 'pending' && (
