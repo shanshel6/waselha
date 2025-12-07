@@ -387,18 +387,13 @@ export const ReceivedRequestsTab = ({
     queryFn: async () => {
       if (!user) return [];
 
-      // Fetch requests where the current user is the trip owner (Traveler)
-      // We rely on RLS to filter requests to only those the user is involved in (sender or traveler).
-      // We explicitly join the sender profile here.
+      // 1. Fetch requests and associated trips (without joining sender profile yet)
       const { data: allRequests, error: requestsError } = await supabase
         .from('requests')
         .select(`
           *, 
           trips(
             id, user_id, from_country, to_country, trip_date, free_kg, charge_per_kg, traveler_location, notes, created_at
-          ),
-          sender_profile: profiles!requests_sender_id_fkey(
-            id, first_name, last_name, phone
           )
         `)
         .order('created_at', { ascending: false });
@@ -406,18 +401,46 @@ export const ReceivedRequestsTab = ({
       if (requestsError) throw new Error(requestsError.message);
 
       // Filter client-side to ensure we only show requests where the current user is the trip owner (received requests)
-      // We also ensure that the trips object is present before filtering on user_id
-      const tripRequests = allRequests
-        .filter(req => req.trips && req.trips.user_id === user.id)
+      const travelerRequests = allRequests
+        .filter(req => req.trips && req.trips.user_id === user.id);
+      
+      // 2. Collect unique sender IDs
+      const senderIds = travelerRequests
+        .map(req => req.sender_id)
+        .filter((id, index, self) => self.indexOf(id) === index);
+
+      let senderProfiles: Profile[] = [];
+      if (senderIds.length > 0) {
+        // 3. Fetch sender profiles
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, phone')
+          .in('id', senderIds);
+
+        if (profilesError) {
+          console.error("Error fetching sender profiles:", profilesError);
+        } else {
+          senderProfiles = profilesData || [];
+        }
+      }
+
+      const profileMap = senderProfiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {} as Record<string, Profile>);
+
+      // 4. Map profiles back and finalize structure
+      const tripRequestsWithProfiles: RequestWithProfiles[] = travelerRequests
         .map(req => ({
           ...req,
+          sender_profile: profileMap[req.sender_id] || null,
           type: 'trip_request' as const
         })) as RequestWithProfiles[];
       
       // Sort by creation date descending
-      tripRequests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      tripRequestsWithProfiles.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      return tripRequests;
+      return tripRequestsWithProfiles;
     },
     enabled: !!user,
   });
