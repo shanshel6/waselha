@@ -1,14 +1,14 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, Trash2, Weight, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Send, Pencil, Camera, PackageCheck } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plane, Package, Trash2, MessageSquare, BadgeCheck, DollarSign, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { format, differenceInDays } from 'date-fns'; // Added differenceInDays
+import { format, differenceInDays } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
@@ -27,7 +27,7 @@ interface Request {
   handover_location: string | null; 
   status: 'pending' | 'accepted' | 'rejected'; 
   created_at: string; 
-  updated_at: string | null; // Added updated_at
+  updated_at: string | null;
   trips: Trip; 
   cancellation_requested_by: string | null; 
   proposed_changes: { weight_kg: number; description: string } | null; 
@@ -47,6 +47,275 @@ interface SentRequestsTabProps {
   trackingUpdateMutation: any;
 }
 
+const CompactSentRequestCard: React.FC<{ 
+  req: RequestWithProfiles; 
+  priceCalculation: ReturnType<typeof calculateShippingCost>;
+  onCancelRequest: (request: any) => void;
+  deleteRequestMutation: any;
+  onCancelAcceptedRequest: (request: Request) => void;
+  onEditRequest: (request: Request) => void;
+  onUploadSenderPhotos: (request: Request) => void;
+  onTrackingUpdate: (request: Request, newStatus: RequestTrackingStatus) => void;
+  trackingUpdateMutation: any;
+  t: any;
+}> = ({ 
+  req, 
+  priceCalculation, 
+  onCancelRequest, 
+  deleteRequestMutation, 
+  onCancelAcceptedRequest,
+  onEditRequest,
+  onUploadSenderPhotos,
+  onTrackingUpdate,
+  trackingUpdateMutation,
+  t 
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+
+  const travelerName = req.traveler_profile?.first_name || t('traveler');
+  const fromCountry = req.trips?.from_country || 'N/A';
+  const toCountry = req.trips?.to_country || 'N/A';
+  const tripDate = req.trips?.trip_date;
+  const isRejected = req.status === 'rejected';
+  const currentTrackingStatus = req.tracking_status;
+  const hasPendingChanges = !!req.proposed_changes;
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'accepted': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
+      default: return <Clock className="h-4 w-4 text-yellow-500" />;
+    }
+  };
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'accepted': return 'default';
+      case 'rejected': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  const getStatusCardClass = (status: string) => {
+    switch (status) {
+      case 'accepted': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
+      case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+      default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
+    }
+  };
+
+  const renderAcceptedDetails = (req: RequestWithProfiles) => {
+    if (req.status !== 'accepted') return null;
+
+    const otherParty = req.traveler_profile;
+    const trip = req.trips;
+    const otherPartyName = `${otherParty?.first_name || ''} ${otherParty?.last_name || ''}`.trim() || t('user');
+    const otherPartyPhone = otherParty?.phone || t('noPhoneProvided');
+    const cancellationRequested = req.cancellation_requested_by;
+    const isCurrentUserRequester = cancellationRequested === req.sender_id;
+    const isOtherUserRequester = cancellationRequested && cancellationRequested !== req.sender_id;
+    const currentTrackingStatus = req.tracking_status;
+    const isCompleted = currentTrackingStatus === 'completed';
+    const isChatExpired = isCompleted && req.updated_at && differenceInDays(new Date(), new Date(req.updated_at)) >= 7;
+
+    let senderAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
+    if (currentTrackingStatus === 'delivered') {
+      senderAction = { status: 'completed', tKey: 'markAsCompleted', icon: PackageCheck };
+    }
+
+    return (
+      <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
+        <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2">
+          <BadgeCheck className="h-5 w-5" />
+          {t('requestAcceptedTitle')}
+        </h4>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <p className="flex items-center gap-2">
+            <User className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('traveler')}:</span>
+            {otherPartyName}
+          </p>
+          <p className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('phone')}:</span>
+            {otherPartyPhone}
+          </p>
+        </div>
+        
+        <div className="border-t pt-3 space-y-2 text-sm">
+          <p className="flex items-center gap-2">
+            <Plane className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('tripRoute')}:</span>
+            <CountryFlag country={trip?.from_country || 'N/A'} showName /> → <CountryFlag country={trip?.to_country || 'N/A'} showName />
+          </p>
+          <p className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{t('tripDate')}:</span>
+            {trip?.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
+          </p>
+        </div>
+        
+        {cancellationRequested && (
+          <div className={`p-3 rounded-md text-sm ${
+            isCurrentUserRequester 
+              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' 
+              : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+          }`}>
+            {isCurrentUserRequester 
+              ? t('waitingForOtherPartyCancellation') 
+              : t('otherPartyRequestedCancellation')}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          {!isChatExpired && (
+            <Link to={`/chat/${req.id}`}>
+              <Button size="sm" variant="outline">
+                <MessageSquare className="mr-2 h-4 w-4" />
+                {t('viewChat')}
+              </Button>
+            </Link>
+          )}
+          
+          {!isCompleted && (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') && (
+            <Button 
+              size="sm" 
+              variant="secondary"
+              onClick={() => onUploadSenderPhotos(req)}
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              {req.sender_item_photos && req.sender_item_photos.length > 0 ? t('updateItemPhotos') : t('uploadItemPhotos')}
+            </Button>
+          )}
+          
+          {!isCompleted && senderAction && (
+            <Button 
+              size="sm" 
+              onClick={() => onTrackingUpdate(req, senderAction!.status)}
+              disabled={trackingUpdateMutation.isPending}
+            >
+              <senderAction.icon className="mr-2 h-4 w-4" />
+              {t(senderAction.tKey)}
+            </Button>
+          )}
+          
+          {!isCompleted && (
+            <Button size="sm" variant="destructive" onClick={() => onCancelAcceptedRequest(req)} disabled={isCurrentUserRequester}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Card className={getStatusCardClass(req.status)}>
+      <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {getStatusIcon(req.status)}
+            <div>
+              <CardTitle className="text-base font-semibold">
+                {t('requestTo')} {travelerName}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Plane className="h-3 w-3" />
+                <CountryFlag country={fromCountry} showName={false} />
+                <span className="text-xs">→</span>
+                <CountryFlag country={toCountry} showName={false} />
+                {tripDate && ` • ${format(new Date(tripDate), 'MMM d')}`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={getStatusVariant(req.status)} className="text-xs">
+              {hasPendingChanges ? t('pendingChanges') : t(req.status)}
+            </Badge>
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
+        </div>
+      </CardHeader>
+
+      {expanded && (
+        <CardContent className="p-4 pt-0 space-y-3">
+          {req.status !== 'pending' && (
+            <div className="pt-2">
+              <RequestTracking 
+                currentStatus={currentTrackingStatus} 
+                isRejected={isRejected} 
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <Weight className="h-4 w-4 text-muted-foreground" />
+              <span>{req.weight_kg} kg</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="truncate">{req.destination_city}</span>
+            </div>
+          </div>
+
+          {priceCalculation && (
+            <div className="bg-primary/10 p-2 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">{t('estimatedCost')}:</span>
+                <span className="font-bold text-green-700">${priceCalculation.totalPriceUSD.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-between text-xs" 
+              onClick={() => setDetailsExpanded(!detailsExpanded)}
+            >
+              <span>{t('viewDetails')}</span>
+              {detailsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+            
+            {detailsExpanded && (
+              <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
+                <div>
+                  <p className="font-medium">{t('packageContents')}:</p>
+                  <p className="text-muted-foreground">{req.description}</p>
+                </div>
+                <div>
+                  <p className="font-medium">{t('receiverDetails')}:</p>
+                  <p className="text-muted-foreground">{req.receiver_details}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {renderAcceptedDetails(req)}
+          
+          {req.status === 'pending' && (
+            <div className="flex gap-2 pt-2">
+              <Button variant="destructive" size="sm" onClick={() => onCancelRequest(req)} disabled={deleteRequestMutation.isPending}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('cancelRequest')}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => onEditRequest(req)} disabled={hasPendingChanges}>
+                <Pencil className="mr-2 h-4 w-4" />
+                {t('editRequest')}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
+};
+
 export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onUploadSenderPhotos, onTrackingUpdate, trackingUpdateMutation }: SentRequestsTabProps) => {
   const { t } = useTranslation();
 
@@ -65,208 +334,47 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     enabled: !!user,
   });
 
-  const allSentItems = useMemo(() => {
-    if (isLoadingTripRequests) return [];
-    return (tripRequests || []).map(req => ({ ...req, type: 'trip_request' })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [tripRequests, isLoadingTripRequests]);
-
   const isLoadingSent = isLoadingTripRequests;
   const sentRequestsError = tripRequestsError;
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'default';
-      case 'rejected': return 'destructive';
-      default: return 'secondary';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'accepted': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
-      default: return <Clock className="h-4 w-4 text-yellow-500" />;
-    }
-  };
-
-  const getStatusCardClass = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
-      case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
-      default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
-    }
-  };
-
-  const calculatePriceDisplay = (item: any) => {
-    const from_country = item.trips?.from_country;
-    const to_country = item.trips?.to_country;
-    const weight_kg = item.weight_kg;
-    const has_insurance = false; 
-    if (!from_country || !to_country || from_country === to_country || weight_kg <= 0) return null;
-    const result = calculateShippingCost(from_country, to_country, weight_kg);
-    if (result.error) return null;
-    let totalPriceUSD = result.totalPriceUSD;
-    if (has_insurance) totalPriceUSD *= 2;
-    const totalPriceIQD = totalPriceUSD * 1400;
-    return { totalPriceUSD, totalPriceIQD, pricePerKgUSD: result.pricePerKgUSD, hasInsurance: has_insurance };
-  };
-
-  const renderPriceBlock = (priceCalculation: ReturnType<typeof calculatePriceDisplay>) => {
-    if (!priceCalculation) return null;
-    return (
-      <div className="pt-3 border-t mt-3">
-        <p className="font-semibold text-sm flex items-center gap-2 text-green-700 dark:text-green-300"><DollarSign className="h-4 w-4" />{t('estimatedCost')}:</p>
-        <div className="flex justify-between items-center pl-6">
-          <div>
-            <p className="text-lg font-bold text-green-800 dark:text-green-200">${priceCalculation.totalPriceUSD.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">{priceCalculation.totalPriceIQD.toLocaleString('en-US')} IQD</p>
-          </div>
-          {priceCalculation.hasInsurance && <Badge variant="default" className="bg-blue-600 hover:bg-blue-600/90">{t('insuranceOption')}</Badge>}
-        </div>
-      </div>
-    );
-  };
-
-  const renderAcceptedDetails = (req: RequestWithProfiles) => {
-    if (req.status !== 'accepted') return null;
-    const otherParty = req.traveler_profile;
-    const trip = req.trips;
-    if (!otherParty || !trip) return null;
-    const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
-    const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
-    const cancellationRequested = req.cancellation_requested_by;
-    const isCurrentUserRequester = cancellationRequested === user?.id;
-    const isOtherUserRequester = cancellationRequested && cancellationRequested !== user?.id;
-    
-    const hasSenderPhotos = req.sender_item_photos && req.sender_item_photos.length > 0;
-    const currentTrackingStatus = req.tracking_status;
-    
-    const isCompleted = currentTrackingStatus === 'completed';
-    const isChatExpired = isCompleted && req.updated_at && differenceInDays(new Date(), new Date(req.updated_at)) >= 7;
-
-    // Sender controls the final 'completed' status
-    let senderAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
-
-    if (currentTrackingStatus === 'delivered') {
-      senderAction = { status: 'completed', tKey: 'markAsCompleted', icon: PackageCheck };
-    }
-
-    return (
-      <div className="mt-4 p-4 border rounded-lg bg-green-100 dark:bg-green-900/30 space-y-3">
-        <h4 className="font-bold text-green-800 dark:text-green-300 flex items-center gap-2"><BadgeCheck className="h-5 w-5" />{t('requestAcceptedTitle')}</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <p className="flex items-center gap-2"><User className="h-4 w-4 text-primary" /><span className="font-semibold">{t('traveler')}:</span>{otherPartyName}</p>
-          <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" /><span className="font-semibold">{t('phone')}:</span>{otherPartyPhone}</p>
-        </div>
-        <div className="border-t pt-3 space-y-2 text-sm">
-          <p className="flex items-center gap-2"><Plane className="h-4 w-4 text-primary" /><span className="font-semibold">{t('tripRoute')}:</span><CountryFlag country={trip.from_country} showName /> → <CountryFlag country={trip.to_country} showName /></p>
-          <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /><span className="font-semibold">{t('tripDate')}:</span>{trip.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}</p>
-        </div>
-        {cancellationRequested && <div className={`p-3 rounded-md text-sm ${isCurrentUserRequester ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}`}>{isCurrentUserRequester ? t('waitingForOtherPartyCancellation') : t('otherPartyRequestedCancellation')}</div>}
-        <div className="flex flex-wrap gap-2 pt-2">
-          {/* Chat Button */}
-          {!isChatExpired && (
-            <Link to={`/chat/${req.id}`}>
-              <Button size="sm" variant="outline">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                {t('viewChat')}
-              </Button>
-            </Link>
-          )}
-          
-          {/* Sender Photo Upload Button */}
-          {!isCompleted && (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') ? (
-            <Button 
-              size="sm" 
-              variant="secondary"
-              onClick={() => onUploadSenderPhotos(req)}
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              {hasSenderPhotos ? t('updateItemPhotos') : t('uploadItemPhotos')}
-            </Button>
-          ) : null}
-          
-          {/* Sender Tracking Button (Complete) */}
-          {!isCompleted && senderAction && (
-            <Button 
-              size="sm" 
-              onClick={() => onTrackingUpdate(req, senderAction!.status)}
-              disabled={trackingUpdateMutation.isPending}
-            >
-              <senderAction.icon className="mr-2 h-4 w-4" />
-              {t(senderAction.tKey)}
-            </Button>
-          )}
-          
-          {/* Cancellation Button */}
-          {!isCompleted && (
-            <Button size="sm" variant="destructive" onClick={() => onCancelAcceptedRequest(req)} disabled={isCurrentUserRequester}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              {isOtherUserRequester ? t('confirmCancellation') : t('cancelRequest')}
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderSentItem = (item: any) => {
-    const priceCalculation = calculatePriceDisplay(item);
-    const req = item as RequestWithProfiles;
-    const travelerName = req.traveler_profile?.first_name || t('traveler');
-    const hasPendingChanges = !!req.proposed_changes;
-    const isRejected = req.status === 'rejected';
-    const currentTrackingStatus = req.tracking_status;
-
-    return (
-      <Card key={req.id} className={getStatusCardClass(req.status)}>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">{getStatusIcon(req.status)}{t('requestTo')} {travelerName}</span>
-            <Badge variant={getStatusVariant(req.status)}>{hasPendingChanges ? t('pendingChanges') : t(req.status)}</Badge>
-          </CardTitle>
-          {(req.status === 'pending' || req.status === 'rejected') && <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground"><Plane className="h-4 w-4" /><CountryFlag country={req.trips?.from_country || 'N/A'} showName /> → <CountryFlag country={req.trips?.to_country || 'N/A'} showName />{req.trips?.trip_date && ` on ${format(new Date(req.trips.trip_date), 'PPP')}`}</div>}
-        </CardHeader>
-        <CardContent>
-          {/* Tracking component for accepted/rejected requests */}
-          {req.status !== 'pending' && (
-            <div className="pt-2">
-              <RequestTracking 
-                currentStatus={currentTrackingStatus} 
-                isRejected={isRejected} 
-              />
-            </div>
-          )}
-          
-          {(req.status === 'pending' || req.status === 'rejected') && (
-            <div className="space-y-3">
-              <div><p className="font-semibold text-sm flex items-center gap-2"><Package className="h-4 w-4" />{t('packageContents')}:</p><p className="text-sm text-muted-foreground pl-6">{req.description}</p></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <p className="flex items-center gap-2"><Weight className="h-4 w-4" /><span className="font-semibold">{t('packageWeightKg')}:</span> {req.weight_kg} kg</p>
-                <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /><span className="font-semibold">{t('destinationCity')}:</span> {req.destination_city}</p>
-              </div>
-              <div><p className="font-semibold text-sm flex items-center gap-2"><User className="h-4 w-4" />{t('receiverDetails')}:</p><p className="text-sm text-muted-foreground pl-6">{req.receiver_details}</p></div>
-              {renderPriceBlock(priceCalculation)}
-            </div>
-          )}
-          {renderAcceptedDetails(req)}
-          {req.status === 'pending' && (
-            <div className="flex gap-2 mt-4">
-              <Button variant="destructive" size="sm" onClick={() => onCancelRequest(req)} disabled={deleteRequestMutation.isPending}><Trash2 className="mr-2 h-4 w-4" />{t('cancelRequest')}</Button>
-              <Button variant="secondary" size="sm" onClick={() => onEditRequest(req)} disabled={hasPendingChanges}><Pencil className="mr-2 h-4 w-4" />{t('editRequest')}</Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
   if (isLoadingSent) return <p>{t('loading')}</p>;
+
   if (sentRequestsError) return <p className="text-red-500">Error loading sent requests: {sentRequestsError.message}</p>;
+
   return (
-    <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><Send className="h-6 w-6 text-primary" />{t('sentRequests')}</CardTitle></CardHeader>
-      <CardContent className="space-y-4">{allSentItems.length > 0 ? allSentItems.map(renderSentItem) : !isLoadingSent && !sentRequestsError && <p>{t('noSentRequests')}</p>}</CardContent>
-    </Card>
+    <div className="space-y-3">
+      {tripRequests && tripRequests.length > 0 ? (
+        tripRequests.map(req => {
+          const priceCalculation = calculateShippingCost(
+            req.trips?.from_country || '',
+            req.trips?.to_country || '',
+            req.weight_kg
+          );
+
+          return (
+            <CompactSentRequestCard
+              key={req.id}
+              req={req}
+              priceCalculation={priceCalculation}
+              onCancelRequest={onCancelRequest}
+              deleteRequestMutation={deleteRequestMutation}
+              onCancelAcceptedRequest={onCancelAcceptedRequest}
+              onEditRequest={onEditRequest}
+              onUploadSenderPhotos={onUploadSenderPhotos}
+              onTrackingUpdate={onTrackingUpdate}
+              trackingUpdateMutation={trackingUpdateMutation}
+              t={t}
+            />
+          );
+        })
+      ) : !isLoadingSent && !sentRequestsError ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-lg font-semibold">{t('noSentRequests')}</p>
+            <p className="text-muted-foreground mt-2">لم تقم بإرسال أي طلبات بعد.</p>
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
   );
 };
