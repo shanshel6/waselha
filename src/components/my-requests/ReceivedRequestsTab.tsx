@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2, Inbox, ArrowRight, Shield } from 'lucide-react';
+import { Plane, Package, MapPin, User, Weight, MessageSquare, Phone, CalendarDays, BadgeCheck, DollarSign, CheckCircle, XCircle, Clock, Trash2, Inbox, ArrowRight, Shield, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { calculateShippingCost } from '@/lib/pricing';
@@ -204,9 +204,7 @@ export const ReceivedRequestsTab = ({
     // Traveler controls the flow from item_accepted up to delivered
     let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
 
-    if (currentTrackingStatus === 'sender_photos_uploaded' && onUploadInspectionPhotos) {
-      // Traveler needs to inspect next. Button handled below.
-    } else if (currentTrackingStatus === 'traveler_inspection_complete') {
+    if (currentTrackingStatus === 'traveler_inspection_complete') {
       travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
     } else if (currentTrackingStatus === 'traveler_on_the_way') {
       travelerAction = { status: 'delivered', tKey: 'markAsDelivered', icon: MapPin };
@@ -262,7 +260,16 @@ export const ReceivedRequestsTab = ({
           </div>
         )}
         
+        {/* Guidance for Traveler when waiting for Sender photos */}
+        {currentTrackingStatus === 'item_accepted' && (
+          <div className="p-3 rounded-md text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 flex items-center gap-2">
+            <Camera className="h-4 w-4" />
+            {t('safetyVerificationDescription')}
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 pt-2">
+          {/* 1. Chat Button */}
           <Link to={`/chat/${req.id}`}>
             <Button size="sm" variant="outline">
               <MessageSquare className="mr-2 h-4 w-4" />
@@ -270,7 +277,7 @@ export const ReceivedRequestsTab = ({
             </Button>
           </Link>
           
-          {/* Inspection Button */}
+          {/* 2. Inspection Button (Visible when Sender has uploaded photos) */}
           {currentTrackingStatus === 'sender_photos_uploaded' && onUploadInspectionPhotos && (
             <Button 
               size="sm" 
@@ -282,7 +289,7 @@ export const ReceivedRequestsTab = ({
             </Button>
           )}
           
-          {/* Traveler Tracking Buttons */}
+          {/* 3. Traveler Tracking Buttons */}
           {travelerAction && (
             <Button 
               size="sm" 
@@ -294,7 +301,7 @@ export const ReceivedRequestsTab = ({
             </Button>
           )}
           
-          {/* Cancellation Button */}
+          {/* 4. Cancellation Button */}
           <Button 
             size="sm" 
             variant="destructive" 
