@@ -190,10 +190,11 @@ export const ReceivedRequestsTab = ({
     const otherParty = req.sender_profile;
     const trip = req.trips;
 
-    if (!otherParty || !trip) return null;
+    // NOTE: Removed the early exit condition based on missing otherParty or trip data.
+    // We will conditionally render the details, but ensure the action buttons always show.
 
-    const otherPartyName = `${otherParty.first_name || ''} ${otherParty.last_name || ''}`.trim() || t('user');
-    const otherPartyPhone = otherParty.phone || t('noPhoneProvided');
+    const otherPartyName = `${otherParty?.first_name || ''} ${otherParty?.last_name || ''}`.trim() || t('user');
+    const otherPartyPhone = otherParty?.phone || t('noPhoneProvided');
 
     const cancellationRequested = req.cancellation_requested_by;
     const isCurrentUserRequester = cancellationRequested === user?.id;
@@ -217,36 +218,41 @@ export const ReceivedRequestsTab = ({
           {t('requestAcceptedTitle')}
         </h4>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <p className="flex items-center gap-2">
-            <User className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('sender')}:</span>
-            {otherPartyName}
-          </p>
-          <p className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('phone')}:</span>
-            {otherPartyPhone}
-          </p>
-        </div>
-        
-        <div className="border-t pt-3 space-y-2 text-sm">
-          <p className="flex items-center gap-2">
-            <Plane className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('tripRoute')}:</span>
-            <CountryFlag country={trip.from_country} showName /> → <CountryFlag country={trip.to_country} showName />
-          </p>
-          <p className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('tripDate')}:</span>
-            {trip.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
-          </p>
-          <p className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{t('handoverLocation')}:</span>
-            {req.handover_location || t('toBeDeterminedInChat')}
-          </p>
-        </div>
+        {/* Contact and Trip Details (Conditional on data existence) */}
+        {(otherParty && trip) && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <p className="flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{t('sender')}:</span>
+                {otherPartyName}
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{t('phone')}:</span>
+                {otherPartyPhone}
+              </p>
+            </div>
+            
+            <div className="border-t pt-3 space-y-2 text-sm">
+              <p className="flex items-center gap-2">
+                <Plane className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{t('tripRoute')}:</span>
+                <CountryFlag country={trip.from_country} showName /> → <CountryFlag country={trip.to_country} showName />
+              </p>
+              <p className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{t('tripDate')}:</span>
+                {trip.trip_date ? format(new Date(trip.trip_date), 'PPP') : t('dateNotSet')}
+              </p>
+              <p className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{t('handoverLocation')}:</span>
+                {req.handover_location || t('toBeDeterminedInChat')}
+              </p>
+            </div>
+          </>
+        )}
         
         {cancellationRequested && (
           <div className={`p-3 rounded-md text-sm ${
@@ -268,6 +274,7 @@ export const ReceivedRequestsTab = ({
           </div>
         )}
 
+        {/* ACTION BUTTONS BLOCK - GUARANTEED TO RENDER */}
         <div className="flex flex-wrap gap-2 pt-2">
           {/* 1. Chat Button (Always visible if accepted) */}
           <Link to={`/chat/${req.id}`}>
