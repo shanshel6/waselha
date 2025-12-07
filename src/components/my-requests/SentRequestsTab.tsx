@@ -33,9 +33,27 @@ interface Request {
   proposed_changes: { weight_kg: number; description: string } | null; 
   sender_item_photos: string[] | null; 
   tracking_status: RequestTrackingStatus;
-  general_order_id: string | null; // Added new field
-  type?: 'trip_request';
+  general_order_id: string | null;
+  type: 'trip_request';
 }
+
+interface GeneralOrder {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  description: string;
+  is_valuable: boolean;
+  insurance_requested: boolean;
+  status: 'new' | 'matched' | 'claimed' | 'completed' | 'cancelled';
+  claimed_by: string | null;
+  created_at: string;
+  updated_at: string;
+  insurance_percentage: number;
+  type: 'general_order';
+}
+
+type SentItem = Request | GeneralOrder;
 
 interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
 
@@ -51,7 +69,7 @@ interface SentRequestsTabProps {
 }
 
 const CompactSentRequestCard: React.FC<{ 
-  req: RequestWithProfiles; 
+  req: SentItem; 
   priceCalculation: ReturnType<typeof calculateShippingCost> | null;
   onCancelRequest: (request: any) => void;
   deleteRequestMutation: any;
@@ -76,8 +94,135 @@ const CompactSentRequestCard: React.FC<{
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
-  // Type guard to differentiate between trip requests and general orders (now only trip requests here)
-  const tripReq = req;
+  const isGeneralOrder = (item: SentItem): item is GeneralOrder => item.type === 'general_order';
+  
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'accepted':
+      case 'claimed': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
+      default: return <Clock className="h-4 w-4 text-yellow-500" />;
+    }
+  };
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'accepted':
+      case 'claimed': return 'default';
+      case 'rejected': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  const getStatusCardClass = (status: string) => {
+    switch (status) {
+      case 'accepted':
+      case 'claimed': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
+      case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+      default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
+    }
+  };
+
+  if (isGeneralOrder(req)) {
+    // --- General Order Card (Created by Sender) ---
+    const order = req;
+    const isMatched = order.status === 'matched' || order.status === 'claimed';
+    const travelerName = order.claimed_by ? t('traveler') : t('noTravelerYet');
+    
+    return (
+      <Card className={cn(getStatusCardClass(order.status), "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20")}>
+        <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {getStatusIcon(order.status)}
+              <div>
+                <CardTitle className="text-base font-semibold">
+                  {t('generalOrderTitle')}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Plane className="h-3 w-3" />
+                  <CountryFlag country={order.from_country} showName={false} />
+                  <span className="text-xs">→</span>
+                  <CountryFlag country={order.to_country} showName={false} />
+                  {` • ${format(new Date(order.created_at), 'MMM d')}`}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant={getStatusVariant(order.status)} className="text-xs">
+                {t(`status${order.status.charAt(0).toUpperCase() + order.status.slice(1)}`)}
+              </Badge>
+              {isMatched && <span className="text-xs text-muted-foreground">{t('matched')}</span>}
+            </div>
+          </div>
+        </CardHeader>
+
+        {expanded && (
+          <CardContent className="p-4 pt-0 space-y-3">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Weight className="h-4 w-4 text-muted-foreground" />
+                <span>{t('weightNotSet')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span>{isMatched ? travelerName : t('waitingForMatch')}</span>
+              </div>
+            </div>
+
+            <div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-between text-xs" 
+                onClick={() => setDetailsExpanded(!detailsExpanded)}
+              >
+                <span>{t('viewDetails')}</span>
+                {detailsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </Button>
+              
+              {detailsExpanded && (
+                <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
+                  <div>
+                    <p className="font-medium">{t('packageContents')}:</p>
+                    <p className="text-muted-foreground">{order.description}</p>
+                  </div>
+                  {order.insurance_requested && (
+                    <div>
+                      <p className="font-medium text-blue-600">{t('insuranceCoverage')}:</p>
+                      <p className="text-muted-foreground">{order.insurance_percentage}%</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions for General Order */}
+            <div className="flex gap-2 pt-2">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => onCancelRequest({ ...order, type: 'general_order' })} 
+                disabled={deleteRequestMutation.isPending || isMatched}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('cancelRequest')}
+              </Button>
+              <Link to={`/edit-general-order/${order.id}`}>
+                <Button variant="secondary" size="sm" disabled={isMatched}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t('editOrder')}
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    );
+  }
+
+  // --- Regular Trip Request Card (Sent by Sender) ---
+  const tripReq = req as RequestWithProfiles;
   
   const travelerName = tripReq.traveler_profile?.first_name || t('traveler');
   const fromCountry = tripReq.trips?.from_country || 'N/A';
@@ -87,30 +232,6 @@ const CompactSentRequestCard: React.FC<{
   const currentTrackingStatus = tripReq.tracking_status;
   const hasPendingChanges = !!tripReq.proposed_changes;
   const isGeneralOrderMatch = !!tripReq.general_order_id;
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'accepted': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
-      default: return <Clock className="h-4 w-4 text-yellow-500" />;
-    }
-  };
-
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'default';
-      case 'rejected': return 'destructive';
-      default: return 'secondary';
-    }
-  };
-
-  const getStatusCardClass = (status: string) => {
-    switch (status) {
-      case 'accepted': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
-      case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
-      default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
-    }
-  };
 
   const renderAcceptedDetails = (req: RequestWithProfiles) => {
     if (req.status !== 'accepted') return null;
@@ -327,11 +448,12 @@ const CompactSentRequestCard: React.FC<{
 export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onUploadSenderPhotos, onTrackingUpdate, trackingUpdateMutation }: SentRequestsTabProps) => {
   const { t } = useTranslation();
 
-  const { data: tripRequests, isLoading: isLoadingTripRequests, error: tripRequestsError } = useQuery({
-    queryKey: ['sentTripRequests', user?.id],
+  const { data: sentItems, isLoading: isLoadingSent, error: sentRequestsError } = useQuery({
+    queryKey: ['sentRequests', user?.id],
     queryFn: async () => {
       if (!user) return [];
       
+      // 1. Fetch regular trip requests sent by the user
       const { data: requests, error: requestsError } = await supabase
         .from('requests')
         .select(`
@@ -348,9 +470,19 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         throw new Error(requestsError.message);
       }
 
-      if (!requests || requests.length === 0) return [];
+      // 2. Fetch general orders created by the user
+      const { data: orders, error: ordersError } = await supabase
+        .from('general_orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-      // Get traveler profiles for accepted requests
+      if (ordersError) {
+        console.error("Error fetching general orders:", ordersError);
+        throw new Error(ordersError.message);
+      }
+
+      // 3. Collect traveler IDs for trip requests
       const travelerIds = requests
         .filter(req => req.trips?.user_id)
         .map(req => req.trips.user_id)
@@ -375,18 +507,27 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         return acc;
       }, {} as Record<string, Profile>);
 
-      return requests.map(request => ({
+      // 4. Combine and map items
+      const tripRequestsWithProfiles: SentItem[] = requests.map(request => ({
         ...request,
-        sender_profile: null,
         traveler_profile: profileMap[request.trips?.user_id] || null,
         type: 'trip_request' as const
       })) as RequestWithProfiles[];
+      
+      const generalOrders: SentItem[] = orders.map(order => ({
+        ...order,
+        type: 'general_order' as const
+      })) as GeneralOrder[];
+
+      const combinedItems = [...tripRequestsWithProfiles, ...generalOrders];
+      
+      // Sort by creation date descending
+      combinedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      return combinedItems;
     },
     enabled: !!user,
   });
-
-  const isLoadingSent = isLoadingTripRequests;
-  const sentRequestsError = tripRequestsError;
 
   if (isLoadingSent) return <p className="p-4 text-center">{t('loading')}</p>;
 
@@ -396,7 +537,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     </div>
   );
 
-  const allSentRequests = tripRequests || [];
+  const allSentRequests = sentItems || [];
 
   return (
     <div className="space-y-3">
@@ -404,12 +545,14 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         allSentRequests.map(req => {
           // Calculate price only for trip requests
           let priceCalculation = null;
-          const tripReq = req as RequestWithProfiles;
-          priceCalculation = calculateShippingCost(
-            tripReq.trips?.from_country || '',
-            tripReq.trips?.to_country || '',
-            tripReq.weight_kg
-          );
+          if (req.type === 'trip_request') {
+            const tripReq = req as RequestWithProfiles;
+            priceCalculation = calculateShippingCost(
+              tripReq.trips?.from_country || '',
+              tripReq.trips?.to_country || '',
+              tripReq.weight_kg
+            );
+          }
 
           return (
             <CompactSentRequestCard

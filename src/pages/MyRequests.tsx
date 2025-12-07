@@ -51,6 +51,8 @@ interface Request {
   traveler_inspection_photos?: string[] | null;
   sender_item_photos?: string[] | null;
   tracking_status: RequestTrackingStatus;
+  general_order_id: string | null;
+  type: 'trip_request';
 }
 
 interface GeneralOrder {
@@ -61,11 +63,15 @@ interface GeneralOrder {
   description: string;
   is_valuable: boolean;
   insurance_requested: boolean;
-  status: string;
+  status: 'new' | 'matched' | 'claimed' | 'completed' | 'cancelled';
   claimed_by: string | null;
   created_at: string;
   updated_at: string;
+  insurance_percentage: number;
+  type: 'general_order';
 }
+
+type SentItem = Request | GeneralOrder;
 
 interface Profile {
   id: string;
@@ -123,7 +129,7 @@ const MyRequests = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list
       queryClient.invalidateQueries({ queryKey: ['trip'] }); // Invalidate specific trip details
@@ -159,7 +165,7 @@ const MyRequests = () => {
       }
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list
       queryClient.invalidateQueries({ queryKey: ['trip'] }); // Invalidate specific trip details
@@ -171,30 +177,33 @@ const MyRequests = () => {
   });
 
   const deleteRequestMutation = useMutation({
-    mutationFn: async (item: any) => {
+    mutationFn: async (item: SentItem) => {
       // Handle both trip requests and general orders
       if (item.type === 'general_order') {
+        // Only allow deletion if status is 'new' or 'matched' (before acceptance/claiming)
+        if (item.status !== 'new' && item.status !== 'matched') {
+          throw new Error(t('cannotDeleteClaimedOrder'));
+        }
         const { error } = await supabase
           .from('general_orders')
           .delete()
-          .eq('id', item.id);
+          .eq('id', item.id)
+          .eq('user_id', user?.id);
         if (error) throw error;
       } else {
-        // Only handles trip requests now
+        // Trip request deletion (only allowed if pending or mutually agreed accepted)
         const { error } = await supabase
           .from('requests')
           .delete()
-          .eq('id', item.id);
+          .eq('id', item.id)
+          .eq('sender_id', user?.id);
 
         if (error) throw error;
       }
     },
     onSuccess: (_, variables) => {
-      if (variables.type === 'general_order') {
-        queryClient.invalidateQueries({ queryKey: ['sentGeneralOrders'] });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       showSuccess(t('requestCancelledSuccess'));
     },
     onError: (err: any) => showError(t('requestCancelledError')),
@@ -210,7 +219,7 @@ const MyRequests = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       showSuccess(t('changesSubmittedSuccess'));
       setRequestToEdit(null);
@@ -236,7 +245,7 @@ const MyRequests = () => {
       if (error) throw error;
     },
     onSuccess: (_, { accept }) => {
-      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       showSuccess(accept ? t('changesAcceptedSuccess') : t('changesRejectedSuccess'));
     },
@@ -271,7 +280,7 @@ const MyRequests = () => {
       if (error) throw error;
     },
     onSuccess: (_, { newStatus }) => {
-      queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       
       let successMessageKey = 'requestUpdatedSuccess';
@@ -298,6 +307,7 @@ const MyRequests = () => {
     if (itemToCancel.type === 'accepted_trip_request') {
       mutualCancelMutation.mutate(itemToCancel);
     } else {
+      // Handle deletion of GeneralOrder or pending TripRequest
       deleteRequestMutation.mutate(itemToCancel);
     }
 
@@ -312,7 +322,7 @@ const MyRequests = () => {
 
   const handleInspectionComplete = () => {
     queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
-    queryClient.invalidateQueries({ queryKey: ['sentTripRequests'] });
+    queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
   };
   
   const handleSenderPhotoUpload = (request: Request) => {
