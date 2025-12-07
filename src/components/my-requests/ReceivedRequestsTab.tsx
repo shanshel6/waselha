@@ -90,15 +90,25 @@ export const ReceivedRequestsTab = ({
     queryFn: async () => {
       if (!user) return [];
 
-      const { data: requests, error: requestsError } = await supabase
+      // 1. Fetch all requests visible to the user (RLS handles this: sender OR traveler)
+      // We explicitly select all trip columns to ensure we get the traveler's user_id
+      const { data: allRequests, error: requestsError } = await supabase
         .from('requests')
-        .select(`*, trips(*)`)
-        .eq('trips.user_id', user.id)
+        .select(`
+          *, 
+          trips(
+            id, user_id, from_country, to_country, trip_date, free_kg, charge_per_kg, traveler_location, notes, created_at
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (requestsError) throw new Error(requestsError.message);
 
-      const senderIds = [...new Set(requests.map(r => r.sender_id))];
+      // 2. Client-side filter: Keep only requests where the current user is the traveler (owner of the trip)
+      const receivedRequests = allRequests.filter(req => req.trips?.user_id === user.id);
+
+      // 3. Fetch sender profiles for the filtered requests
+      const senderIds = [...new Set(receivedRequests.map(r => r.sender_id))];
       const { data: senderProfiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, phone')
@@ -111,7 +121,7 @@ export const ReceivedRequestsTab = ({
         return acc;
       }, {} as Record<string, Profile>);
 
-      return requests.map(request => ({
+      return receivedRequests.map(request => ({
         ...request,
         sender_profile: profileMap[request.sender_id] || null,
         traveler_profile: null
@@ -209,7 +219,10 @@ export const ReceivedRequestsTab = ({
     // Traveler controls the flow from item_accepted up to delivered
     let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
 
-    if (currentTrackingStatus === 'traveler_inspection_complete') {
+    if (currentTrackingStatus === 'sender_photos_uploaded') {
+      // Traveler must inspect before moving to the next stage
+      travelerAction = { status: 'traveler_inspection_complete', tKey: 'completeInspection', icon: Shield };
+    } else if (currentTrackingStatus === 'traveler_inspection_complete') {
       travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
     } else if (currentTrackingStatus === 'traveler_on_the_way') {
       travelerAction = { status: 'delivered', tKey: 'markAsDelivered', icon: MapPin };
@@ -303,7 +316,7 @@ export const ReceivedRequestsTab = ({
           )}
           
           {/* 3. Traveler Tracking Buttons */}
-          {!isCompleted && travelerAction && (
+          {!isCompleted && travelerAction && travelerAction.status !== 'traveler_inspection_complete' && (
             <Button 
               size="sm" 
               onClick={() => onTrackingUpdate(req, travelerAction!.status)}
