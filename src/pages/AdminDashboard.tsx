@@ -95,7 +95,7 @@ const AdminDashboard = () => {
           )
         `)
         .eq('is_approved', false)
-        .isNull('admin_review_notes')
+        .is('admin_review_notes', null)
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
