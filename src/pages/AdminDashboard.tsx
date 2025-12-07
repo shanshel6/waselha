@@ -11,6 +11,8 @@ import VerificationRequestCard from '@/components/VerificationRequestCard';
 import AdminTripApproval from '@/components/AdminTripApproval';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert, Loader2, Plane } from 'lucide-react';
+import CountryFlag from '@/components/CountryFlag';
+import { arabicCountries } from '@/lib/countries-ar';
 
 interface VerificationRequest {
   id: string;
@@ -118,6 +120,11 @@ const AdminDashboard = () => {
   const pendingVerificationRequests = verificationRequests?.filter(r => r.status === 'pending') || [];
   const reviewedVerificationRequests = verificationRequests?.filter(r => r.status !== 'pending') || [];
 
+  // Function to get Arabic country name
+  const getArabicCountryName = (country: string) => {
+    return arabicCountries[country] || country;
+  };
+
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
@@ -149,8 +156,12 @@ const AdminDashboard = () => {
                   <Card key={trip.id} className="p-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="font-semibold text-lg">
-                          {trip.from_country} → {trip.to_country}
+                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                          <CountryFlag country={trip.from_country} showName={false} />
+                          {getArabicCountryName(trip.from_country)} 
+                          <span className="text-lg">→</span>
+                          <CountryFlag country={trip.to_country} showName={false} />
+                          {getArabicCountryName(trip.to_country)}
                         </h3>
                         <p className="text-sm text-muted-foreground">
                           {t('traveler')}: {trip.profiles?.first_name} {trip.profiles?.last_name}
