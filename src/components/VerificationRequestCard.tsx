@@ -2,13 +2,10 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, User, Mail, Phone, Link as LinkIcon } from 'lucide-react';
+import { CheckCircle, XCircle, User, Mail, Phone } from 'lucide-react';
 
 interface VerificationRequest {
   id: string;
@@ -47,9 +44,15 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
     }
   };
 
-  // Thumbnail helper
+  // Thumbnail helper with a graceful fallback if a URL is missing
   const renderThumbnail = (url?: string, alt?: string) => {
-    if (!url) return null;
+    if (!url) {
+      return (
+        <div className="h-20 w-20 bg-gray-100 border border-dashed border-gray-300 rounded-md flex items-center justify-center text-xs text-gray-600">
+          {t('noTicketUploaded')}
+        </div>
+      );
+    }
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className="block">
         <img src={url} alt={alt ?? 'document'} className="h-20 w-20 object-cover rounded-md border" />
@@ -57,12 +60,17 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
     );
   };
 
+  // Fallback name if profile data is missing
+  const displayName = request.profiles?.first_name || request.profiles?.last_name
+    ? `${request.profiles?.first_name ?? ''} ${request.profiles?.last_name ?? ''}`.trim()
+    : t('user');
+
   return (
     <Card className="border-2 border-dashed">
       <CardHeader className="p-4 pb-2">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           <User className="h-4 w-4" />
-          {request.profiles?.first_name || 'Unknown'} {request.profiles?.last_name || ''}
+          {displayName}
         </CardTitle>
         <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
           <Mail className="h-3 w-3" />
@@ -76,9 +84,7 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
           <div>{renderThumbnail(request.id_front_url, 'ID Front')}</div>
           <div>{renderThumbnail(request.id_back_url, 'ID Back')}</div>
           <div>{renderThumbnail(request.photo_id_url, 'Photo with ID')}</div>
-          {request.residential_card_url && (
-            <div>{renderThumbnail(request.residential_card_url, 'Residence Card')}</div>
-          )}
+          <div>{renderThumbnail(request.residential_card_url, 'Residence Card')}</div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <span className="text-xs text-muted-foreground">{t('verificationDocuments')}</span>
