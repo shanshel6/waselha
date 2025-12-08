@@ -28,16 +28,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Link, useNavigate } from 'react-router-dom';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 
-const signUpSchema = z.object({
-  first_name: z.string().min(1, { message: "requiredField" }),
-  last_name: z.string().min(1, { message: "requiredField" }),
-  email: z.string().email({ message: "invalidEmail" }),
-  password: z.string().min(6, { message: "passwordTooShort" }),
-  phone: z.string().optional(),
-  role: z.enum(["traveler", "sender", "both"], {
-    required_error: "requiredField",
-  }),
-});
+const signUpSchema = z
+  .object({
+    first_name: z.string().min(1, { message: 'requiredField' }),
+    last_name: z.string().min(1, { message: 'requiredField' }),
+    email: z.string().email({ message: 'invalidEmail' }),
+    password: z.string().min(6, { message: 'passwordTooShort' }),
+    confirm_password: z.string().min(6, { message: 'passwordTooShort' }),
+    phone: z.string().optional(),
+    role: z.enum(['traveler', 'sender', 'both'], {
+      required_error: 'requiredField',
+    }),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    path: ['confirm_password'],
+    message: 'Passwords do not match',
+  });
 
 const SignUp = () => {
   const { t } = useTranslation();
@@ -46,12 +52,13 @@ const SignUp = () => {
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
-      first_name: "",
-      last_name: "",
-      email: "",
-      password: "",
-      phone: "",
-      role: "both",
+      first_name: '',
+      last_name: '',
+      email: '',
+      password: '',
+      confirm_password: '',
+      phone: '',
+      role: 'both',
     },
   });
 
@@ -95,7 +102,9 @@ const SignUp = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('firstName')}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -106,45 +115,71 @@ const SignUp = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('lastName')}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('email')}</FormLabel>
-                      <FormControl><Input type="email" {...field} /></FormControl>
+                      <FormControl>
+                        <Input type="email" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('password')}</FormLabel>
-                      <FormControl><Input type="password" {...field} /></FormControl>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="confirm_password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('confirmPassword') ?? 'تأكيد كلمة المرور'}</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('phone')}</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="role"
@@ -153,7 +188,9 @@ const SignUp = () => {
                       <FormLabel>{t('role')}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder={t('selectRole')} /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectRole')} />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="traveler">{t('roleTraveler')}</SelectItem>
@@ -165,13 +202,25 @@ const SignUp = () => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? t('signingUp') : t('signUp')}
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={form.formState.isSubmitting}
+                >
+                  {form.formState.isSubmitting ? t('signingUp') ?? 'جاري إنشاء الحساب...' : t('signUp')}
                 </Button>
               </form>
             </Form>
+
             <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-300">
-              {t('haveAccount')} <Link to="/login" className="font-medium text-primary hover:underline">{t('login')}</Link>
+              {t('haveAccount')}{' '}
+              <Link
+                to="/login"
+                className="font-medium text-primary hover:underline"
+              >
+                {t('login')}
+              </Link>
             </p>
           </CardContent>
         </Card>
