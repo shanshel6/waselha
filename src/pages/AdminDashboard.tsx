@@ -21,7 +21,7 @@ interface VerificationRequest {
   status: 'pending' | 'approved' | 'rejected';
   id_front_url: string | null;
   id_back_url: string | null;
-  residential_card_url?: string | null;
+  residential_card_url: string | null;
   photo_id_url: string | null;
   created_at: string;
   updated_at: string | null;
@@ -30,7 +30,7 @@ interface VerificationRequest {
     last_name: string | null;
     phone: string | null;
     email?: string;
-  };
+  } | null;
 }
 
 interface Trip {
@@ -61,31 +61,51 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data: allRequests, error: allRequestsError } = await supabase
         .from('verification_requests')
-        .select(`
-          *,
+        .select(
+          `
+          id,
+          user_id,
+          status,
+          id_front_url,
+          id_back_url,
+          residential_card_url,
+          photo_id_url,
+          created_at,
+          updated_at,
           profiles (
             first_name,
             last_name,
             phone
           )
-        `)
+        `
+        )
         .order('created_at', { ascending: true });
 
       if (allRequestsError) {
         throw new Error(allRequestsError.message);
       }
 
-      const requests = allRequests as VerificationRequest[];
-      const userIds = requests.map(req => req.user_id);
+      const requests = (allRequests || []) as VerificationRequest[];
+
+      if (!requests.length) return [];
+
+      const userIds = requests.map((req) => req.user_id);
       const emailMap = await fetchAdminEmails(userIds);
 
-      return requests.map(req => ({
+      return requests.map((req) => ({
         ...req,
-        profiles: {
-          ...req.profiles,
-          email: emailMap[req.user_id] || 'N/A',
-        }
-      })) as VerificationRequest[];
+        profiles: req.profiles
+          ? {
+              ...req.profiles,
+              email: emailMap[req.user_id] || 'N/A',
+            }
+          : {
+              first_name: null,
+              last_name: null,
+              phone: null,
+              email: emailMap[req.user_id] || 'N/A',
+            },
+      }));
     },
     enabled: isAdmin,
   });
@@ -95,20 +115,22 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select(`
+        .select(
+          `
           *,
           profiles (
             first_name,
             last_name
           )
-        `)
+        `
+        )
         .eq('is_approved', false)
         .is('admin_review_notes', null)
         .eq('is_deleted_by_user', false)
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
-      return data as Trip[];
+      return (data || []) as Trip[];
     },
     enabled: isAdmin,
   });
@@ -118,18 +140,20 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select(`
+        .select(
+          `
           *,
           profiles (
             first_name,
             last_name
           )
-        `)
+        `
+        )
         .not('admin_review_notes', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw new Error(error.message);
-      return data as Trip[];
+      return (data || []) as Trip[];
     },
     enabled: isAdmin,
   });
@@ -140,7 +164,7 @@ const AdminDashboard = () => {
         .from('trips')
         .update({
           is_approved: true,
-          admin_review_notes: notes || ''
+          admin_review_notes: notes || '',
         })
         .eq('id', tripId);
 
@@ -156,13 +180,11 @@ const AdminDashboard = () => {
         const fromCountryName = arabicCountries[tripData.from_country] || tripData.from_country;
         const toCountryName = arabicCountries[tripData.to_country] || tripData.to_country;
 
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: tripData.user_id,
-            message: `تمت الموافقة على رحلتك من ${fromCountryName} إلى ${toCountryName}`,
-            link: '/my-flights'
-          });
+        await supabase.from('notifications').insert({
+          user_id: tripData.user_id,
+          message: `تمت الموافقة على رحلتك من ${fromCountryName} إلى ${toCountryName}`,
+          link: '/my-flights',
+        });
       }
     },
     onSuccess: async (_, { tripId }) => {
@@ -178,7 +200,7 @@ const AdminDashboard = () => {
         .single();
 
       if (tripError && tripError.code !== 'PGRST116') {
-        console.error("Error fetching trip data for invalidation:", tripError);
+        console.error('Error fetching trip data for invalidation:', tripError);
       }
 
       if (tripData?.user_id) {
@@ -187,7 +209,7 @@ const AdminDashboard = () => {
     },
     onError: (error: any) => {
       showError(error.message);
-    }
+    },
   });
 
   const rejectTripMutation = useMutation({
@@ -196,7 +218,7 @@ const AdminDashboard = () => {
         .from('trips')
         .update({
           is_approved: false,
-          admin_review_notes: notes || 'تم رفض الرحلة'
+          admin_review_notes: notes || 'تم رفض الرحلة',
         })
         .eq('id', tripId);
 
@@ -211,14 +233,12 @@ const AdminDashboard = () => {
       if (tripData) {
         const fromCountryName = arabicCountries[tripData.from_country] || tripData.from_country;
         const toCountryName = arabicCountries[tripData.to_country] || tripData.to_country;
-        
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: tripData.user_id,
-            message: `تم رفض رحلتك من ${fromCountryName} إلى ${toCountryName}`,
-            link: '/my-flights'
-          });
+
+        await supabase.from('notifications').insert({
+          user_id: tripData.user_id,
+          message: `تم رفض رحلتك من ${fromCountryName} إلى ${toCountryName}`,
+          link: '/my-flights',
+        });
       }
     },
     onSuccess: () => {
@@ -229,11 +249,15 @@ const AdminDashboard = () => {
     },
     onError: (error: any) => {
       showError(error.message);
-    }
+    },
   });
 
   if (isAdminLoading) {
-    return <div className="container p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>;
+    return (
+      <div className="container p-8 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+      </div>
+    );
   }
 
   if (!isAdmin) {
@@ -248,8 +272,11 @@ const AdminDashboard = () => {
     );
   }
 
-  const pendingVerificationRequests = verificationRequests?.filter(r => r.status === 'pending') || [];
-  const processedVerificationRequests = verificationRequests?.filter(r => r.status !== 'pending') || [];
+  const pendingVerificationRequests =
+    verificationRequests?.filter((r) => r.status === 'pending') || [];
+  const processedVerificationRequests =
+    verificationRequests?.filter((r) => r.status !== 'pending') || [];
+
   const getArabicCountryName = (country: string) => arabicCountries[country] || country;
 
   return (
@@ -265,9 +292,7 @@ const AdminDashboard = () => {
           <TabsTrigger value="verifications-pending">
             {t('pendingVerification')}
           </TabsTrigger>
-          <TabsTrigger value="achievements">
-            {t('adminAchievements')}
-          </TabsTrigger>
+          <TabsTrigger value="achievements">{t('adminAchievements')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trips-pending" className="mt-6">
@@ -279,7 +304,7 @@ const AdminDashboard = () => {
               {isTripsLoading ? (
                 <p>{t('loading')}</p>
               ) : pendingTrips && pendingTrips.length > 0 ? (
-                pendingTrips.map(trip => (
+                pendingTrips.map((trip) => (
                   <Card key={trip.id} className="p-4 border">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -318,8 +343,12 @@ const AdminDashboard = () => {
                     </div>
                     <AdminTripApproval
                       trip={trip}
-                      onApprove={(notes) => approveTripMutation.mutate({ tripId: trip.id, notes })}
-                      onReject={(notes) => rejectTripMutation.mutate({ tripId: trip.id, notes })}
+                      onApprove={(notes) =>
+                        approveTripMutation.mutate({ tripId: trip.id, notes })
+                      }
+                      onReject={(notes) =>
+                        rejectTripMutation.mutate({ tripId: trip.id, notes })
+                      }
                     />
                   </Card>
                 ))
@@ -339,7 +368,7 @@ const AdminDashboard = () => {
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
               ) : pendingVerificationRequests.length > 0 ? (
-                pendingVerificationRequests.map(req => (
+                pendingVerificationRequests.map((req) => (
                   <VerificationRequestCard key={req.id} request={req} />
                 ))
               ) : (
@@ -360,7 +389,7 @@ const AdminDashboard = () => {
                   <p>{t('loading')}</p>
                 ) : reviewedTrips && reviewedTrips.length > 0 ? (
                   <div className="space-y-4">
-                    {reviewedTrips.map(trip => (
+                    {reviewedTrips.map((trip) => (
                       <div key={trip.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start">
                           <div>
@@ -372,7 +401,8 @@ const AdminDashboard = () => {
                               {getArabicCountryName(trip.to_country)}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              {t('traveler')}: {trip.profiles?.first_name} {trip.profiles?.last_name}
+                              {t('traveler')}: {trip.profiles?.first_name}{' '}
+                              {trip.profiles?.last_name}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
@@ -382,11 +412,19 @@ const AdminDashboard = () => {
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-2">
-                            <span className={`px-2 py-1 rounded-full text-xs ${trip.is_approved ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs ${
+                                trip.is_approved
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
                               {trip.is_approved ? t('approved') : t('rejected')}
                             </span>
                             {trip.is_deleted_by_user && (
-                              <span className="text-xs text-muted-foreground">{t('deletedByUser')}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {t('deletedByUser')}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -412,7 +450,7 @@ const AdminDashboard = () => {
                 {isRequestsLoading ? (
                   <p>{t('loading')}</p>
                 ) : processedVerificationRequests.length > 0 ? (
-                  processedVerificationRequests.map(req => (
+                  processedVerificationRequests.map((req) => (
                     <VerificationRequestCard key={req.id} request={req} />
                   ))
                 ) : (
