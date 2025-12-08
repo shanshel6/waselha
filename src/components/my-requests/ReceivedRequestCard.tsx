@@ -12,9 +12,8 @@ import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
-import { useChatReadStatus } from '@/hooks/use-chat-read-status'; // Import new hook
+import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 
-// --- Type Definitions ---
 interface Profile {
   id: string;
   first_name: string | null;
@@ -106,12 +105,9 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  
-  // Use the new hook
   const { data: chatStatus } = useChatReadStatus(req.id);
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
-  // --- Regular Trip Request Card (Received by Traveler) ---
   const reqWithProfiles = req;
   const senderFirstName = reqWithProfiles.sender_profile?.first_name || '';
   const senderLastName = reqWithProfiles.sender_profile?.last_name || '';
@@ -124,7 +120,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
   const hasPendingChanges = !!reqWithProfiles.proposed_changes;
   const isGeneralOrderMatch = !!reqWithProfiles.general_order_id;
   
-  // Traveler actions for accepted requests
   let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
   let secondaryAction: { tKey: string, onClick: () => void, icon: React.ElementType } | null = null;
 
@@ -133,25 +128,18 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
     if (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') {
       if (currentTrackingStatus === 'sender_photos_uploaded') {
-        // Sender uploaded photos, traveler needs to inspect
         secondaryAction = { 
           tKey: hasInspectionPhotos ? 'updateInspectionPhotos' : 'uploadInspectionPhotos', 
           onClick: () => onUploadInspectionPhotos && onUploadInspectionPhotos(reqWithProfiles), 
           icon: Camera 
         };
-      } else {
-        // Waiting for sender to upload photos
       }
     } 
     
     if (currentTrackingStatus === 'traveler_inspection_complete') {
-      // Inspection complete, ready to travel
       travelerAction = { status: 'traveler_on_the_way', tKey: 'markAsOnTheWay', icon: Plane };
     } else if (currentTrackingStatus === 'traveler_on_the_way') {
-      // Ready to deliver
       travelerAction = { status: 'delivered', tKey: 'markAsDelivered', icon: MapPin };
-    } else if (currentTrackingStatus === 'delivered') {
-      // Waiting for sender to complete
     }
   }
 
@@ -169,7 +157,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Plane className="h-3 w-3" />
                 <CountryFlag country={fromCountry} showName={false} />
-                <span className="text-xs">→</span>
+                <span className="text-xs">←</span>
                 <CountryFlag country={toCountry} showName={false} />
                 {tripDate && ` • ${format(new Date(tripDate), 'MMM d')}`}
               </p>
@@ -191,15 +179,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
       {expanded && (
         <CardContent className="p-4 pt-0 space-y-3">
-          {/* General Order Match Alert for Pending Requests */}
-          {reqWithProfiles.status === 'pending' && isGeneralOrderMatch && (
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-md text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-2">
-              <Inbox className="h-4 w-4" />
-              {t('newOrders')} - {t('generalOrderTitle')}
-            </div>
-          )}
-          
-          {/* Tracking status */}
           {reqWithProfiles.status !== 'pending' && (
             <div className="pt-2">
               <RequestTracking 
@@ -209,7 +188,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           )}
 
-          {/* Quick overview */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Weight className="h-4 w-4 text-muted-foreground" />
@@ -221,7 +199,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           </div>
 
-          {/* Price */}
           {priceCalculation && (
             <div className="bg-primary/10 p-2 rounded-md">
               <div className="flex justify-between items-center">
@@ -231,7 +208,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           )}
           
-          {/* Pending Changes Alert */}
           {hasPendingChanges && (
             <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md space-y-2">
               <p className="font-semibold text-sm">{t('proposedChanges')}:</p>
@@ -262,7 +238,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           )}
 
-          {/* Expandable details */}
           <div>
             <Button 
               variant="ghost" 
@@ -300,7 +275,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             )}
           </div>
 
-          {/* Action buttons */}
           {reqWithProfiles.status === 'pending' && (
             <div className="flex gap-2 pt-2">
               <Button 

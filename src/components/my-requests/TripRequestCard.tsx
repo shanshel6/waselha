@@ -12,9 +12,8 @@ import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
-import { useChatReadStatus } from '@/hooks/use-chat-read-status'; // Import new hook
+import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 
-// Re-defining necessary types locally for modularity
 interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
 interface Request { 
@@ -90,8 +89,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  
-  // Use the new hook
   const { data: chatStatus } = useChatReadStatus(req.id);
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
@@ -147,7 +144,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
           <p className="flex items-center gap-2">
             <Plane className="h-4 w-4 text-primary" />
             <span className="font-semibold">{t('tripRoute')}:</span>
-            <CountryFlag country={trip?.from_country || 'N/A'} showName /> → <CountryFlag country={trip?.to_country || 'N/A'} showName />
+            <CountryFlag country={trip?.from_country || 'N/A'} showName /> ← <CountryFlag country={trip?.to_country || 'N/A'} showName />
           </p>
           <p className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-primary" />
@@ -226,7 +223,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Plane className="h-3 w-3" />
                 <CountryFlag country={fromCountry} showName={false} />
-                <span className="text-xs">→</span>
+                <span className="text-xs">←</span>
                 <CountryFlag country={toCountry} showName={false} />
                 {tripDate && ` • ${format(new Date(tripDate), 'MMM d')}`}
               </p>

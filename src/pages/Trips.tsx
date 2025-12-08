@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plane, Package, User, MapPin, Search, PlusCircle, BadgeCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plane, Package, User, MapPin, Search, PlusCircle, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
@@ -78,11 +78,11 @@ const Trips = () => {
             last_name,
             is_verified
           )
-        `, { count: 'exact' }); // Request exact count
+        `, { count: 'exact' });
 
       query = query
-        .eq('is_approved', true) // Only show approved trips
-        .eq('is_deleted_by_user', false) // Exclude trips marked as deleted by user
+        .eq('is_approved', true)
+        .eq('is_deleted_by_user', false)
         .gte('trip_date', format(new Date(), 'yyyy-MM-dd'));
 
       if (filters.from_country) {
@@ -99,7 +99,7 @@ const Trips = () => {
 
       const { data, error: queryError, count } = await query
         .order('trip_date', { ascending: true })
-        .range(offset, offset + TRIPS_PER_PAGE - 1); // Apply range for pagination
+        .range(offset, offset + TRIPS_PER_PAGE - 1);
 
       if (queryError) {
         throw new Error(queryError.message);
@@ -116,7 +116,7 @@ const Trips = () => {
 
   const onSubmit = (values: SearchFilters) => {
     setFilters(values);
-    setCurrentPage(1); // Reset to first page on new search
+    setCurrentPage(1);
   };
 
   const resetFilters = () => {
@@ -194,7 +194,7 @@ const Trips = () => {
                         <CardTitle className="flex items-center gap-2 text-xl">
                           <Plane className="h-5 w-5 text-primary" />
                           <CountryFlag country={trip.from_country} showName className="text-base" />
-                          <span className="text-lg">→</span>
+                          <span className="text-lg">←</span>
                           <CountryFlag country={trip.to_country} showName className="text-base" />
                         </CardTitle>
                         <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
@@ -226,7 +226,6 @@ const Trips = () => {
                       </p>
                     }
                   </CardContent>
-                  {/* Footer element acting as a button visual cue */}
                   <div className="p-4 pt-0 mt-auto">
                     <div className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground group-hover:bg-primary/90">
                       {t('viewTripAndRequest')}
@@ -342,7 +341,6 @@ const Trips = () => {
       
       {renderContent()}
       
-      {/* New section at the bottom - now using the descriptive text */}
       <div className="mt-12 text-center">
         <Link to="/place-order" className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors underline underline-offset-4 flex items-center justify-center gap-2">
           <Package className="h-5 w-5" />

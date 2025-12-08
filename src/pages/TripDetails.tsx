@@ -23,7 +23,6 @@ import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 
-// Define the expected structure of the fetched trip data
 interface TripData {
   id: string;
   user_id: string;
@@ -156,7 +155,7 @@ const TripDetails = () => {
             <CardTitle className="flex items-center gap-2 text-2xl text-primary">
               <Plane className="h-6 w-6" />
               <CountryFlag country={trip.from_country} showName />
-              <span className="text-2xl">→</span>
+              <span className="text-2xl">←</span>
               <CountryFlag country={trip.to_country} showName />
             </CardTitle>
             <CardDescription className="flex items-center gap-2">

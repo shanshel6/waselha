@@ -9,7 +9,6 @@ import { format } from 'date-fns';
 import CountryFlag from '@/components/CountryFlag';
 import { cn } from '@/lib/utils';
 
-// Re-defining necessary types locally for modularity
 interface GeneralOrder {
   id: string;
   user_id: string;
@@ -86,7 +85,7 @@ const GeneralOrderCard: React.FC<GeneralOrderCardProps> = ({
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Plane className="h-3 w-3" />
                 <CountryFlag country={order.from_country} showName={false} />
-                <span className="text-xs">→</span>
+                <span className="text-xs">←</span>
                 <CountryFlag country={order.to_country} showName={false} />
                 {` • ${format(new Date(order.created_at), 'MMM d')}`}
               </p>
@@ -142,7 +141,6 @@ const GeneralOrderCard: React.FC<GeneralOrderCardProps> = ({
             )}
           </div>
 
-          {/* Actions for General Order */}
           <div className="flex gap-2 pt-2">
             <Button 
               variant="destructive" 

@@ -36,7 +36,7 @@ interface Trip {
   created_at: string;
   is_approved: boolean;
   admin_review_notes: string | null;
-  is_deleted_by_user: boolean; // Added new field
+  is_deleted_by_user: boolean;
   profiles: {
     first_name: string | null;
     last_name: string | null;
@@ -102,7 +102,6 @@ const MyTripsPage = () => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
 
       if (trip.admin_review_notes) {
-        // If the trip has been reviewed by an admin, mark it as deleted by user
         const { error } = await supabase
           .from('trips')
           .update({ is_deleted_by_user: true })
@@ -111,7 +110,6 @@ const MyTripsPage = () => {
 
         if (error) throw error;
       } else {
-        // If the trip has NOT been reviewed by an admin, permanently delete it
         const { error } = await supabase
           .from('trips')
           .delete()
@@ -124,11 +122,10 @@ const MyTripsPage = () => {
     onSuccess: (_, trip) => {
       showSuccess(t('tripDeletedSuccess'));
       queryClient.invalidateQueries({ queryKey: ['userTrips', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['trips'] }); // Invalidate public trips list too
-      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] }); // Invalidate admin pending trips
-      queryClient.invalidateQueries({ queryKey: ['reviewedTrips'] }); // Invalidate admin reviewed trips
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+      queryClient.invalidateQueries({ queryKey: ['reviewedTrips'] });
       
-      // After deletion, check if the current page is now empty and move back if necessary
       if (trips.length === 1 && currentPage > 1) {
         setCurrentPage(prev => prev - 1);
       }
@@ -166,9 +163,7 @@ const MyTripsPage = () => {
     );
   }
 
-  // Get status badge component
   const getStatusBadge = (trip: Trip) => {
-    // If trip is approved, show approved status
     if (trip.is_approved === true) {
       return (
         <Badge variant="default" className="bg-green-500 hover:bg-green-500/90">
@@ -176,27 +171,21 @@ const MyTripsPage = () => {
           {t('approved')}
         </Badge>
       );
-    }
-    // If trip is not approved but has admin review notes, it's rejected
-    else if (trip.is_approved === false && trip.admin_review_notes) {
+    } else if (trip.is_approved === false && trip.admin_review_notes) {
       return (
         <Badge variant="destructive">
           <XCircle className="h-3 w-3 mr-1" />
           {t('rejected')}
         </Badge>
       );
-    }
-    // If trip is not approved and has no admin review notes, it's pending
-    else if (trip.is_approved === false && !trip.admin_review_notes) {
+    } else if (trip.is_approved === false && !trip.admin_review_notes) {
       return (
         <Badge variant="secondary">
           <Clock className="h-3 w-3 mr-1" />
           {t('waitingForConfirmation')}
         </Badge>
       );
-    }
-    // Default case (shouldn't happen with the current schema)
-    else {
+    } else {
       return (
         <Badge variant="secondary">
           <Clock className="h-3 w-3 mr-1" />
@@ -285,7 +274,7 @@ const MyTripsPage = () => {
                       <CardTitle className="flex items-center gap-2 text-xl">
                         <Plane className="h-6 w-6 text-primary" />
                         <CountryFlag country={trip.from_country} showName />
-                        <span className="text-xl">→</span>
+                        <span className="text-xl">←</span>
                         <CountryFlag country={trip.to_country} showName />
                       </CardTitle>
                       <div className="flex flex-col items-end gap-2">
@@ -369,7 +358,6 @@ const MyTripsPage = () => {
         )}
       </div>
       
-      {/* Deletion Confirmation Dialog */}
       <AlertDialog 
         open={!!tripToDelete} 
         onOpenChange={(open) => !open && setTripToDelete(null)}
