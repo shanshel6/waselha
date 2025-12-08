@@ -91,5 +91,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
   }
 }
