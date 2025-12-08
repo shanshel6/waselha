@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -25,7 +25,7 @@ import CountryFlag from '@/components/CountryFlag';
 import { useQueryClient } from '@tanstack/react-query';
 import { Slider } from '@/components/ui/slider';
 import TicketUpload from '@/components/TicketUpload';
-import { useVerificationCheck } from '@/hooks/use-verification-check'; // Import the new hook
+import { useVerificationCheck } from '@/hooks/use-verification-check';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -34,17 +34,16 @@ const formSchema = z.object({
   free_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }),
   traveler_location: z.string().min(1, { message: "requiredField" }),
   notes: z.string().optional(),
-  ticket_file_url: z.string().min(1, { message: "ticketRequired" }),
 });
 
 const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
-  // Set redirectIfUnverified to false to allow access to the page
-  const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(false); 
+  const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(false);
   const queryClient = useQueryClient();
-  
+  const [ticketFile, setTicketFile] = useState<File | null>(null);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,12 +52,11 @@ const AddTrip = () => {
       free_kg: 1,
       traveler_location: "",
       notes: "",
-      ticket_file_url: "",
     },
   });
 
   const { from_country, to_country, free_kg } = form.watch();
-  
+
   // Auto-manage Iraq selection
   React.useEffect(() => {
     if (from_country && from_country !== "Iraq" && to_country !== "Iraq") {
@@ -77,52 +75,89 @@ const AddTrip = () => {
     return null;
   }, [from_country, to_country, free_kg]);
 
+  const uploadTicketAndGetUrl = async (file: File, userId: string) => {
+    const bucket = 'trip-tickets';
+    const ext = file.name.split('.').pop() || 'pdf';
+    const filePath = `${userId}/${Date.now()}-ticket.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl;
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
       navigate('/login');
       return;
     }
-    
-    // Check verification status on submission
+
     if (!isVerified) {
       showError(t('verificationRequiredTitle'));
       navigate('/my-profile');
       return;
     }
 
-    // Calculate charge_per_kg based on the base price of the destination zone
-    let charge_per_kg = 0;
-    if (estimatedProfit) {
-      charge_per_kg = estimatedProfit.pricePerKgUSD;
+    if (!ticketFile) {
+      showError(t('ticketRequired'));
+      return;
     }
 
-    const { error } = await supabase
-      .from('trips')
-      .insert({
-        user_id: user.id,
-        from_country: values.from_country,
-        to_country: values.to_country,
-        trip_date: format(values.trip_date, 'yyyy-MM-dd'),
-        free_kg: values.free_kg,
-        traveler_location: values.traveler_location,
-        notes: values.notes,
-        charge_per_kg: charge_per_kg,
-        ticket_file_url: values.ticket_file_url,
-        is_approved: false, // New trips require admin approval
-      });
+    try {
+      // 1) Upload ticket file and get public URL
+      const ticketUrl = await uploadTicketAndGetUrl(ticketFile, user.id);
 
-    if (error) {
-      console.error('Error adding trip:', error);
-      showError(t('tripAddedError'));
-    } else {
-      showSuccess(t('tripAddedSuccessPending'));
-      queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-      navigate('/my-flights');
+      // 2) Calculate charge_per_kg based on base price
+      let charge_per_kg = 0;
+      if (estimatedProfit) {
+        charge_per_kg = estimatedProfit.pricePerKgUSD;
+      }
+
+      // 3) Insert trip with ticket_file_url
+      const { error } = await supabase
+        .from('trips')
+        .insert({
+          user_id: user.id,
+          from_country: values.from_country,
+          to_country: values.to_country,
+          trip_date: format(values.trip_date, 'yyyy-MM-dd'),
+          free_kg: values.free_kg,
+          traveler_location: values.traveler_location,
+          notes: values.notes,
+          charge_per_kg: charge_per_kg,
+          ticket_file_url: ticketUrl,
+          is_approved: false,
+        });
+
+      if (error) {
+        console.error('Error adding trip:', error);
+        showError(t('tripAddedError'));
+      } else {
+        showSuccess(t('tripAddedSuccessPending'));
+        queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['trips'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+        navigate('/my-flights');
+      }
+    } catch (err: any) {
+      console.error('Error uploading ticket or adding trip:', err);
+      showError(err.message || t('tripAddedError'));
     }
   };
-  
+
   if (isVerificationLoading) {
     return (
       <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
@@ -130,8 +165,6 @@ const AddTrip = () => {
       </div>
     );
   }
-  
-  // We no longer block rendering if not verified, only submission.
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -162,7 +195,7 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="to_country"
@@ -187,11 +220,11 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
-          
+
           <div className="text-sm text-muted-foreground p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
             {t('eitherFromOrToIraq')}
           </div>
-          
+
           <FormField
             control={form.control}
             name="trip_date"
@@ -231,7 +264,7 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="free_kg"
@@ -254,7 +287,7 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
-          
+
           {estimatedProfit && (
             <Card className="bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 p-4">
               <CardHeader className="p-0">
@@ -273,21 +306,12 @@ const AddTrip = () => {
               </CardContent>
             </Card>
           )}
-          
-          <FormField
-            control={form.control}
-            name="ticket_file_url"
-            render={({ field }) => (
-              <FormItem>
-                <TicketUpload
-                  onUploadSuccess={(url) => field.onChange(url)}
-                  existingFileUrl={field.value}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
+
+          {/* Ticket upload – required */}
+          <TicketUpload
+            onFileSelected={setTicketFile}
           />
-          
+
           <FormField
             control={form.control}
             name="traveler_location"
@@ -304,7 +328,7 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="notes"
@@ -318,13 +342,13 @@ const AddTrip = () => {
               </FormItem>
             )}
           />
-          
+
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-300">
               {t('tripPendingApprovalNote')}
             </p>
           </div>
-          
+
           <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
             {t('createTrip')}
           </Button>

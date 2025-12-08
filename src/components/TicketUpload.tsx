@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,21 +9,30 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UploadCloud, CheckCircle, XCircle, FileText } from 'lucide-react';
 
 interface TicketUploadProps {
-  onUploadSuccess: (filePath: string) => void;
+  onFileSelected: (file: File | null) => void;
   existingFileUrl?: string;
 }
 
 /**
- * This version does NOT use Supabase storage at all.
- * It only generates local object URLs so no bucket is required.
+ * This component is now a pure client-side file picker + preview.
+ * It does NOT talk to Supabase directly; the parent is responsible for uploading the file.
  */
-const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFileUrl }) => {
+const TicketUpload: React.FC<TicketUploadProps> = ({ onFileSelected, existingFileUrl }) => {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [fileUrl, setFileUrl] = useState<string | null>(existingFileUrl || null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [hasFile, setHasFile] = useState<boolean>(!!existingFileUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // If an existingFileUrl is provided (e.g., editing), show it as the preview source
+  useEffect(() => {
+    if (existingFileUrl) {
+      setPreviewUrl(existingFileUrl);
+      setHasFile(true);
+    }
+  }, [existingFileUrl]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -45,23 +54,36 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
     setProgress(0);
 
     try {
-      const objectUrl = URL.createObjectURL(file);
-      setFileUrl(objectUrl);
+      // Create a local preview URL
+      if (previewUrl && !existingFileUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      const localUrl = URL.createObjectURL(file);
+      setPreviewUrl(localUrl);
+      setHasFile(true);
       setProgress(100);
-      onUploadSuccess(objectUrl);
+      onFileSelected(file);
     } catch (err: any) {
-      setError(err.message || 'An error occurred during upload');
+      setError(err.message || 'An error occurred during file selection');
+      onFileSelected(null);
+      setHasFile(false);
     } finally {
       setUploading(false);
     }
   };
 
   const removeFile = () => {
-    if (fileUrl) {
-      URL.revokeObjectURL(fileUrl);
+    if (previewUrl && !existingFileUrl) {
+      URL.revokeObjectURL(previewUrl);
     }
-    setFileUrl(null);
-    onUploadSuccess('');
+    setPreviewUrl(null);
+    setHasFile(false);
+    setError(null);
+    onFileSelected(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -70,13 +92,13 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
         <FileText className="h-5 w-5" />
         {t('flightTicket')}
       </div>
-      
-      {fileUrl ? (
+
+      {hasFile && previewUrl ? (
         <div className="border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-green-600">
               <CheckCircle className="h-5 w-5" />
-              <span className="font-medium">{t('ticketUploaded')}</span>
+              <span className="font-medium text-sm">{t('ticketUploaded')}</span>
             </div>
             <Button
               variant="outline"
@@ -88,9 +110,9 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
             </Button>
           </div>
           <div className="mt-2">
-            <a 
-              href={fileUrl} 
-              target="_blank" 
+            <a
+              href={previewUrl}
+              target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline text-sm break-all"
             >
