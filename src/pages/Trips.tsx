@@ -251,19 +251,18 @@ const Trips = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-4xl font-bold">{t('trips')}</h1>
           <p className="text-muted-foreground">{t('searchDescription')}</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Link to="/add-trip">
-            <Button size="lg">
-              <PlusCircle className="mr-2 h-5 w-5" />
-              {t('addTrip')}
-            </Button>
-          </Link>
-        </div>
+        {/* زر إضافة رحلة جديدة على اليمين */}
+        <Link to="/add-trip">
+          <Button size="lg">
+            <PlusCircle className="mr-2 h-5 w-5" />
+            {t('addTrip')}
+          </Button>
+        </Link>
       </div>
       
       <Card className="mb-8">
