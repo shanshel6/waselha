@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -9,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +17,7 @@ import ImageUpload from '@/components/ImageUpload';
 
 const verificationSchema = z.object({
   full_name: z.string().min(3, { message: "requiredField" }),
-  address: z.string().min(10, { message: "requiredField" }),
+  // Removed address field as it doesn't exist in verification_requests table
   id_front_url: z.string().url({ message: "uploadRequired" }),
   id_back_url: z.string().url({ message: "uploadRequired" }),
   resident_card_front_url: z.string().url().optional(),
@@ -31,12 +29,12 @@ const Verification = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const navigate = useNavigate();
-
+  
   const form = useForm<z.infer<typeof verificationSchema>>({
     resolver: zodResolver(verificationSchema),
     defaultValues: {
       full_name: "",
-      address: "",
+      // Removed address field
     },
   });
 
@@ -48,7 +46,11 @@ const Verification = () => {
 
     const { error } = await supabase.from('verification_requests').insert({
       user_id: user.id,
-      ...values,
+      // Only submit fields that exist in the verification_requests table
+      id_front_url: values.id_front_url,
+      id_back_url: values.id_back_url,
+      residential_card_url: values.resident_card_front_url, // Using the existing column name
+      face_with_id_url: values.face_with_id_url,
     });
 
     if (error) {
@@ -80,17 +82,8 @@ const Verification = () => {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('address')}</FormLabel>
-                    <FormControl><Textarea {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              
+              {/* Removed address field as it doesn't exist in verification_requests table */}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
@@ -98,69 +91,72 @@ const Verification = () => {
                   name="id_front_url"
                   render={() => (
                     <FormItem>
-                      <ImageUpload
-                        label={t('idFront')}
-                        onUploadSuccess={(url) => form.setValue('id_front_url', url, { shouldValidate: true })}
+                      <ImageUpload 
+                        label={t('idFront')} 
+                        onUploadSuccess={(url) => form.setValue('id_front_url', url, { shouldValidate: true })} 
                       />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={form.control}
                   name="id_back_url"
                   render={() => (
                     <FormItem>
-                      <ImageUpload
-                        label={t('idBack')}
-                        onUploadSuccess={(url) => form.setValue('id_back_url', url, { shouldValidate: true })}
+                      <ImageUpload 
+                        label={t('idBack')} 
+                        onUploadSuccess={(url) => form.setValue('id_back_url', url, { shouldValidate: true })} 
                       />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={form.control}
                   name="resident_card_front_url"
                   render={() => (
                     <FormItem>
-                      <ImageUpload
-                        label={t('residentCardFront')}
-                        onUploadSuccess={(url) => form.setValue('resident_card_front_url', url, { shouldValidate: true })}
+                      <ImageUpload 
+                        label={t('residentCardFront')} 
+                        onUploadSuccess={(url) => form.setValue('resident_card_front_url', url, { shouldValidate: true })} 
                       />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={form.control}
                   name="resident_card_back_url"
                   render={() => (
                     <FormItem>
-                      <ImageUpload
-                        label={t('residentCardBack')}
-                        onUploadSuccess={(url) => form.setValue('resident_card_back_url', url, { shouldValidate: true })}
+                      <ImageUpload 
+                        label={t('residentCardBack')} 
+                        onUploadSuccess={(url) => form.setValue('resident_card_back_url', url, { shouldValidate: true })} 
                       />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-
+              
               <FormField
                 control={form.control}
                 name="face_with_id_url"
                 render={() => (
                   <FormItem>
-                    <ImageUpload
-                      label={t('faceWithId')}
-                      onUploadSuccess={(url) => form.setValue('face_with_id_url', url, { shouldValidate: true })}
+                    <ImageUpload 
+                      label={t('faceWithId')} 
+                      onUploadSuccess={(url) => form.setValue('face_with_id_url', url, { shouldValidate: true })} 
                     />
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
+              
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                 {t('submitVerification')}
               </Button>
