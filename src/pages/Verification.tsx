@@ -30,7 +30,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
-import holdingIdExample from '@/assets/holding-id.png';
 
 const verificationSchema = z.object({
   first_name: z.string().min(1, { message: 'requiredField' }),
@@ -330,6 +329,7 @@ const Verification = () => {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Basic info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -359,6 +359,7 @@ const Verification = () => {
                 />
               </div>
 
+              {/* ID front/back */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -392,6 +393,7 @@ const Verification = () => {
                 />
               </div>
 
+              {/* Residential card front/back */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -425,6 +427,7 @@ const Verification = () => {
                 />
               </div>
 
+              {/* Selfie with ID: big section with example image */}
               <div className="space-y-4">
                 <p className="font-semibold text-base">
                   {t('faceWithId')}
@@ -450,7 +453,7 @@ const Verification = () => {
                   <div className="order-1 md:order-2">
                     <div className="rounded-2xl border bg-muted/40 p-3 md:p-4">
                       <img
-                        src={holdingIdExample}
+                        src="/holding-id.png"
                         alt="Example of selfie with ID"
                         className="w-full h-auto rounded-xl object-cover"
                       />
