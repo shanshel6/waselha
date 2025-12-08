@@ -28,8 +28,11 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UploadCloud, CheckCircle, XCircle, FileImage } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 const verificationSchema = z.object({
+  first_name: z.string().min(1, { message: 'requiredField' }),
+  last_name: z.string().min(1, { message: 'requiredField' }),
   id_front_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
@@ -178,6 +181,8 @@ const Verification = () => {
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationSchema),
     defaultValues: {
+      first_name: '',
+      last_name: '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
       residential_card_file: undefined,
@@ -205,6 +210,15 @@ const Verification = () => {
     if (error) {
       showError(error.message);
     } else {
+      // optionally sync name into profiles table if missing / outdated
+      await supabase
+        .from('profiles')
+        .update({
+          first_name: values.first_name,
+          last_name: values.last_name
+        })
+        .eq('id', user.id);
+
       showSuccess(t('verificationSubmitted'));
       navigate('/');
     }
@@ -220,6 +234,37 @@ const Verification = () => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Full name */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="first_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('firstName')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="last_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('lastName')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Documents */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
