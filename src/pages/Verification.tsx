@@ -54,7 +54,7 @@ interface FileUploadFieldProps {
   onChange: (file: File | undefined) => void;
 }
 
-const VERIFICATION_BUCKET = 'verification-docs';
+const VERIFICATION_BUCKET = 'verification-documents';
 
 const FileUploadField: React.FC<FileUploadFieldProps> = ({
   label,
@@ -175,21 +175,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
   );
 };
 
-const ensureVerificationBucketExists = async () => {
-  // Create bucket if it doesn't exist (public so edge/admin dashboard can show thumbnails)
-  const { error: bucketError } = await supabase.storage.createBucket(VERIFICATION_BUCKET, {
-    public: true,
-  });
-
-  // If bucket already exists, ignore that specific error
-  if (bucketError && !bucketError.message.toLowerCase().includes('already exists')) {
-    throw bucketError;
-  }
-};
-
 const uploadVerificationFile = async (file: File, userId: string, key: string) => {
-  await ensureVerificationBucketExists();
-
   const ext = file.name.split('.').pop() || 'jpg';
   const filePath = `${userId}/${key}-${Date.now()}.${ext}`;
 
@@ -230,7 +216,6 @@ const Verification = () => {
   });
 
   const onSubmit = async (values: VerificationFormValues) => {
-    // Hard guard so we never hit RLS without a user
     if (!user || !session) {
       showError(t('mustBeLoggedIn'));
       navigate('/login');
@@ -250,7 +235,6 @@ const Verification = () => {
           uploadVerificationFile(values.photo_id_file, user.id, 'photo-id'),
         ]);
 
-      // This insert uses the authenticated client and matches the RLS policy: auth.uid() = user_id
       const { error } = await supabase.from('verification_requests').insert({
         user_id: user.id,
         id_front_url: idFrontUrl,
