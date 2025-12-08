@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +9,14 @@ import { Inbox } from 'lucide-react';
 import { calculateShippingCost } from '@/lib/pricing';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import ReceivedRequestCard from './ReceivedRequestCard';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 // Define types for our data structure
 interface Profile {
@@ -69,6 +77,8 @@ interface ReceivedRequestsTabProps {
   trackingUpdateMutation: any;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export const ReceivedRequestsTab = ({ 
   user, 
   onUpdateRequest, 
@@ -81,31 +91,39 @@ export const ReceivedRequestsTab = ({
   trackingUpdateMutation
 }: ReceivedRequestsTabProps) => {
   const { t } = useTranslation();
+  const [currentPage, setCurrentPage] = useState(1);
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  const { data: receivedItems, isLoading, error } = useQuery({
-    queryKey: ['receivedRequests', user?.id],
+  const { data: queryResult, isLoading, error } = useQuery<{ requests: Request[], count: number } | null, Error>({
+    queryKey: ['receivedRequests', user?.id, currentPage],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return { requests: [], count: 0 };
 
-      // 1. Fetch requests and associated trips (without joining sender profile yet)
-      const { data: allRequests, error: requestsError } = await supabase
+      // 1. Fetch requests and associated trips (with pagination and count)
+      const { data: allRequests, error: requestsError, count } = await supabase
         .from('requests')
         .select(`
           *, 
           trips(
             id, user_id, from_country, to_country, trip_date, free_kg, charge_per_kg, traveler_location, notes, created_at
           )
-        `)
+        `, { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (requestsError) throw new Error(requestsError.message);
 
       // Filter client-side to ensure we only show requests where the current user is the trip owner (received requests)
+      // NOTE: RLS should handle this, but we filter here to get the correct count for pagination.
       const travelerRequests = allRequests
         .filter(req => req.trips && req.trips.user_id === user.id);
       
-      // 2. Collect unique sender IDs
-      const senderIds = travelerRequests
+      const totalCount = travelerRequests.length;
+      
+      // Apply client-side pagination to the filtered list
+      const paginatedRequests = travelerRequests.slice(offset, offset + ITEMS_PER_PAGE);
+
+      // 2. Collect unique sender IDs from the paginated list
+      const senderIds = paginatedRequests
         .map(req => req.sender_id)
         .filter((id, index, self) => self.indexOf(id) === index);
 
@@ -130,20 +148,90 @@ export const ReceivedRequestsTab = ({
       }, {} as Record<string, Profile>);
 
       // 4. Map profiles back and finalize structure
-      const tripRequestsWithProfiles: RequestWithProfiles[] = travelerRequests
+      const tripRequestsWithProfiles: RequestWithProfiles[] = paginatedRequests
         .map(req => ({
           ...req,
           sender_profile: profileMap[req.sender_id] || null,
           type: 'trip_request' as const
         })) as RequestWithProfiles[];
       
-      // Sort by creation date descending
-      tripRequestsWithProfiles.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      return tripRequestsWithProfiles;
+      return { requests: tripRequestsWithProfiles, count: totalCount };
     },
     enabled: !!user,
   });
+  
+  const receivedItems = queryResult?.requests || [];
+  const totalCount = queryResult?.count || 0;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <Pagination className="mt-8">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious 
+              onClick={() => handlePageChange(currentPage - 1)} 
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+          
+          {startPage > 1 && (
+            <>
+              <PaginationItem><PaginationLink onClick={() => handlePageChange(1)} className="cursor-pointer">1</PaginationLink></PaginationItem>
+              {startPage > 2 && <PaginationItem><span className="px-2 py-1 text-sm">...</span></PaginationItem>}
+            </>
+          )}
+
+          {pageNumbers.map(page => (
+            <PaginationItem key={page}>
+              <PaginationLink 
+                onClick={() => handlePageChange(page)}
+                isActive={page === currentPage}
+                className="cursor-pointer"
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <PaginationItem><span className="px-2 py-1 text-sm">...</span></PaginationItem>}
+              <PaginationItem><PaginationLink onClick={() => handlePageChange(totalPages)} className="cursor-pointer">{totalPages}</PaginationLink></PaginationItem>
+            </>
+          )}
+
+          <PaginationItem>
+            <PaginationNext 
+              onClick={() => handlePageChange(currentPage + 1)} 
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  };
 
   if (isLoading) return <p className="p-4 text-center">{t('loading')}</p>;
 
@@ -156,33 +244,36 @@ export const ReceivedRequestsTab = ({
   return (
     <div className="space-y-3">
       {receivedItems && receivedItems.length > 0 ? (
-        receivedItems.map(req => {
-          // Calculate price only for trip requests
-          let priceCalculation = null;
-          const tripReq = req as RequestWithProfiles;
-          priceCalculation = calculateShippingCost(
-            tripReq.trips?.from_country || '',
-            tripReq.trips?.to_country || '',
-            tripReq.weight_kg
-          );
+        <>
+          {receivedItems.map(req => {
+            // Calculate price only for trip requests
+            let priceCalculation = null;
+            const tripReq = req as RequestWithProfiles;
+            priceCalculation = calculateShippingCost(
+              tripReq.trips?.from_country || '',
+              tripReq.trips?.to_country || '',
+              tripReq.weight_kg
+            );
 
-          return (
-            <ReceivedRequestCard
-              key={req.id}
-              req={req}
-              priceCalculation={priceCalculation}
-              onUpdateRequest={onUpdateRequest}
-              updateRequestMutation={updateRequestMutation}
-              onCancelAcceptedRequest={onCancelAcceptedRequest}
-              onReviewChanges={onReviewChanges}
-              reviewChangesMutation={reviewChangesMutation}
-              onUploadInspectionPhotos={onUploadInspectionPhotos}
-              onTrackingUpdate={onTrackingUpdate}
-              trackingUpdateMutation={trackingUpdateMutation}
-              t={t}
-            />
-          );
-        })
+            return (
+              <ReceivedRequestCard
+                key={req.id}
+                req={req}
+                priceCalculation={priceCalculation}
+                onUpdateRequest={onUpdateRequest}
+                updateRequestMutation={updateRequestMutation}
+                onCancelAcceptedRequest={onCancelAcceptedRequest}
+                onReviewChanges={onReviewChanges}
+                reviewChangesMutation={reviewChangesMutation}
+                onUploadInspectionPhotos={onUploadInspectionPhotos}
+                onTrackingUpdate={onTrackingUpdate}
+                trackingUpdateMutation={trackingUpdateMutation}
+                t={t}
+              />
+            );
+          })}
+          {renderPagination()}
+        </>
       ) : (
         <Card>
           <CardContent className="p-8 text-center">
