@@ -23,6 +23,7 @@ import ChatNotificationListener from "./components/ChatNotificationListener";
 import ProfileCheckWrapper from "./components/ProfileCheckWrapper";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 import PlaceOrder from "./pages/PlaceOrder";
+import ChatUnreadNotificationBridge from "./components/ChatUnreadNotificationBridge";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const MainLayout = () => (
   <>
     <Navbar />
     <ChatNotificationListener />
+    <ChatUnreadNotificationBridge />
     <ProfileCheckWrapper>
       <Routes>
         <Route path="/" element={<Index />} />
