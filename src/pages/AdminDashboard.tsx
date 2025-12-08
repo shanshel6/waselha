@@ -62,10 +62,10 @@ const AdminDashboard = () => {
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
 
-  // Main verification requests (with profiles)
   const {
     data: verificationRequests,
     isLoading: isRequestsLoading,
+    error: verificationError,
   } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
@@ -111,7 +111,6 @@ const AdminDashboard = () => {
     enabled: isAdmin,
   });
 
-  // Raw debug query: no joins, minimal columns
   const {
     data: rawVerificationRows,
     error: rawError,
@@ -469,18 +468,34 @@ const AdminDashboard = () => {
         <TabsContent value="verification-pending" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t('pendingVerification')}</CardTitle>
+              <CardTitle>
+                {t('pendingVerification')} ({pendingVerificationRequests.length})
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {verificationError && (
+                <Alert variant="destructive">
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{verificationError.message}</AlertDescription>
+                </Alert>
+              )}
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
               ) : verificationRequests ? (
                 pendingVerificationRequests.length > 0 ? (
                   pendingVerificationRequests.map((req) => (
-                    <VerificationRequestCard key={req.id} request={req} />
+                    <div key={req.id} className="space-y-1">
+                      {/* سطر تشخيصي يوضح الحالة */}
+                      <p className="text-xs text-muted-foreground">
+                        id: {req.id} – status: {req.status}
+                      </p>
+                      <VerificationRequestCard request={req} />
+                    </div>
                   ))
                 ) : (
-                  <p className="text-muted-foreground">{t('noPendingRequests')}</p>
+                  <p className="text-muted-foreground">
+                    {t('noPendingRequests')}
+                  </p>
                 )
               ) : (
                 <p className="text-muted-foreground">{t('noPendingRequests')}</p>
