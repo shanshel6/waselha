@@ -251,8 +251,9 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
             <PaginationNext 
               onClick={() => handlePageChange(currentPage + 1)} 
               className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-            </PaginationItem>
-          </PaginationContent>
+            />
+          </PaginationItem>
+        </PaginationContent>
       </Pagination>
     );
   };
