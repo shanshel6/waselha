@@ -1,6 +1,7 @@
 "use client";
+
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -8,113 +9,154 @@ import { Menu, Send } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
+import { cn } from '@/lib/utils';
 
 const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { session } = useSession();
-  
+  const location = useLocation();
+
   const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
   ];
-  
+
   const authenticatedNavItems = [
     { name: t('myRequests'), path: '/my-requests' },
   ];
-  
+
   const mobileNavItems = [
     ...publicNavItems,
-    ...(session ? [
-      { name: t('myRequests'), path: '/my-requests' },
-      { name: t('myFlights'), path: '/my-flights' },
-      { name: t('myProfile'), path: '/my-profile' },
-    ] : []),
+    ...(session
+      ? [
+          { name: t('myRequests'), path: '/my-requests' },
+          { name: t('myFlights'), path: '/my-flights' },
+          { name: t('myProfile'), path: '/my-profile' },
+        ]
+      : []),
   ];
 
+  const isActive = (path: string) =>
+    path === '/'
+      ? location.pathname === '/'
+      : location.pathname.startsWith(path);
+
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto h-16 px-4 flex items-center justify-between">
-        {/* Left side: main navigation links */}
-        <div className="hidden md:flex items-center space-x-6 space-x-reverse">
+    <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
+      <div className="container mx-auto flex h-16 items-center justify-between px-3 sm:px-4">
+        {/* Left: desktop nav links */}
+        <div className="hidden md:flex items-center gap-4">
           {publicNavItems.map((item) => (
-            <Link 
-              key={item.name} 
-              to={item.path}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              {item.name}
+            <Link key={item.path} to={item.path}>
+              <span
+                className={cn(
+                  'text-sm font-medium transition-colors px-2 py-1 rounded-full',
+                  isActive(item.path)
+                    ? 'text-primary bg-primary/10'
+                    : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                )}
+              >
+                {item.name}
+              </span>
             </Link>
           ))}
-          
-          {session && authenticatedNavItems.map((item) => (
-            <Link 
-              key={item.name} 
-              to={item.path}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary relative"
-            >
-              {item.name}
-            </Link>
-          ))}
+
+          {session &&
+            authenticatedNavItems.map((item) => (
+              <Link key={item.path} to={item.path}>
+                <span
+                  className={cn(
+                    'text-sm font-medium transition-colors px-2 py-1 rounded-full',
+                    isActive(item.path)
+                      ? 'text-primary bg-primary/10'
+                      : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                  )}
+                >
+                  {item.name}
+                </span>
+              </Link>
+            ))}
         </div>
 
-        {/* Center: logo */}
+        {/* Center: brand */}
         <Link to="/" className="flex-1 flex justify-center">
-          <span className="flex items-center gap-2 text-2xl font-bold text-primary">
-            <Send className="h-6 w-6" />
-            وصلها
-          </span>
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/5 px-4 py-1.5 shadow-sm border border-primary/10">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+              <Send className="h-4 w-4" />
+            </div>
+            <span className="text-xl font-extrabold tracking-tight text-primary">
+              وصلها
+            </span>
+          </div>
         </Link>
-        
-        {/* Right side: user + notifications (desktop) and mobile menu */}
-        <div className="flex items-center gap-2">
-          {/* Desktop user/notifications */}
+
+        {/* Right: desktop user / notifications + mobile menu */}
+        <div className="flex items-center gap-1">
+          {/* Desktop */}
           <div className="hidden md:flex items-center gap-2">
             {session && <Notifications />}
             {session ? (
               <UserNav />
             ) : (
               <Link to="/login">
-                <Button variant="ghost">{t('login')}</Button>
+                <Button variant="outline" size="sm" className="rounded-full">
+                  {t('login')}
+                </Button>
               </Link>
             )}
           </div>
 
-          {/* Mobile menu */}
-          <div className="md:hidden flex items-center">
-            {session && (
-              <div className="flex items-center gap-1">
-                <Notifications />
-              </div>
-            )}
+          {/* Mobile */}
+          <div className="md:hidden flex items-center gap-1">
+            {session && <Notifications />}
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-foreground ml-2">
-                  <Menu className="h-6 w-6" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full border border-border/60 bg-background/80"
+                >
+                  <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="w-[250px] sm:w-[300px] bg-background text-foreground dark:bg-gray-800"
+                className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
               >
-                <div className="flex flex-col space-y-4 p-4">
+                <div className="mt-4 mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                      <Send className="h-4 w-4" />
+                    </div>
+                    <span className="text-lg font-bold text-primary">وصلها</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col space-y-2">
                   {mobileNavItems.map((item) => (
-                    <Link
-                      key={item.name}
-                      to={item.path}
-                      className="text-lg hover:text-primary transition-colors flex items-center justify-between"
-                    >
-                      <span>{item.name}</span>
+                    <Link key={item.path} to={item.path}>
+                      <div
+                        className={cn(
+                          'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                          isActive(item.path)
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        )}
+                      >
+                        <span>{item.name}</span>
+                      </div>
                     </Link>
                   ))}
-                  <div className="pt-4 border-t">
-                    {session ? (
-                      <UserNav />
-                    ) : (
-                      <Link to="/login">
-                        <Button className="w-full">{t('login')}</Button>
-                      </Link>
-                    )}
-                  </div>
+                </div>
+
+                <div className="mt-6 border-t pt-4">
+                  {session ? (
+                    <UserNav />
+                  ) : (
+                    <Link to="/login">
+                      <Button className="w-full rounded-full">{t('login')}</Button>
+                    </Link>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
