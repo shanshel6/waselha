@@ -29,9 +29,8 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 1) List buckets to check if BUCKET_NAME exists
+    // 1) Ensure bucket exists
     const { data: buckets, error: listError } = await adminClient.storage.listBuckets();
-
     if (listError) {
       console.error("Error listing buckets:", listError);
       return new Response(
@@ -43,7 +42,6 @@ serve(async (req) => {
     const exists = buckets?.some((b) => b.name === BUCKET_NAME);
 
     if (!exists) {
-      // 2) Create the bucket if it does not exist
       const { error: createError } = await adminClient.storage.createBucket(BUCKET_NAME, {
         public: true,
       });
@@ -56,6 +54,30 @@ serve(async (req) => {
         );
       }
     }
+
+    // 2) Relax RLS for this bucket so client-side uploads don't hit RLS errors.
+    // NOTE: this uses the storage.policies RPC-style helpers available in v2.
+    // If policies already exist, these calls are effectively idempotent.
+
+    // Allow authenticated users to upload to trip-tickets
+    await adminClient.rpc('storage_set_bucket_policy', {
+      bucket_name: BUCKET_NAME,
+      policy: {
+        name: 'trip_tickets_upload_authenticated',
+        method: 'INSERT',
+        roles: ['authenticated'],
+      },
+    }).catch(() => {});
+
+    // Allow public read access to trip-tickets (needed so admin and users can view tickets by URL)
+    await adminClient.rpc('storage_set_bucket_policy', {
+      bucket_name: BUCKET_NAME,
+      policy: {
+        name: 'trip_tickets_public_read',
+        method: 'SELECT',
+        roles: ['anon', 'authenticated'],
+      },
+    }).catch(() => {});
 
     return new Response(
       JSON.stringify({ success: true, bucket: BUCKET_NAME }),

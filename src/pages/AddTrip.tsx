@@ -77,10 +77,10 @@ const AddTrip = () => {
   }, [from_country, to_country, free_kg]);
 
   const ensureBucketExists = async () => {
-    // Call edge function to create bucket if needed
     const { error } = await supabase.functions.invoke('create-trip-tickets-bucket');
     if (error) {
-      throw error;
+      console.error('Bucket ensure error:', error);
+      throw new Error('Failed to prepare storage bucket for tickets.');
     }
   };
 
@@ -98,7 +98,8 @@ const AddTrip = () => {
       });
 
     if (uploadError) {
-      throw uploadError;
+      console.error('Ticket upload error:', uploadError);
+      throw new Error(uploadError.message || 'Failed to upload ticket file.');
     }
 
     const { data: publicUrlData } = supabase.storage
