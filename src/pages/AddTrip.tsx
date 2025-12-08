@@ -77,9 +77,13 @@ const AddTrip = () => {
   }, [from_country, to_country, free_kg]);
 
   const ensureBucketExists = async () => {
-    const { error } = await supabase.functions.invoke('create-trip-tickets-bucket');
+    const { data, error } = await supabase.functions.invoke('create-trip-tickets-bucket');
     if (error) {
-      console.error('Bucket ensure error:', error);
+      console.error('Bucket ensure error (edge function):', error);
+      throw new Error(error.message || 'Failed to prepare storage bucket for tickets.');
+    }
+    if (!data?.success) {
+      console.error('Bucket ensure error: function returned non-success payload', data);
       throw new Error('Failed to prepare storage bucket for tickets.');
     }
   };
