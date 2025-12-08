@@ -11,7 +11,7 @@ import Notifications from './Notifications';
 import { useUnreadChatCount } from '@/hooks/use-unread-chat-count';
 import { Badge } from '@/components/ui/badge';
 
-const Navbar = () => {
+const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { session } = useSession();
   const { data: unreadCount = 0 } = useUnreadChatCount();
@@ -95,7 +95,7 @@ const Navbar = () => {
               <Button variant="ghost" size="icon" className="text-foreground ml-2">
                 <Menu className="h-6 w-6" />
               </Button>
-            </SheetContent>
+            </SheetTrigger>
             <SheetContent side="right" className="w-[250px] sm:w-[300px] bg-background text-foreground dark:bg-gray-800">
               <div className="flex flex-col space-y-4 p-4">
                 {mobileNavItems.map((item) => (
