@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -11,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-  AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 
 interface VerificationModalProps {
@@ -21,12 +19,6 @@ interface VerificationModalProps {
 
 const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onOpenChange }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-
-  const handleConfirm = () => {
-    navigate('/verification');
-    onOpenChange(false);
-  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
@@ -38,8 +30,7 @@ const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, onOpenCha
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm}>{t('verifyNow')}</AlertDialogAction>
+          <AlertDialogCancel>{t('close')}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

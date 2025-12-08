@@ -4,14 +4,13 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plane, User, Mail, Phone, Briefcase, BadgeCheck, Pencil, MapPin, AlertTriangle } from 'lucide-react';
+import { Plane, User, Mail, Phone, Briefcase, BadgeCheck, Pencil, MapPin } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { Badge } from '@/components/ui/badge';
 import EditNameDialog from '@/components/EditNameDialog';
 import EditContactDialog from '@/components/EditContactDialog';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import VerificationModal from '@/components/VerificationModal';
 
 const MyProfile = () => {
   const { t } = useTranslation();
@@ -19,7 +18,6 @@ const MyProfile = () => {
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
-  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false); // New state for verification modal
 
   if (isSessionLoading || isLoadingProfile) {
     return (
@@ -40,26 +38,6 @@ const MyProfile = () => {
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myProfile')}</h1>
       
-      {/* Verification Status Card */}
-      {profile && !profile.is_verified && (
-        <Card className="max-w-2xl mx-auto mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-              <AlertTriangle className="h-6 w-6" />
-              {t('verificationRequiredTitle')}
-            </CardTitle>
-            <CardDescription className="text-yellow-700 dark:text-yellow-300">
-              {t('verificationRequiredDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => setIsVerificationModalOpen(true)} className="w-full bg-yellow-600 hover:bg-yellow-700 text-white">
-              {t('verifyNow')}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Profile Display Card */}
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
@@ -78,7 +56,11 @@ const MyProfile = () => {
                 </Button>
               )}
             </span>
-            {profile?.is_verified && <Badge className="bg-green-500 hover:bg-green-500/90 text-white"><BadgeCheck className="h-4 w-4 mr-1" /> {t('verified')}</Badge>}
+            {profile?.is_verified && (
+              <Badge className="bg-green-500 hover:bg-green-500/90 text-white">
+                <BadgeCheck className="h-4 w-4 mr-1" /> {t('verified')}
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             {t('profileDetails')}
@@ -107,12 +89,16 @@ const MyProfile = () => {
               </div>
               <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
                 <Phone className="h-5 w-5 text-gray-500" />
-                <span className="text-gray-800 dark:text-gray-200 text-sm">{profile?.phone || t('noPhoneProvided')}</span>
+                <span className="text-gray-800 dark:text-gray-200 text-sm">
+                  {profile?.phone || t('noPhoneProvided')}
+                </span>
               </div>
             </div>
             <div className="flex items-start gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
               <MapPin className="h-5 w-5 text-gray-500 flex-shrink-0 mt-1" />
-              <span className="text-gray-800 dark:text-gray-200 text-sm">{profile?.address || t('noAddressProvided')}</span>
+              <span className="text-gray-800 dark:text-gray-200 text-sm">
+                {profile?.address || t('noAddressProvided')}
+              </span>
             </div>
           </div>
 
@@ -146,10 +132,6 @@ const MyProfile = () => {
             profile={profile}
             isOpen={isContactDialogOpen}
             onOpenChange={setIsContactDialogOpen}
-          />
-          <VerificationModal
-            isOpen={isVerificationModalOpen}
-            onOpenChange={setIsVerificationModalOpen}
           />
         </>
       )}
