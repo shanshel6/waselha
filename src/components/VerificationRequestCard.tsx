@@ -13,16 +13,16 @@ interface VerificationRequest {
   id: string;
   user_id: string;
   status: 'pending' | 'approved' | 'rejected';
-  id_front_url: string;
-  id_back_url: string;
-  face_with_id_url: string;
-  residential_card_url?: string;
+  id_front_url: string | null;
+  id_back_url: string | null;
+  residential_card_url?: string | null;
+  photo_id_url: string | null; // match DB column
   created_at: string;
   profiles: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string;
+    first_name: string | null;
+    last_name: string | null;
+    email?: string; // attached in AdminDashboard via fetchAdminEmails
+    phone: string | null;
   };
 }
 
@@ -36,18 +36,16 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ status }: { status: 'approved' | 'rejected' }) => {
-      // 1. Update verification_requests status
       const { error: requestError } = await supabase
         .from('verification_requests')
         .update({
           status,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', request.id);
 
       if (requestError) throw requestError;
 
-      // 2. Update profiles table (only if approved)
       if (status === 'approved') {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -58,7 +56,9 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
       }
     },
     onSuccess: (_, variables) => {
-      showSuccess(t(variables.status === 'approved' ? 'verificationApproved' : 'verificationRejected'));
+      showSuccess(
+        t(variables.status === 'approved' ? 'verificationApproved' : 'verificationRejected'),
+      );
       queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
     },
     onError: (err: any) => {
@@ -81,45 +81,67 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
     }
   };
 
-  const DocumentLink: React.FC<{ url: string; label: string }> = ({ url, label }) => (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline">
-      <LinkIcon className="h-4 w-4" />
-      {label}
-    </a>
-  );
+  const fullName =
+    `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() ||
+    t('user');
+  const email = request.profiles.email || 'N/A';
+  const phone = request.profiles.phone || t('noPhoneProvided');
+
+  const DocumentLink: React.FC<{ url: string | null; label: string }> = ({ url, label }) =>
+    !url ? null : (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 text-sm text-primary hover:underline"
+      >
+        <LinkIcon className="h-4 w-4" />
+        {label}
+      </a>
+    );
 
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-xl font-bold flex items-center gap-2">
           <User className="h-5 w-5" />
-          {request.profiles.first_name} {request.profiles.last_name}
+          {fullName}
         </CardTitle>
         <Badge variant={getStatusVariant(request.status)}>{t(request.status)}</Badge>
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {request.profiles.email}</p>
-          <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {request.profiles.phone || t('noPhoneProvided')}</p>
+          <p className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground" /> {email}
+          </p>
+          <p className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" /> {phone}
+          </p>
         </div>
         <div className="space-y-2 border-t pt-4">
           <h4 className="font-semibold">{t('verificationDocuments')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <DocumentLink url={request.id_front_url} label={t('idFront')} />
             <DocumentLink url={request.id_back_url} label={t('idBack')} />
-            <DocumentLink url={request.face_with_id_url} label={t('faceWithId')} />
-            {request.residential_card_url && (
-              <DocumentLink url={request.residential_card_url} label={t('residentCard')} />
-            )}
+            <DocumentLink url={request.photo_id_url} label={t('faceWithId')} />
+            <DocumentLink url={request.residential_card_url || null} label={t('residentCard')} />
           </div>
         </div>
         {request.status === 'pending' && (
           <div className="flex gap-4 pt-4">
-            <Button onClick={() => handleAction('approved')} disabled={updateStatusMutation.isPending} className="bg-green-600 hover:bg-green-700">
+            <Button
+              onClick={() => handleAction('approved')}
+              disabled={updateStatusMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
+            >
               <CheckCircle className="h-4 w-4 mr-2" />
               {t('approve')}
             </Button>
-            <Button onClick={() => handleAction('rejected')} disabled={updateStatusMutation.isPending} variant="destructive">
+            <Button
+              onClick={() => handleAction('rejected')}
+              disabled={updateStatusMutation.isPending}
+              variant="destructive"
+            >
               <XCircle className="h-4 w-4 mr-2" />
               {t('reject')}
             </Button>
