@@ -25,7 +25,7 @@ import {
   CardTitle,
   CardDescription
 } from '@/components/ui/card';
-import ImageUpload from '@/components/ImageUpload';
+import { Input } from '@/components/ui/input';
 
 const verificationSchema = z.object({
   id_front_url: z.string().url({ message: 'uploadRequired' }),
@@ -86,15 +86,13 @@ const Verification = () => {
                 <FormField
                   control={form.control}
                   name="id_front_url"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('idFront')}</FormLabel>
                       <FormControl>
-                        <ImageUpload
-                          label={t('idFront')}
-                          onUploadSuccess={(url) =>
-                            form.setValue('id_front_url', url, { shouldValidate: true })
-                          }
+                        <Input
+                          {...field}
+                          placeholder="https://your-storage.com/path/to/id-front.jpg"
                         />
                       </FormControl>
                       <FormMessage />
@@ -105,15 +103,13 @@ const Verification = () => {
                 <FormField
                   control={form.control}
                   name="id_back_url"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('idBack')}</FormLabel>
                       <FormControl>
-                        <ImageUpload
-                          label={t('idBack')}
-                          onUploadSuccess={(url) =>
-                            form.setValue('id_back_url', url, { shouldValidate: true })
-                          }
+                        <Input
+                          {...field}
+                          placeholder="https://your-storage.com/path/to/id-back.jpg"
                         />
                       </FormControl>
                       <FormMessage />
@@ -124,15 +120,13 @@ const Verification = () => {
                 <FormField
                   control={form.control}
                   name="residential_card_url"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('residentCard')}</FormLabel>
                       <FormControl>
-                        <ImageUpload
-                          label={t('residentCard')}
-                          onUploadSuccess={(url) =>
-                            form.setValue('residential_card_url', url, { shouldValidate: true })
-                          }
+                        <Input
+                          {...field}
+                          placeholder="https://your-storage.com/path/to/residential-card.jpg"
                         />
                       </FormControl>
                       <FormMessage />
@@ -143,15 +137,13 @@ const Verification = () => {
                 <FormField
                   control={form.control}
                   name="photo_id_url"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('faceWithId')}</FormLabel>
                       <FormControl>
-                        <ImageUpload
-                          label={t('faceWithId')}
-                          onUploadSuccess={(url) =>
-                            form.setValue('photo_id_url', url, { shouldValidate: true })
-                          }
+                        <Input
+                          {...field}
+                          placeholder="https://your-storage.com/path/to/face-with-id.jpg"
                         />
                       </FormControl>
                       <FormMessage />
