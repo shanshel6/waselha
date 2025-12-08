@@ -54,6 +54,9 @@ interface FileUploadFieldProps {
   onChange: (file: File | undefined) => void;
 }
 
+/**
+ * Simple local preview + validation; actual upload happens on form submit to Supabase Storage.
+ */
 const FileUploadField: React.FC<FileUploadFieldProps> = ({
   label,
   required,
@@ -177,6 +180,7 @@ const Verification = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationSchema),
@@ -190,27 +194,68 @@ const Verification = () => {
     }
   });
 
+  /**
+   * Upload a single file to Supabase Storage and return its public URL.
+   * Uses a dedicated bucket `verification-uploads` and a user-based path.
+   */
+  const uploadFileAndGetUrl = async (file: File | undefined, userId: string, key: string) => {
+    if (!file) return null;
+
+    const bucket = 'verification-uploads';
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filePath = `${userId}/${key}-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl;
+  };
+
   const onSubmit = async (values: VerificationFormValues) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
       return;
     }
 
-    const fakeUrl = (f?: File) => (f ? `local-file://${f.name}` : null);
+    setSubmitting(true);
 
-    const { error } = await supabase.from('verification_requests').insert({
-      user_id: user.id,
-      id_front_url: fakeUrl(values.id_front_file),
-      id_back_url: fakeUrl(values.id_back_file),
-      residential_card_url: fakeUrl(values.residential_card_file || undefined),
-      photo_id_url: fakeUrl(values.photo_id_file),
-      status: 'pending'
-    });
+    try {
+      // 1) Upload all files and get public URLs
+      const [idFrontUrl, idBackUrl, residentialCardUrl, photoIdUrl] =
+        await Promise.all([
+          uploadFileAndGetUrl(values.id_front_file, user.id, 'id-front'),
+          uploadFileAndGetUrl(values.id_back_file, user.id, 'id-back'),
+          uploadFileAndGetUrl(values.residential_card_file, user.id, 'residential-card'),
+          uploadFileAndGetUrl(values.photo_id_file, user.id, 'photo-id'),
+        ]);
 
-    if (error) {
-      showError(error.message);
-    } else {
-      // optionally sync name into profiles table if missing / outdated
+      // 2) Insert verification request with real URLs
+      const { error } = await supabase.from('verification_requests').insert({
+        user_id: user.id,
+        id_front_url: idFrontUrl,
+        id_back_url: idBackUrl,
+        residential_card_url: residentialCardUrl,
+        photo_id_url: photoIdUrl,
+        status: 'pending'
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // 3) Optionally sync name into profiles table
       await supabase
         .from('profiles')
         .update({
@@ -221,6 +266,11 @@ const Verification = () => {
 
       showSuccess(t('verificationSubmitted'));
       navigate('/');
+    } catch (error: any) {
+      console.error('Verification submit error:', error);
+      showError(error.message || 'Failed to submit verification');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -334,9 +384,9 @@ const Verification = () => {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={form.formState.isSubmitting}
+                disabled={form.formState.isSubmitting || submitting}
               >
-                {t('submitVerification')}
+                {submitting ? t('uploading') : t('submitVerification')}
               </Button>
             </form>
           </Form>
