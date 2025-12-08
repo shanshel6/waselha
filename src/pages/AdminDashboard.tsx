@@ -62,6 +62,7 @@ const AdminDashboard = () => {
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
 
+  // === VERIFICATION REQUESTS (without Supabase join) ===
   const {
     data: verificationRequests,
     isLoading: isRequestsLoading,
@@ -69,6 +70,7 @@ const AdminDashboard = () => {
   } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
+      // 1) Fetch pure rows from verification_requests (no profiles(...) in select)
       const { data: allRequests, error: allRequestsError } = await supabase
         .from('verification_requests')
         .select(
@@ -80,12 +82,7 @@ const AdminDashboard = () => {
           id_back_url,
           photo_id_url,
           residential_card_url,
-          created_at,
-          profiles (
-            first_name,
-            last_name,
-            phone
-          )
+          created_at
         `,
         )
         .order('created_at', { ascending: true });
@@ -95,22 +92,42 @@ const AdminDashboard = () => {
         throw new Error(allRequestsError.message);
       }
 
-      const requests = allRequests as any[];
+      const requests = (allRequests || []) as {
+        id: string;
+        user_id: string;
+        status: 'pending' | 'approved' | 'rejected';
+        id_front_url: string;
+        id_back_url: string;
+        photo_id_url: string;
+        residential_card_url?: string;
+        created_at: string;
+      }[];
 
-      const userIds = requests.map((req) => req.user_id as string);
+      if (requests.length === 0) {
+        return [];
+      }
+
+      // 2) Fetch emails via edge function (auth users)
+      const userIds = requests.map((req) => req.user_id);
       const emailMap = await fetchAdminEmails(userIds);
 
-      return requests.map((req) => ({
+      // 3) Build minimal profiles object (names/phone unknown here => placeholders)
+      const enriched = requests.map((req) => ({
         ...req,
         profiles: {
-          ...req.profiles,
+          first_name: 'N/A',
+          last_name: '',
           email: emailMap[req.user_id] || 'N/A',
+          phone: 'N/A',
         },
       })) as VerificationRequest[];
+
+      return enriched;
     },
     enabled: isAdmin,
   });
 
+  // === RAW DEBUG QUERY ===
   const {
     data: rawVerificationRows,
     error: rawError,
@@ -128,11 +145,12 @@ const AdminDashboard = () => {
         throw new Error(error.message);
       }
 
-      return data as RawVerificationRow[];
+      return (data || []) as RawVerificationRow[];
     },
     enabled: isAdmin,
   });
 
+  // === TRIPS QUERIES (unchanged) ===
   const {
     data: pendingTrips,
     isLoading: isTripsLoading,
@@ -187,6 +205,7 @@ const AdminDashboard = () => {
     enabled: isAdmin,
   });
 
+  // === TRIP APPROVAL MUTATIONS (unchanged) ===
   const approveTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
       const { error } = await supabase
@@ -297,6 +316,7 @@ const AdminDashboard = () => {
     },
   });
 
+  // === LOADING / ACCESS HANDLING ===
   if (isAdminLoading) {
     return (
       <div className="container p-8 text-center">
@@ -485,7 +505,6 @@ const AdminDashboard = () => {
                 pendingVerificationRequests.length > 0 ? (
                   pendingVerificationRequests.map((req) => (
                     <div key={req.id} className="space-y-1">
-                      {/* سطر تشخيصي يوضح الحالة */}
                       <p className="text-xs text-muted-foreground">
                         id: {req.id} – status: {req.status}
                       </p>
@@ -493,9 +512,7 @@ const AdminDashboard = () => {
                     </div>
                   ))
                 ) : (
-                  <p className="text-muted-foreground">
-                    {t('noPendingRequests')}
-                  </p>
+                  <p className="text-muted-foreground">{t('noPendingRequests')}</p>
                 )
               ) : (
                 <p className="text-muted-foreground">{t('noPendingRequests')}</p>
@@ -548,9 +565,9 @@ const AdminDashboard = () => {
                   <ul className="space-y-1">
                     {rawVerificationRows.map((row) => (
                       <li key={row.id} className="border-b pb-1">
-                        <span className="font-mono text-xs">{row.id}</span> – status:{" "}
-                        <span className="font-semibold">{row.status}</span> – user_id:{" "}
-                        <span className="font-mono text-xs">{row.user_id}</span>
+                        <span className="font-mono text-xs">{row.id}</span> – status:{' '}
+                        <span className="font-semibold">{row.status}</span> – user_id:{' '}
+                          <span className="font-mono text-xs">{row.user_id}</span>
                       </li>
                     ))}
                   </ul>
