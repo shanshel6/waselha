@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plane, User, Mail, Phone, Briefcase, BadgeCheck, Pencil, MapPin } from 'lucide-react';
+import { Plane, User, Mail, Phone, Briefcase, BadgeCheck, Pencil, MapPin, ShieldAlert } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { Badge } from '@/components/ui/badge';
 import EditNameDialog from '@/components/EditNameDialog';
 import EditContactDialog from '@/components/EditContactDialog';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { useVerificationStatus } from '@/hooks/use-verification-status';
 
 const MyProfile = () => {
   const { t } = useTranslation();
@@ -18,6 +19,7 @@ const MyProfile = () => {
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+  const { data: verificationInfo } = useVerificationStatus();
 
   if (isSessionLoading || isLoadingProfile) {
     return (
@@ -33,6 +35,41 @@ const MyProfile = () => {
     if (role === 'both') return t('roleBoth');
     return 'N/A';
   };
+
+  const renderVerificationBadge = () => {
+    const status = verificationInfo?.status || 'none';
+
+    if (status === 'approved') {
+      return (
+        <Badge className="bg-green-500 hover:bg-green-500/90 text-white">
+          <BadgeCheck className="h-4 w-4 mr-1" /> {t('verified')}
+        </Badge>
+      );
+    }
+
+    if (status === 'pending') {
+      return (
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <ShieldAlert className="h-3 w-3" />
+          {t('pendingVerification')}
+        </Badge>
+      );
+    }
+
+    if (status === 'rejected') {
+      return (
+        <Badge variant="destructive" className="flex items-center gap-1">
+          <ShieldAlert className="h-3 w-3" />
+          {t('rejected')}
+        </Badge>
+      );
+    }
+
+    return null;
+  };
+
+  const status = verificationInfo?.status || 'none';
+  const showVerifyButton = status === 'none' || status === 'rejected';
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -56,17 +93,35 @@ const MyProfile = () => {
                 </Button>
               )}
             </span>
-            {profile?.is_verified && (
-              <Badge className="bg-green-500 hover:bg-green-500/90 text-white">
-                <BadgeCheck className="h-4 w-4 mr-1" /> {t('verified')}
-              </Badge>
-            )}
+            {renderVerificationBadge()}
           </CardTitle>
           <CardDescription>
             {t('profileDetails')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Verification status block */}
+          <div className="p-4 rounded-lg border bg-gray-50 dark:bg-gray-800 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-primary" />
+                <span className="font-semibold">
+                  {t('verifyYourself')}
+                </span>
+              </div>
+              {showVerifyButton && (
+                <Link to="/verification">
+                  <Button size="sm">
+                    {t('verifyNow')}
+                  </Button>
+                </Link>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t('verificationInstructions')}
+            </p>
+          </div>
+
           {/* Contact Info Block */}
           <div className="space-y-3 p-4 rounded-lg border bg-card">
             <div className="flex justify-between items-center">
