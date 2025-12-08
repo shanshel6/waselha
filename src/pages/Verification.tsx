@@ -40,7 +40,8 @@ const verificationSchema = z.object({
   id_back_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
-  residential_card_file: z.instanceof(File).optional(),
+  residential_card_front_file: z.instanceof(File).optional(),
+  residential_card_back_file: z.instanceof(File).optional(),
   photo_id_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' })
@@ -212,7 +213,8 @@ const Verification = () => {
       last_name: '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
-      residential_card_file: undefined,
+      residential_card_front_file: undefined,
+      residential_card_back_file: undefined,
       photo_id_file: undefined as unknown as File
     }
   });
@@ -254,21 +256,29 @@ const Verification = () => {
     setSubmitting(true);
 
     try {
-      const [idFrontUrl, idBackUrl, residentialCardUrl, photoIdUrl] =
-        await Promise.all([
-          uploadVerificationFile(values.id_front_file, user.id, 'id-front'),
-          uploadVerificationFile(values.id_back_file, user.id, 'id-back'),
-          values.residential_card_file
-            ? uploadVerificationFile(values.residential_card_file, user.id, 'residential-card')
-            : Promise.resolve<string | null>(null),
-          uploadVerificationFile(values.photo_id_file, user.id, 'photo-id'),
-        ]);
+      const [
+        idFrontUrl,
+        idBackUrl,
+        residentialFrontUrl,
+        residentialBackUrl,
+        photoIdUrl
+      ] = await Promise.all([
+        uploadVerificationFile(values.id_front_file, user.id, 'id-front'),
+        uploadVerificationFile(values.id_back_file, user.id, 'id-back'),
+        values.residential_card_front_file
+          ? uploadVerificationFile(values.residential_card_front_file, user.id, 'res-card-front')
+          : Promise.resolve<string | null>(null),
+        values.residential_card_back_file
+          ? uploadVerificationFile(values.residential_card_back_file, user.id, 'res-card-back')
+          : Promise.resolve<string | null>(null),
+        uploadVerificationFile(values.photo_id_file, user.id, 'photo-id')
+      ]);
 
       const { error } = await supabase.from('verification_requests').insert({
         user_id: user.id,
         id_front_url: idFrontUrl,
         id_back_url: idBackUrl,
-        residential_card_url: residentialCardUrl,
+        residential_card_url: residentialFrontUrl || residentialBackUrl, // keep legacy column
         photo_id_url: photoIdUrl,
         status: 'pending'
       });
@@ -319,6 +329,7 @@ const Verification = () => {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Basic info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -348,6 +359,7 @@ const Verification = () => {
                 />
               </div>
 
+              {/* ID front/back */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -364,7 +376,6 @@ const Verification = () => {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="id_back_file"
@@ -380,14 +391,17 @@ const Verification = () => {
                     </FormItem>
                   )}
                 />
+              </div>
 
+              {/* Residential card front/back */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="residential_card_file"
+                  name="residential_card_front_file"
                   render={({ field }) => (
                     <FormItem>
                       <FileUploadField
-                        label={t('residentCard')}
+                        label={t('residentCardFront')}
                         required={false}
                         value={field.value}
                         onChange={field.onChange}
@@ -396,15 +410,14 @@ const Verification = () => {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
-                  name="photo_id_file"
+                  name="residential_card_back_file"
                   render={({ field }) => (
                     <FormItem>
                       <FileUploadField
-                        label={t('faceWithId')}
-                        required
+                        label={t('residentCardBack')}
+                        required={false}
                         value={field.value}
                         onChange={field.onChange}
                       />
@@ -412,6 +425,44 @@ const Verification = () => {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Selfie with ID: big section with example image */}
+              <div className="space-y-4">
+                <p className="font-semibold text-base">
+                  {t('faceWithId')}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <div className="order-2 md:order-1">
+                    <FormField
+                      control={form.control}
+                      name="photo_id_file"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FileUploadField
+                            label={t('faceWithId')}
+                            required
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="order-1 md:order-2">
+                    <div className="rounded-2xl border bg-muted/40 p-3 md:p-4">
+                      <img
+                        src="/holding-id.png"
+                        alt="Example of selfie with ID"
+                        className="w-full h-auto rounded-xl object-cover"
+                      />
+                      <p className="mt-2 text-xs text-muted-foreground text-center md:text-right">
+                        هذه صورة توضيحية توضح الشكل المطلوب: وجهك واضح والهوية ممسوكة بيدك بحيث تظهر بياناتها بوضوح.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <Button
