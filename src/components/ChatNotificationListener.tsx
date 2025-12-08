@@ -37,9 +37,12 @@ const ChatNotificationListener = () => {
 
       // 2. Get chat details to find the request ID and participants
       const participants = await getChatParticipants(newMessage.chat_id);
-      if (!participants) return;
+      if (!participants) {
+        console.error("Chat notification failed: Could not determine chat participants.");
+        return;
+      }
 
-      const { requestId, senderId, travelerId } = participants;
+      const { requestId } = participants;
       
       // 3. Determine the recipient (the current user)
       const recipientId = user.id;
@@ -54,13 +57,17 @@ const ChatNotificationListener = () => {
       const displaySenderName = senderName || t('user');
 
       // 6. Insert notification into the database
-      await supabase
+      const { error: insertError } = await supabase
         .from('notifications')
         .insert({
           user_id: recipientId,
           message: t('newChatMessageNotification', { name: displaySenderName }),
           link: `/chat/${requestId}`
         });
+        
+      if (insertError) {
+        console.error("Failed to insert chat notification:", insertError);
+      }
     };
 
     // We subscribe to all chat messages inserts.
