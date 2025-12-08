@@ -1,1 +1,1 @@
-This project expects storage buckets named verification-documents (for verification documents) and item-photos (for item photos). If you see "Bucket not found" when loading images, verify these buckets exist in Supabase Storage and have proper public access or switch to signed URLs.
+# Welcome to your Dyad app
