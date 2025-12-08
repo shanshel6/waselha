@@ -8,12 +8,10 @@ import { Menu, Send } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
-import { useUnreadChatCount } from '@/hooks/use-unread-chat-count';
 
 const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { session } = useSession();
-  const { data: unreadCount = 0 } = useUnreadChatCount(); 
   
   const publicNavItems = [
     { name: t('home'), path: '/' },
@@ -55,7 +53,6 @@ const Navbar: React.FC = () => {
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary relative"
             >
               {item.name}
-              {/* Removed per‑tab unread badge; chat notifications now live solely in the bell popover */}
             </Link>
           ))}
         </div>
@@ -64,7 +61,7 @@ const Navbar: React.FC = () => {
         <Link to="/" className="flex-1 flex justify-center">
           <span className="flex items-center gap-2 text-2xl font-bold text-primary">
             <Send className="h-6 w-6" />
-            Waselha
+            وصلها
           </span>
         </Link>
         
@@ -86,7 +83,6 @@ const Navbar: React.FC = () => {
           <div className="md:hidden flex items-center">
             {session && (
               <div className="flex items-center gap-1">
-                {/* Notifications bell already shows count inside its own badge */}
                 <Notifications />
               </div>
             )}
@@ -108,7 +104,6 @@ const Navbar: React.FC = () => {
                       className="text-lg hover:text-primary transition-colors flex items-center justify-between"
                     >
                       <span>{item.name}</span>
-                      {/* Removed unread badge next to My Requests on mobile as well */}
                     </Link>
                   ))}
                   <div className="pt-4 border-t">
