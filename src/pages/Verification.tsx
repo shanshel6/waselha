@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react";
+import React, { useState, useRef } from "react";
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -191,8 +191,6 @@ const Verification = () => {
       return;
     }
 
-    // We are NOT uploading to storage; we only store placeholder URLs so admin can see that files exist conceptually.
-    // In a real app you would upload these Files to a storage bucket and save the real URLs here.
     const fakeUrl = (f?: File) => (f ? `local-file://${f.name}` : null);
 
     const { error } = await supabase.from('verification_requests').insert({
