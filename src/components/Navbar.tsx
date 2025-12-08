@@ -55,7 +55,12 @@ const Navbar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-3 sm:px-4">
-        {/* Left: desktop nav links */}
+        {/* Left: Brand logo */}
+        <Link to="/" className="flex items-center">
+          <Brand />
+        </Link>
+
+        {/* Center: desktop nav links */}
         <div className="hidden md:flex items-center gap-4">
           {publicNavItems.map((item) => (
             <Link key={item.path} to={item.path}>
@@ -88,11 +93,6 @@ const Navbar: React.FC = () => {
               </Link>
             ))}
         </div>
-
-        {/* Center: brand logo (text + suitcase icon) */}
-        <Link to="/" className="flex-1 flex justify-center">
-          <Brand />
-        </Link>
 
         {/* Right: desktop user / notifications + mobile menu */}
         <div className="flex items-center gap-1">
