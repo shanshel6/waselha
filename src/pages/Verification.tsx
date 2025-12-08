@@ -55,7 +55,7 @@ interface FileUploadFieldProps {
 }
 
 /**
- * Simple local preview + validation; actual upload happens on form submit to Supabase Storage.
+ * Pure client-side preview; NO Supabase Storage usage.
  */
 const FileUploadField: React.FC<FileUploadFieldProps> = ({
   label,
@@ -194,35 +194,6 @@ const Verification = () => {
     }
   });
 
-  /**
-   * Upload a single file to Supabase Storage and return its public URL.
-   * Uses a dedicated bucket `verification-uploads` and a user-based path.
-   */
-  const uploadFileAndGetUrl = async (file: File | undefined, userId: string, key: string) => {
-    if (!file) return null;
-
-    const bucket = 'verification-uploads';
-    const ext = file.name.split('.').pop() || 'jpg';
-    const filePath = `${userId}/${key}-${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    return publicUrlData.publicUrl;
-  };
-
   const onSubmit = async (values: VerificationFormValues) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
@@ -232,22 +203,13 @@ const Verification = () => {
     setSubmitting(true);
 
     try {
-      // 1) Upload all files and get public URLs
-      const [idFrontUrl, idBackUrl, residentialCardUrl, photoIdUrl] =
-        await Promise.all([
-          uploadFileAndGetUrl(values.id_front_file, user.id, 'id-front'),
-          uploadFileAndGetUrl(values.id_back_file, user.id, 'id-back'),
-          uploadFileAndGetUrl(values.residential_card_file, user.id, 'residential-card'),
-          uploadFileAndGetUrl(values.photo_id_file, user.id, 'photo-id'),
-        ]);
-
-      // 2) Insert verification request with real URLs
+      // No storage upload; we only record a verification request exists
       const { error } = await supabase.from('verification_requests').insert({
         user_id: user.id,
-        id_front_url: idFrontUrl,
-        id_back_url: idBackUrl,
-        residential_card_url: residentialCardUrl,
-        photo_id_url: photoIdUrl,
+        id_front_url: null,
+        id_back_url: null,
+        residential_card_url: null,
+        photo_id_url: null,
         status: 'pending'
       });
 
@@ -255,7 +217,7 @@ const Verification = () => {
         throw error;
       }
 
-      // 3) Optionally sync name into profiles table
+      // Sync name into profiles table
       await supabase
         .from('profiles')
         .update({
