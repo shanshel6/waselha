@@ -69,7 +69,7 @@ const MyProfile = () => {
   };
 
   const status = verificationInfo?.status || 'none';
-  // نسمح دائماً بالانتقال لصفحة التحقق، لكن نعطّل الزر إذا كان هناك طلب قيد الانتظار
+  // إذا كانت الحالة pending، نعطّل الزر والرابط تماماً
   const verifyButtonDisabled = status === 'pending';
   const verifyButtonLabel =
     status === 'pending'
@@ -114,7 +114,11 @@ const MyProfile = () => {
                   {t('verifyYourself')}
                 </span>
               </div>
-              <Link to="/verification">
+              {/* إذا كانت الحالة pending، نضيف pointer-events-none على الـ Link حتى لا يكون قابلاً للنقر */}
+              <Link
+                to="/verification"
+                className={verifyButtonDisabled ? 'pointer-events-none opacity-80' : ''}
+              >
                 <Button size="sm" disabled={verifyButtonDisabled}>
                   {verifyButtonLabel}
                 </Button>
