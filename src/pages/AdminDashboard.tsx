@@ -143,7 +143,7 @@ const AdminDashboard = () => {
         .from('trips')
         .update({ 
           is_approved: true, 
-          admin_review_notes: notes || null 
+          admin_review_notes: notes || '' // Changed from null to empty string to ensure it appears in reviewed list
         })
         .eq('id', tripId);
 
