@@ -27,8 +27,9 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UploadCloud, CheckCircle, XCircle, FileImage } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useVerificationStatus } from '@/hooks/use-verification-status';
 
 const verificationSchema = z.object({
   first_name: z.string().min(1, { message: 'requiredField' }),
@@ -202,6 +203,7 @@ const Verification = () => {
   const { user, session } = useSession();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const { data: verificationInfo, isLoading: isVerificationLoading } = useVerificationStatus();
 
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationSchema),
@@ -215,10 +217,34 @@ const Verification = () => {
     }
   });
 
+  const status = verificationInfo?.status || 'none';
+
+  // If already verified, do not allow re-verification
+  if (isVerificationLoading) {
+    return (
+      <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (status === 'approved') {
+    // Optionally show a quick message before redirect
+    navigate('/my-profile', { replace: true });
+    return null;
+  }
+
   const onSubmit = async (values: VerificationFormValues) => {
     if (!user || !session) {
       showError(t('mustBeLoggedIn'));
       navigate('/login');
+      return;
+    }
+
+    // Double-check on submit in case status changed between load and click
+    if (verificationInfo?.status === 'approved') {
+      showError(t('verificationApproved'));
+      navigate('/my-profile');
       return;
     }
 
@@ -274,6 +300,12 @@ const Verification = () => {
           <CardDescription>{t('verificationInstructions')}</CardDescription>
         </CardHeader>
         <CardContent>
+          {status === 'pending' && (
+            <Alert className="mb-4">
+              <AlertDescription>{t('pendingVerification')}</AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
