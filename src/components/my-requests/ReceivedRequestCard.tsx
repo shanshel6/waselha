@@ -12,6 +12,7 @@ import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
+import { useChatReadStatus } from '@/hooks/use-chat-read-status'; // Import new hook
 
 // --- Type Definitions ---
 interface Profile {
@@ -105,6 +106,10 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  
+  // Use the new hook
+  const { data: chatStatus } = useChatReadStatus(req.id);
+  const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
   // --- Regular Trip Request Card (Received by Traveler) ---
   const reqWithProfiles = req;
@@ -151,7 +156,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
   }
 
   return (
-    <Card className={isGeneralOrderMatch ? "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border"}>
+    <Card className={cn(isGeneralOrderMatch ? "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border")}>
       <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -174,6 +179,11 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             <Badge variant={getStatusVariant(reqWithProfiles.status)} className="text-xs">
               {hasPendingChanges ? t('pendingChanges') : t(reqWithProfiles.status)}
             </Badge>
+            {hasNewMessage && (
+              <Badge variant="destructive" className="text-xs h-5 px-2">
+                {t('newMessage')}
+              </Badge>
+            )}
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </div>
         </div>
@@ -316,9 +326,10 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
           {reqWithProfiles.status === 'accepted' && (
             <div className="flex flex-wrap gap-2 pt-2">
               <Link to={`/chat/${reqWithProfiles.id}`}>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className={cn(hasNewMessage && "border-red-500 text-red-500")}>
                   <MessageSquare className="mr-2 h-4 w-4" />
                   {t('viewChat')}
+                  {hasNewMessage && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-xs">!</Badge>}
                 </Button>
               </Link>
               

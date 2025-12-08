@@ -12,6 +12,7 @@ import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
+import { useChatReadStatus } from '@/hooks/use-chat-read-status'; // Import new hook
 
 // Re-defining necessary types locally for modularity
 interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
@@ -89,6 +90,10 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  
+  // Use the new hook
+  const { data: chatStatus } = useChatReadStatus(req.id);
+  const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
   const travelerName = req.traveler_profile?.first_name || t('traveler');
   const fromCountry = req.trips?.from_country || 'N/A';
@@ -166,9 +171,10 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
         <div className="flex flex-wrap gap-2 pt-2">
           {!isChatExpired && (
             <Link to={`/chat/${request.id}`}>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" className={cn(hasNewMessage && "border-red-500 text-red-500")}>
                 <MessageSquare className="mr-2 h-4 w-4" />
                 {t('viewChat')}
+                {hasNewMessage && <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-xs">!</Badge>}
               </Button>
             </Link>
           )}
@@ -230,6 +236,11 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
             <Badge variant={getStatusVariant(req.status)} className="text-xs">
               {hasPendingChanges ? t('pendingChanges') : t(req.status)}
             </Badge>
+            {hasNewMessage && (
+              <Badge variant="destructive" className="text-xs h-5 px-2">
+                {t('newMessage')}
+              </Badge>
+            )}
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </div>
         </div>
