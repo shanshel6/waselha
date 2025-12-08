@@ -1,5 +1,4 @@
 "use client";
-
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -40,7 +39,10 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
       // 1. Update verification_requests status
       const { error: requestError } = await supabase
         .from('verification_requests')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({
+          status,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', request.id);
 
       if (requestError) throw requestError;
@@ -51,7 +53,7 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
           .from('profiles')
           .update({ is_verified: true })
           .eq('id', request.user_id);
-        
+
         if (profileError) throw profileError;
       }
     },
@@ -70,19 +72,17 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'approved': return 'default';
-      case 'rejected': return 'destructive';
-      default: return 'secondary';
+      case 'approved':
+        return 'default';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'secondary';
     }
   };
 
   const DocumentLink: React.FC<{ url: string; label: string }> = ({ url, label }) => (
-    <a 
-      href={url} 
-      target="_blank" 
-      rel="noopener noreferrer" 
-      className="flex items-center gap-2 text-sm text-primary hover:underline"
-    >
+    <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline">
       <LinkIcon className="h-4 w-4" />
       {label}
     </a>
@@ -102,7 +102,6 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
           <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /> {request.profiles.email}</p>
           <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {request.profiles.phone || t('noPhoneProvided')}</p>
         </div>
-
         <div className="space-y-2 border-t pt-4">
           <h4 className="font-semibold">{t('verificationDocuments')}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -114,22 +113,15 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
             )}
           </div>
         </div>
-
         {request.status === 'pending' && (
           <div className="flex gap-4 pt-4">
-            <Button 
-              onClick={() => handleAction('approved')} 
-              disabled={updateStatusMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" /> {t('approve')}
+            <Button onClick={() => handleAction('approved')} disabled={updateStatusMutation.isPending} className="bg-green-600 hover:bg-green-700">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {t('approve')}
             </Button>
-            <Button 
-              onClick={() => handleAction('rejected')} 
-              disabled={updateStatusMutation.isPending}
-              variant="destructive"
-            >
-              <XCircle className="h-4 w-4 mr-2" /> {t('reject')}
+            <Button onClick={() => handleAction('rejected')} disabled={updateStatusMutation.isPending} variant="destructive">
+              <XCircle className="h-4 w-4 mr-2" />
+              {t('reject')}
             </Button>
           </div>
         )}

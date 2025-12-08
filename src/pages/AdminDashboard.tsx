@@ -58,7 +58,8 @@ const AdminDashboard = () => {
   const { data: verificationRequests, isLoading: isRequestsLoading, error: verificationError } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, let's check if we can fetch all verification requests
+      const { data: allRequests, error: allRequestsError } = await supabase
         .from('verification_requests')
         .select(`
           *,
@@ -70,9 +71,12 @@ const AdminDashboard = () => {
         `)
         .order('created_at', { ascending: true });
 
-      if (error) throw new Error(error.message);
+      if (allRequestsError) {
+        console.error("Error fetching all verification requests:", allRequestsError);
+        throw new Error(allRequestsError.message);
+      }
 
-      const requests = data as VerificationRequest[];
+      const requests = allRequests as VerificationRequest[];
       
       // Collect user IDs
       const userIds = requests.map(req => req.user_id);
@@ -418,10 +422,14 @@ const AdminDashboard = () => {
             <CardContent className="space-y-6">
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
-              ) : pendingVerificationRequests.length > 0 ? (
-                pendingVerificationRequests.map(req => (
-                  <VerificationRequestCard key={req.id} request={req} />
-                ))
+              ) : verificationRequests ? (
+                pendingVerificationRequests.length > 0 ? (
+                  pendingVerificationRequests.map(req => (
+                    <VerificationRequestCard key={req.id} request={req} />
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">{t('noPendingRequests')}</p>
+                )
               ) : (
                 <p className="text-muted-foreground">{t('noPendingRequests')}</p>
               )}
@@ -437,10 +445,14 @@ const AdminDashboard = () => {
             <CardContent className="space-y-6">
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
-              ) : reviewedVerificationRequests.length > 0 ? (
-                reviewedVerificationRequests.map(req => (
-                  <VerificationRequestCard key={req.id} request={req} />
-                ))
+              ) : verificationRequests ? (
+                reviewedVerificationRequests.length > 0 ? (
+                  reviewedVerificationRequests.map(req => (
+                    <VerificationRequestCard key={req.id} request={req} />
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
+                )
               ) : (
                 <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
               )}
