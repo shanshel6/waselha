@@ -11,6 +11,7 @@ import { ShieldAlert, Loader2, Plane } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { arabicCountries } from '@/lib/countries-ar';
 import { showSuccess, showError } from '@/utils/toast';
+import AdminTripApproval from '@/components/AdminTripApproval';
 
 interface Trip {
   id: string;
@@ -201,7 +202,6 @@ const AdminDashboard = () => {
 
   const renderTicketLink = (url: string | null) => {
     if (!url) return null;
-    // Only render if it looks like a real URL (http/https)
     if (!/^https?:\/\//.test(url)) return null;
 
     return (
