@@ -9,13 +9,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plane, Package, User, MapPin, Search, PlusCircle, BadgeCheck } from 'lucide-react';
+import { Plane, Package, User, MapPin, Search, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { countries } from '@/lib/countries';
-import { Badge } from '@/components/ui/badge';
 import CountryFlag from '@/components/CountryFlag';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import {
@@ -205,12 +204,6 @@ const Trips = () => {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <User className="h-4 w-4" />
                       <span>{trip.profiles?.first_name || 'N/A'}</span>
-                      {trip.profiles?.is_verified && 
-                        <Badge variant="secondary" className="text-green-600 border-green-600">
-                          <BadgeCheck className="h-3 w-3 mr-1" /> 
-                          Verified
-                        </Badge>
-                      }
                     </div>
                     <div className="border-t pt-4 flex items-center gap-2">
                       <Package className="h-5 w-5 text-primary/80" />

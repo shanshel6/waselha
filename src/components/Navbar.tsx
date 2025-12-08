@@ -21,7 +21,6 @@ const Navbar: React.FC = () => {
     { name: t('trips'), path: '/trips' },
   ];
   
-  // Only keep My Requests in the main nav without the chat badge
   const authenticatedNavItems = [
     { name: t('myRequests'), path: '/my-requests' },
   ];
@@ -37,14 +36,16 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+      {/* flex-row-reverse ليكون الشعار على اليمين والقائمة على اليسار في RTL */}
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 flex-row-reverse">
+        {/* Logo on the right */}
         <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-primary">
           <Send className="h-6 w-6" />
           Waselha
         </Link>
         
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-6">
+        {/* Desktop Navigation on the left */}
+        <div className="hidden md:flex items-center space-x-6 space-x-reverse">
           {publicNavItems.map((item) => (
             <Link 
               key={item.name} 
@@ -82,7 +83,7 @@ const Navbar: React.FC = () => {
           )}
         </div>
         
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation (menu button on the left in RTL) */}
         <div className="md:hidden flex items-center">
           {session && (
             <div className="flex items-center gap-1">
@@ -96,7 +97,7 @@ const Navbar: React.FC = () => {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[250px] sm:w-[300px] bg-background text-foreground dark:bg-gray-800">
+            <SheetContent side="left" className="w-[250px] sm:w-[300px] bg-background text-foreground dark:bg-gray-800">
               <div className="flex flex-col space-y-4 p-4">
                 {mobileNavItems.map((item) => (
                   <Link 
