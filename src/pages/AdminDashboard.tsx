@@ -200,6 +200,18 @@ const AdminDashboard = () => {
 
   const getArabicCountryName = (country: string) => arabicCountries[country] || country;
 
+  const isImageUrl = (url: string | null) => {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return (
+      lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.gif') ||
+      lower.includes('image=')
+    );
+  };
+
   const renderTicketLink = (url: string | null) => {
     if (!url) return null;
     if (!/^https?:\/\//.test(url)) return null;
@@ -298,8 +310,8 @@ const AdminDashboard = () => {
                 <div className="space-y-4">
                   {reviewedTrips.map((trip) => (
                     <div key={trip.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
                           <h3 className="font-semibold flex items-center gap-2">
                             <CountryFlag country={trip.from_country} showName={false} />
                             {getArabicCountryName(trip.from_country)}
@@ -317,8 +329,15 @@ const AdminDashboard = () => {
                           <p className="text-xs text-muted-foreground">
                             {t('availableWeight')}: {trip.free_kg} kg
                           </p>
+                          {trip.admin_review_notes && (
+                            <p className="text-sm text-muted-foreground pt-3 border-t mt-3">
+                              {t('adminReviewNotes')}: {trip.admin_review_notes}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex flex-col items-end gap-2">
+
+                        {/* Ticket thumbnail + link */}
+                        <div className="flex flex-col items-end gap-2 min-w-[120px]">
                           <span
                             className={`px-2 py-1 rounded-full text-xs ${
                               trip.is_approved
@@ -333,14 +352,25 @@ const AdminDashboard = () => {
                               {t('deletedByUser')}
                             </span>
                           )}
+
+                          {trip.ticket_file_url && isImageUrl(trip.ticket_file_url) && (
+                            <a
+                              href={trip.ticket_file_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block"
+                            >
+                              <img
+                                src={trip.ticket_file_url}
+                                alt={t('flightTicket')}
+                                className="w-24 h-16 object-cover rounded border"
+                              />
+                            </a>
+                          )}
+
                           {renderTicketLink(trip.ticket_file_url)}
                         </div>
                       </div>
-                      {trip.admin_review_notes && (
-                        <p className="text-sm text-muted-foreground pt-3 border-t mt-3">
-                          {t('adminReviewNotes')}: {trip.admin_review_notes}
-                        </p>
-                      )}
                     </div>
                   ))}
                 </div>
