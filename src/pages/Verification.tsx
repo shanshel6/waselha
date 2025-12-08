@@ -17,12 +17,10 @@ import ImageUpload from '@/components/ImageUpload';
 
 const verificationSchema = z.object({
   full_name: z.string().min(3, { message: "requiredField" }),
-  // Removed address field as it doesn't exist in verification_requests table
   id_front_url: z.string().url({ message: "uploadRequired" }),
   id_back_url: z.string().url({ message: "uploadRequired" }),
-  resident_card_front_url: z.string().url().optional(),
-  resident_card_back_url: z.string().url().optional(),
-  face_with_id_url: z.string().url({ message: "uploadRequired" }),
+  residential_card_url: z.string().url().optional(),
+  photo_id_url: z.string().url({ message: "uploadRequired" }),
 });
 
 const Verification = () => {
@@ -34,7 +32,6 @@ const Verification = () => {
     resolver: zodResolver(verificationSchema),
     defaultValues: {
       full_name: "",
-      // Removed address field
     },
   });
 
@@ -46,11 +43,10 @@ const Verification = () => {
 
     const { error } = await supabase.from('verification_requests').insert({
       user_id: user.id,
-      // Only submit fields that exist in the verification_requests table
       id_front_url: values.id_front_url,
       id_back_url: values.id_back_url,
-      residential_card_url: values.resident_card_front_url, // Using the existing column name
-      face_with_id_url: values.face_with_id_url,
+      residential_card_url: values.residential_card_url,
+      photo_id_url: values.photo_id_url,
     });
 
     if (error) {
@@ -83,8 +79,6 @@ const Verification = () => {
                 )}
               />
               
-              {/* Removed address field as it doesn't exist in verification_requests table */}
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -116,12 +110,12 @@ const Verification = () => {
                 
                 <FormField
                   control={form.control}
-                  name="resident_card_front_url"
+                  name="residential_card_url"
                   render={() => (
                     <FormItem>
                       <ImageUpload 
                         label={t('residentCardFront')} 
-                        onUploadSuccess={(url) => form.setValue('resident_card_front_url', url, { shouldValidate: true })} 
+                        onUploadSuccess={(url) => form.setValue('residential_card_url', url, { shouldValidate: true })} 
                       />
                       <FormMessage />
                     </FormItem>
@@ -130,32 +124,18 @@ const Verification = () => {
                 
                 <FormField
                   control={form.control}
-                  name="resident_card_back_url"
+                  name="photo_id_url"
                   render={() => (
                     <FormItem>
                       <ImageUpload 
-                        label={t('residentCardBack')} 
-                        onUploadSuccess={(url) => form.setValue('resident_card_back_url', url, { shouldValidate: true })} 
+                        label={t('faceWithId')} 
+                        onUploadSuccess={(url) => form.setValue('photo_id_url', url, { shouldValidate: true })} 
                       />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              
-              <FormField
-                control={form.control}
-                name="face_with_id_url"
-                render={() => (
-                  <FormItem>
-                    <ImageUpload 
-                      label={t('faceWithId')} 
-                      onUploadSuccess={(url) => form.setValue('face_with_id_url', url, { shouldValidate: true })} 
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                 {t('submitVerification')}
