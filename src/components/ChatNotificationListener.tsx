@@ -5,8 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getChatParticipants } from '@/utils/chat';
-import { getFirstName } from '@/utils/profile'; // Import new utility
+import { getFirstName } from '@/utils/profile';
 
 interface NewMessagePayload {
   chat_id: string;
@@ -29,56 +28,62 @@ const ChatNotificationListener = () => {
 
     const handleNewMessage = async (payload: { new: NewMessagePayload }) => {
       const newMessage = payload.new;
-      
+
       // 1. Ignore messages sent by the current user
       if (newMessage.sender_id === user.id) {
         return;
       }
 
-      // 2. Get chat details to find the request ID and participants
-      const participants = await getChatParticipants(newMessage.chat_id);
-      if (!participants) {
-        console.error("Chat notification failed: Could not determine chat participants.");
+      // 2. Resolve the related request_id directly from the chats table
+      const { data: chatRow, error: chatError } = await supabase
+        .from('chats')
+        .select('request_id')
+        .eq('id', newMessage.chat_id)
+        .maybeSingle();
+
+      if (chatError) {
+        console.error('Chat notification: failed to load chat row:', chatError);
         return;
       }
 
-      const { requestId } = participants;
-      
-      // 3. Determine the recipient (the current user)
-      const recipientId = user.id;
-      
-      // 4. Check if the current user is already on the chat page for this request
+      const requestId = chatRow?.request_id as string | undefined;
+      if (!requestId) {
+        console.error('Chat notification: chat row has no request_id');
+        return;
+      }
+
+      // 3. If the user is already on the chat page for this request, skip creating a notification
       if (currentPathRef.current === `/chat/${requestId}`) {
         return;
       }
 
-      // 5. Get sender name
+      // 4. Get sender's first name for the notification message
       const senderName = await getFirstName(newMessage.sender_id);
       const displaySenderName = senderName || t('user');
 
-      // 6. Insert notification into the database
+      // 5. Insert notification into the database
       const { error: insertError } = await supabase
         .from('notifications')
         .insert({
-          user_id: recipientId,
+          user_id: user.id,
           message: t('newChatMessageNotification', { name: displaySenderName }),
-          link: `/chat/${requestId}`
+          link: `/chat/${requestId}`,
         });
-        
+
       if (insertError) {
-        console.error("Failed to insert chat notification:", insertError);
+        console.error('Chat notification: failed to insert notification:', insertError);
       }
     };
 
-    // We subscribe to all chat messages inserts.
-    const channel = supabase.channel(`chat-messages-db-notifier`);
+    // Subscribe to all chat_messages inserts
+    const channel = supabase.channel('chat-messages-db-notifier');
     channel
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
           handleNewMessage(payload as { new: NewMessagePayload });
-        }
+        },
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
