@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VerificationRequestCard from '@/components/VerificationRequestCard';
 import AdminTripApproval from '@/components/AdminTripApproval';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ShieldAlert, Loader2, Plane } from 'lucide-react';
+import { ShieldAlert, Loader2, Plane, Bug } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { arabicCountries } from '@/lib/countries-ar';
 import { showSuccess, showError } from '@/utils/toast';
@@ -21,7 +21,7 @@ interface VerificationRequest {
   status: 'pending' | 'approved' | 'rejected';
   id_front_url: string;
   id_back_url: string;
-  photo_id_url: string; // fixed: matches DB column
+  photo_id_url: string;
   residential_card_url?: string;
   created_at: string;
   profiles: {
@@ -50,15 +50,22 @@ interface Trip {
   } | null;
 }
 
+interface RawVerificationRow {
+  id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
+}
+
 const AdminDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
 
+  // Main verification requests (with profiles)
   const {
     data: verificationRequests,
     isLoading: isRequestsLoading,
-    error: verificationError,
   } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
@@ -104,10 +111,32 @@ const AdminDashboard = () => {
     enabled: isAdmin,
   });
 
+  // Raw debug query: no joins, minimal columns
+  const {
+    data: rawVerificationRows,
+    error: rawError,
+    isLoading: isRawLoading,
+  } = useQuery<RawVerificationRow[], Error>({
+    queryKey: ['verificationRequestsRaw'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('verification_requests')
+        .select('id, user_id, status, created_at')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Debug verification_requests error:', error);
+        throw new Error(error.message);
+      }
+
+      return data as RawVerificationRow[];
+    },
+    enabled: isAdmin,
+  });
+
   const {
     data: pendingTrips,
     isLoading: isTripsLoading,
-    error: tripsError,
   } = useQuery<Trip[], Error>({
     queryKey: ['pendingTrips'],
     queryFn: async () => {
@@ -303,7 +332,7 @@ const AdminDashboard = () => {
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
 
       <Tabs defaultValue="trips-pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-5 max-w-3xl">
           <TabsTrigger value="trips-pending">
             <Plane className="h-4 w-4 mr-2" />
             {t('pendingTrips')} ({pendingTrips?.length || 0})
@@ -317,8 +346,13 @@ const AdminDashboard = () => {
           <TabsTrigger value="verification-reviewed">
             {t('reviewedRequests')} ({reviewedVerificationRequests.length})
           </TabsTrigger>
+          <TabsTrigger value="debug-verification">
+            <Bug className="h-4 w-4 mr-2" />
+            Debug
+          </TabsTrigger>
         </TabsList>
 
+        {/* Trips Pending */}
         <TabsContent value="trips-pending" className="mt-6">
           <Card>
             <CardHeader>
@@ -368,6 +402,7 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
 
+        {/* Trips Reviewed */}
         <TabsContent value="trips-reviewed" className="mt-6">
           <Card>
             <CardHeader>
@@ -430,6 +465,7 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
 
+        {/* Verification Pending */}
         <TabsContent value="verification-pending" className="mt-6">
           <Card>
             <CardHeader>
@@ -453,6 +489,7 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
 
+        {/* Verification Reviewed */}
         <TabsContent value="verification-reviewed" className="mt-6">
           <Card>
             <CardHeader>
@@ -471,6 +508,40 @@ const AdminDashboard = () => {
                 )
               ) : (
                 <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Debug Tab */}
+        <TabsContent value="debug-verification" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bug className="h-5 w-5" />
+                Debug: verification_requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isRawLoading ? (
+                <p>{t('loading')}</p>
+              ) : rawError ? (
+                <p className="text-red-500">Error: {rawError.message}</p>
+              ) : rawVerificationRows && rawVerificationRows.length > 0 ? (
+                <div className="space-y-2 text-sm">
+                  <p>Total rows: {rawVerificationRows.length}</p>
+                  <ul className="space-y-1">
+                    {rawVerificationRows.map((row) => (
+                      <li key={row.id} className="border-b pb-1">
+                        <span className="font-mono text-xs">{row.id}</span> – status:{" "}
+                        <span className="font-semibold">{row.status}</span> – user_id:{" "}
+                        <span className="font-mono text-xs">{row.user_id}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No rows in verification_requests.</p>
               )}
             </CardContent>
           </Card>
