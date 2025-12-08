@@ -18,6 +18,8 @@ import SenderPhotoUploadModal from '@/components/my-requests/SenderPhotoUploadMo
 import { RequestTrackingStatus, TRACKING_STAGES } from '@/lib/tracking-stages';
 import { Link } from 'react-router-dom';
 import { Package, PlusCircle } from 'lucide-react';
+import { useUnreadChatCountByTab } from '@/hooks/use-unread-chat-count-by-tab'; // Import new hook
+import { Badge } from '@/components/ui/badge';
 
 // Define types for our data
 interface Trip {
@@ -68,6 +70,7 @@ interface GeneralOrder {
   created_at: string;
   updated_at: string;
   insurance_percentage: number;
+  weight_kg: number;
   type: 'general_order';
 }
 
@@ -94,6 +97,8 @@ const MyRequests = () => {
   const [requestForInspection, setRequestForInspection] = useState<Request | null>(null);
   const [requestForSenderPhotos, setRequestForSenderPhotos] = useState<Request | null>(null);
   const [requestForTrackingUpdate, setRequestForTrackingUpdate] = useState<{ request: Request; newStatus: RequestTrackingStatus } | null>(null);
+  
+  const { data: unreadCounts } = useUnreadChatCountByTab();
 
   // --- Mutations ---
   const updateRequestMutation = useMutation({
@@ -376,8 +381,22 @@ const MyRequests = () => {
       
       <Tabs defaultValue="received" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="received">{t('receivedRequests')}</TabsTrigger>
-          <TabsTrigger value="sent">{t('sentRequests')}</TabsTrigger>
+          <TabsTrigger value="received" className="relative">
+            {t('receivedRequests')}
+            {unreadCounts && unreadCounts.received > 0 && (
+              <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                {unreadCounts.received}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="sent" className="relative">
+            {t('sentRequests')}
+            {unreadCounts && unreadCounts.sent > 0 && (
+              <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                {unreadCounts.sent}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="received">
