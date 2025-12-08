@@ -1,4 +1,5 @@
 "use client";
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -79,6 +80,7 @@ const PlaceOrder = () => {
   // Calculate final cost with insurance
   const finalCost = React.useMemo(() => {
     if (!baseCost || baseCost.error) return null;
+    
     return {
       totalPriceUSD: baseCost.totalPriceUSD * insuranceMultiplier,
       totalPriceIQD: baseCost.totalPriceIQD * insuranceMultiplier,
@@ -102,14 +104,15 @@ const PlaceOrder = () => {
           from_country: values.from_country,
           to_country: values.to_country,
           description: values.description,
-          weight_kg: values.weight_kg,
+          weight_kg: values.weight_kg, // Include weight_kg
           is_valuable: values.insurance_percentage > 0,
           insurance_requested: values.insurance_percentage > 0,
           insurance_percentage: values.insurance_percentage,
-          status: 'new', // Set initial status to 'new' for admin approval
+          status: 'new',
         });
 
       if (error) throw error;
+
       showSuccess(t('orderSubmittedSuccess'));
       navigate('/my-requests');
     } catch (error: any) {
@@ -165,6 +168,7 @@ const PlaceOrder = () => {
                       </FormItem>
                     )}
                   />
+                  
                   <FormField
                     control={form.control}
                     name="to_country"
@@ -190,9 +194,11 @@ const PlaceOrder = () => {
                     )}
                   />
                 </div>
+                
                 <div className="text-sm text-muted-foreground p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
                   {t('eitherFromOrToIraq')}
                 </div>
+                
                 <FormField
                   control={form.control}
                   name="weight_kg"
@@ -202,19 +208,20 @@ const PlaceOrder = () => {
                         {t('packageWeightKg')} ({field.value} kg)
                       </FormLabel>
                       <FormControl>
-                        <Slider 
-                          min={1} 
-                          max={50} 
-                          step={1} 
-                          value={[field.value]} 
-                          onValueChange={(value) => field.onChange(value[0])} 
-                          className="mt-4" 
+                        <Slider
+                          min={1}
+                          max={50}
+                          step={1}
+                          value={[field.value]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          className="mt-4"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={form.control}
                   name="insurance_percentage"
@@ -224,13 +231,13 @@ const PlaceOrder = () => {
                         {t('insuranceCoverage')} ({getInsuranceLabel(field.value)})
                       </FormLabel>
                       <FormControl>
-                        <Slider 
-                          min={0} 
-                          max={100} 
-                          step={25} 
-                          value={[field.value]} 
-                          onValueChange={(value) => field.onChange(value[0])} 
-                          className="mt-4" 
+                        <Slider
+                          min={0}
+                          max={100}
+                          step={25}
+                          value={[field.value]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          className="mt-4"
                         />
                       </FormControl>
                       <div className="text-sm text-muted-foreground mt-2">
@@ -244,9 +251,11 @@ const PlaceOrder = () => {
                     </FormItem>
                   )}
                 />
+                
                 <div className="text-sm text-muted-foreground p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                   {t('insuranceExplanation')}
                 </div>
+                
                 {finalCost && finalCost.totalPriceUSD > 0 && (
                   <Card className="bg-primary/10 dark:bg-primary/20 p-6 rounded-lg space-y-4 border border-primary/20">
                     <h3 className="text-xl font-semibold text-center text-primary">{t('estimatedCost')}</h3>
@@ -286,6 +295,7 @@ const PlaceOrder = () => {
                     </p>
                   </Card>
                 )}
+                
                 <FormField
                   control={form.control}
                   name="description"
@@ -295,7 +305,7 @@ const PlaceOrder = () => {
                       <FormControl>
                         <Textarea 
                           placeholder={t('orderDescriptionPlaceholder')} 
-                          className="min-h-[120px]" 
+                          className="min-h-[120px]"
                           {...field} 
                         />
                       </FormControl>
@@ -303,6 +313,7 @@ const PlaceOrder = () => {
                     </FormItem>
                   )}
                 />
+                
                 <Button type="submit" className="w-full">
                   {t('submit')}
                 </Button>
