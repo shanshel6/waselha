@@ -40,8 +40,12 @@ const verificationSchema = z.object({
   id_back_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
-  residential_card_front_file: z.instanceof(File).optional(),
-  residential_card_back_file: z.instanceof(File).optional(),
+  residential_card_front_file: z
+    .instanceof(File)
+    .refine((f) => f.size > 0, { message: 'uploadRequired' }),
+  residential_card_back_file: z
+    .instanceof(File)
+    .refine((f) => f.size > 0, { message: 'uploadRequired' }),
   photo_id_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' })
@@ -213,8 +217,8 @@ const Verification = () => {
       last_name: '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
-      residential_card_front_file: undefined,
-      residential_card_back_file: undefined,
+      residential_card_front_file: undefined as unknown as File,
+      residential_card_back_file: undefined as unknown as File,
       photo_id_file: undefined as unknown as File
     }
   });
@@ -265,12 +269,8 @@ const Verification = () => {
       ] = await Promise.all([
         uploadVerificationFile(values.id_front_file, user.id, 'id-front'),
         uploadVerificationFile(values.id_back_file, user.id, 'id-back'),
-        values.residential_card_front_file
-          ? uploadVerificationFile(values.residential_card_front_file, user.id, 'res-card-front')
-          : Promise.resolve<string | null>(null),
-        values.residential_card_back_file
-          ? uploadVerificationFile(values.residential_card_back_file, user.id, 'res-card-back')
-          : Promise.resolve<string | null>(null),
+        uploadVerificationFile(values.residential_card_front_file, user.id, 'housing-card-front'),
+        uploadVerificationFile(values.residential_card_back_file, user.id, 'housing-card-back'),
         uploadVerificationFile(values.photo_id_file, user.id, 'photo-id')
       ]);
 
@@ -393,7 +393,7 @@ const Verification = () => {
                 />
               </div>
 
-              {/* Residential card front/back */}
+              {/* Housing card front/back */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -402,7 +402,7 @@ const Verification = () => {
                     <FormItem>
                       <FileUploadField
                         label={t('residentCardFront')}
-                        required={false}
+                        required
                         value={field.value}
                         onChange={field.onChange}
                       />
@@ -417,7 +417,7 @@ const Verification = () => {
                     <FormItem>
                       <FileUploadField
                         label={t('residentCardBack')}
-                        required={false}
+                        required
                         value={field.value}
                         onChange={field.onChange}
                       />
@@ -427,7 +427,7 @@ const Verification = () => {
                 />
               </div>
 
-              {/* Selfie with ID: big section with example image */}
+              {/* Selfie with ID */}
               <div className="space-y-4">
                 <p className="font-semibold text-base">
                   {t('faceWithId')}
