@@ -6,7 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AdminTripApproval from '@/components/AdminTripApproval';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert, Loader2, Plane } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
@@ -200,6 +199,23 @@ const AdminDashboard = () => {
 
   const getArabicCountryName = (country: string) => arabicCountries[country] || country;
 
+  const renderTicketLink = (url: string | null) => {
+    if (!url) return null;
+    // Only render if it looks like a real URL (http/https)
+    if (!/^https?:\/\//.test(url)) return null;
+
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="text-xs text-blue-600 hover:underline break-all"
+      >
+        {t('viewTicket')}
+      </a>
+    );
+  };
+
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
@@ -249,16 +265,7 @@ const AdminDashboard = () => {
                         <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
                           {t('pendingApproval')}
                         </span>
-                        {trip.ticket_file_url && (
-                          <a
-                            href={trip.ticket_file_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-blue-600 hover:underline"
-                          >
-                            {t('viewTicket')}
-                          </a>
-                        )}
+                        {renderTicketLink(trip.ticket_file_url)}
                       </div>
                     </div>
                     <AdminTripApproval
@@ -326,6 +333,7 @@ const AdminDashboard = () => {
                               {t('deletedByUser')}
                             </span>
                           )}
+                          {renderTicketLink(trip.ticket_file_url)}
                         </div>
                       </div>
                       {trip.admin_review_notes && (
