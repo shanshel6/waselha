@@ -78,13 +78,13 @@ const Navbar: React.FC = () => {
             ))}
         </div>
 
-        {/* Center: brand with image logo */}
+        {/* Center: horizontal brand logo */}
         <Link to="/" className="flex-1 flex justify-center">
-          <div className="inline-flex items-center rounded-full bg-muted/70 px-3 sm:px-4 py-1.5 border border-border/60 shadow-sm">
+          <div className="inline-flex items-center">
             <img
-              src="/logo-waselha.png"
+              src="/logo-waselha-horizontal.png"
               alt="Waselha"
-              className="h-8 w-auto sm:h-9 object-contain"
+              className="h-8 sm:h-9 w-auto object-contain"
             />
           </div>
         </Link>
@@ -123,13 +123,11 @@ const Navbar: React.FC = () => {
                 className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
               >
                 <div className="mt-4 mb-6 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src="/logo-waselha.png"
-                      alt="Waselha"
-                      className="h-8 w-auto object-contain"
-                    />
-                  </div>
+                  <img
+                    src="/logo-waselha-horizontal.png"
+                    alt="Waselha"
+                    className="h-8 w-auto object-contain"
+                  />
                 </div>
 
                 <div className="flex flex-col space-y-2">
