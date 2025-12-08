@@ -30,6 +30,42 @@ const Chat = () => {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Mutation to update the chat read status
+  const updateReadStatusMutation = useMutation({
+    mutationFn: async (chatId: string) => {
+      if (!user) return;
+      
+      const now = new Date().toISOString();
+      
+      // Try to update first (if status already exists)
+      const { error: updateError, count } = await supabase
+        .from('chat_read_status')
+        .update({ last_read_at: now })
+        .eq('chat_id', chatId)
+        .eq('user_id', user.id)
+        .select()
+        .maybeSingle();
+        
+      if (updateError) throw updateError;
+      
+      // If no row was updated, insert a new one
+      if (!updateError && !count) {
+        const { error: insertError } = await supabase
+          .from('chat_read_status')
+          .insert({ chat_id: chatId, user_id: user.id, last_read_at: now });
+          
+        if (insertError) throw insertError;
+      }
+    },
+    onSuccess: () => {
+      // Invalidate the unread count query to reflect the change immediately
+      queryClient.invalidateQueries({ queryKey: ['unreadChatCount', user?.id] });
+    },
+    onError: (err: any) => {
+      console.error("Failed to update read status:", err);
+    }
+  });
+
   // Query 1: Get the chat ID
   const { data: chatData, isLoading: isLoadingChat } = useQuery({
     queryKey: ['chatIdForRequest', requestId],
@@ -129,6 +165,9 @@ const Chat = () => {
   useEffect(() => {
     if (!chatId) return;
 
+    // 1. Update read status immediately upon entering the chat
+    updateReadStatusMutation.mutate(chatId);
+
     const channel = supabase
       .channel(`public:chat_messages:chat_id=eq.${chatId}`)
       .on(
@@ -139,8 +178,14 @@ const Chat = () => {
           table: 'chat_messages',
           filter: `chat_id=eq.${chatId}`
         },
-        () => {
+        (payload) => {
           queryClient.invalidateQueries({ queryKey: ['messages', chatId] });
+          
+          // If the new message is from the other user, update read status immediately
+          const newMessage = payload.new as { sender_id: string };
+          if (newMessage.sender_id !== user?.id) {
+            updateReadStatusMutation.mutate(chatId);
+          }
         }
       )
       .subscribe();
@@ -148,7 +193,7 @@ const Chat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [chatId, queryClient]);
+  }, [chatId, queryClient, user?.id]); // Added user?.id to dependencies
 
   // Scroll to the bottom of the messages
   useEffect(() => {

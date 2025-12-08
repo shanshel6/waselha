@@ -8,10 +8,13 @@ import { Menu, Send } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
+import { useUnreadChatCount } from '@/hooks/use-unread-chat-count';
+import { Badge } from '@/components/ui/badge';
 
 const Navbar = () => {
   const { t } = useTranslation();
   const { session } = useSession();
+  const { data: unreadCount = 0 } = useUnreadChatCount();
   
   const publicNavItems = [
     { name: t('home'), path: '/' },
@@ -20,13 +23,13 @@ const Navbar = () => {
   
   // Only keep My Requests in the main nav
   const authenticatedNavItems = [
-    { name: t('myRequests'), path: '/my-requests' },
+    { name: t('myRequests'), path: '/my-requests', unread: unreadCount },
   ];
   
   const mobileNavItems = [
     ...publicNavItems,
     ...(session ? [
-      { name: t('myRequests'), path: '/my-requests' },
+      { name: t('myRequests'), path: '/my-requests', unread: unreadCount },
       { name: t('myFlights'), path: '/my-flights' }, // Updated path
       { name: t('myProfile'), path: '/my-profile' },
     ] : []),
@@ -56,9 +59,14 @@ const Navbar = () => {
             <Link 
               key={item.name} 
               to={item.path}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary relative"
             >
               {item.name}
+              {item.unread > 0 && (
+                <Badge className="absolute -top-2 -right-4 h-4 w-4 p-0 flex items-center justify-center text-xs bg-red-500 hover:bg-red-600">
+                  {item.unread}
+                </Badge>
+              )}
             </Link>
           ))}
           
@@ -87,16 +95,21 @@ const Navbar = () => {
               <Button variant="ghost" size="icon" className="text-foreground ml-2">
                 <Menu className="h-6 w-6" />
               </Button>
-            </SheetTrigger>
+            </SheetContent>
             <SheetContent side="right" className="w-[250px] sm:w-[300px] bg-background text-foreground dark:bg-gray-800">
               <div className="flex flex-col space-y-4 p-4">
                 {mobileNavItems.map((item) => (
                   <Link 
                     key={item.name} 
                     to={item.path}
-                    className="text-lg hover:text-primary transition-colors"
+                    className="text-lg hover:text-primary transition-colors flex items-center justify-between"
                   >
-                    {item.name}
+                    <span>{item.name}</span>
+                    {item.unread > 0 && (
+                      <Badge className="h-5 w-5 p-0 flex items-center justify-center text-sm bg-red-500 hover:bg-red-600">
+                        {item.unread}
+                      </Badge>
+                    )}
                   </Link>
                 ))}
                 
