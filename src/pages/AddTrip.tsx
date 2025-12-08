@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, DollarSign } from 'lucide-react';
+import { CalendarIcon, DollarSign, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -25,6 +25,7 @@ import CountryFlag from '@/components/CountryFlag';
 import { useQueryClient } from '@tanstack/react-query';
 import { Slider } from '@/components/ui/slider';
 import TicketUpload from '@/components/TicketUpload';
+import { useVerificationCheck } from '@/hooks/use-verification-check'; // Import the new hook
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -40,7 +41,9 @@ const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
+  const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(true); // Apply verification check
   const queryClient = useQueryClient();
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -79,6 +82,12 @@ const AddTrip = () => {
       navigate('/login');
       return;
     }
+    
+    if (!isVerified) {
+      showError(t('verificationRequiredTitle'));
+      navigate('/my-profile');
+      return;
+    }
 
     // Calculate charge_per_kg based on the base price of the destination zone
     let charge_per_kg = 0;
@@ -111,6 +120,19 @@ const AddTrip = () => {
       navigate('/my-flights');
     }
   };
+  
+  if (isVerificationLoading) {
+    return (
+      <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!isVerified) {
+    // The hook handles the redirect and error message, we just render nothing while redirecting
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
