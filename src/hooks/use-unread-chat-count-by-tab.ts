@@ -1,3 +1,5 @@
+"use client";
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
@@ -14,7 +16,12 @@ export const useUnreadChatCountByTab = () => {
   const userId = user?.id;
 
   const fetchCounts = React.useCallback(async (): Promise<UnreadCounts> => {
-    if (!userId || !session) return { sent: 0, received: 0 };
+    if (!userId || !session) {
+      console.log('useUnreadChatCountByTab: User or session not available, returning 0 counts.');
+      return { sent: 0, received: 0 };
+    }
+
+    console.log(`useUnreadChatCountByTab: Fetching counts for user ${userId}`);
 
     // Fetch all chats the user is a participant in, along with the last read status
     const { data: chats, error } = await supabase
@@ -22,7 +29,7 @@ export const useUnreadChatCountByTab = () => {
       .select(`
         id,
         request_id,
-        chat_read_status(last_read_at),
+        chat_read_status!left(last_read_at),
         requests(
           sender_id,
           trips(user_id)
@@ -31,23 +38,31 @@ export const useUnreadChatCountByTab = () => {
       .or(`requests.sender_id.eq.${userId},requests.trips.user_id.eq.${userId}`);
 
     if (error) {
-      console.error('Error fetching chats for unread count:', error);
+      console.error('useUnreadChatCountByTab: Error fetching chats for unread count:', error);
       return { sent: 0, received: 0 };
     }
+
+    console.log('useUnreadChatCountByTab: Fetched chats:', chats);
 
     let sentCount = 0;
     let receivedCount = 0;
 
     for (const chat of chats) {
       const chatId = chat.id;
+      // chat_read_status is an array, take the first element if it exists
       const lastReadAt = chat.chat_read_status?.[0]?.last_read_at || null;
       const request = chat.requests;
 
-      if (!request) continue;
+      if (!request) {
+        console.log(`useUnreadChatCountByTab: Skipping chat ${chatId} due to missing request details.`);
+        continue;
+      }
 
       // Determine if the current user is the sender or the traveler for this request
       const isSender = request.sender_id === userId;
       const isTraveler = request.trips?.user_id === userId;
+
+      console.log(`useUnreadChatCountByTab: Processing chat ${chatId}. Is Sender: ${isSender}, Is Traveler: ${isTraveler}, Last Read At: ${lastReadAt}`);
 
       // Check for unread messages in this specific chat
       let messageQuery = supabase
@@ -59,13 +74,15 @@ export const useUnreadChatCountByTab = () => {
       if (lastReadAt) {
         messageQuery = messageQuery.gt('created_at', lastReadAt);
       }
-
+      
       const { count: unreadCount, error: messageError } = await messageQuery;
 
       if (messageError) {
-        console.error('Error fetching unread messages for chat:', messageError);
+        console.error(`useUnreadChatCountByTab: Error fetching unread messages for chat ${chatId}:`, messageError);
         continue;
       }
+
+      console.log(`useUnreadChatCountByTab: Chat ${chatId} has ${unreadCount} unread messages from other party.`);
 
       if ((unreadCount || 0) > 0) {
         if (isSender) {
@@ -76,6 +93,7 @@ export const useUnreadChatCountByTab = () => {
       }
     }
 
+    console.log(`useUnreadChatCountByTab: Final counts - Sent: ${sentCount}, Received: ${receivedCount}`);
     return { sent: sentCount, received: receivedCount };
   }, [userId, session]);
 
@@ -99,6 +117,7 @@ export const useUnreadChatCountByTab = () => {
         (payload) => {
           const newMessage = payload.new as { sender_id: string };
           if (newMessage.sender_id !== userId) {
+            console.log('useUnreadChatCountByTab: Real-time: New message from other user, invalidating query.');
             queryClient.invalidateQueries({ queryKey: ['unreadChatCountByTab', userId] });
           }
         }
@@ -107,6 +126,7 @@ export const useUnreadChatCountByTab = () => {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` },
         () => {
+          console.log('useUnreadChatCountByTab: Real-time: Chat read status updated, invalidating query.');
           queryClient.invalidateQueries({ queryKey: ['unreadChatCountByTab', userId] });
         }
       )
