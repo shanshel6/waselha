@@ -19,16 +19,17 @@ interface VerificationRequest {
   id: string;
   user_id: string;
   status: 'pending' | 'approved' | 'rejected';
-  id_front_url: string;
-  id_back_url: string;
-  face_with_id_url: string;
-  residential_card_url?: string;
+  id_front_url: string | null;
+  id_back_url: string | null;
+  residential_card_url?: string | null;
+  photo_id_url: string | null;
   created_at: string;
+  updated_at: string | null;
   profiles: {
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+    email?: string;
   };
 }
 

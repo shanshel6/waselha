@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,14 +9,11 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import ImageUpload from '@/components/ImageUpload';
 
 const verificationSchema = z.object({
-  full_name: z.string().min(3, { message: "requiredField" }),
   id_front_url: z.string().url({ message: "uploadRequired" }),
   id_back_url: z.string().url({ message: "uploadRequired" }),
   residential_card_url: z.string().url().optional(),
@@ -31,7 +28,10 @@ const Verification = () => {
   const form = useForm<z.infer<typeof verificationSchema>>({
     resolver: zodResolver(verificationSchema),
     defaultValues: {
-      full_name: "",
+      id_front_url: "",
+      id_back_url: "",
+      residential_card_url: "",
+      photo_id_url: "",
     },
   });
 
@@ -45,8 +45,9 @@ const Verification = () => {
       user_id: user.id,
       id_front_url: values.id_front_url,
       id_back_url: values.id_back_url,
-      residential_card_url: values.residential_card_url,
+      residential_card_url: values.residential_card_url || null,
       photo_id_url: values.photo_id_url,
+      status: 'pending',
     });
 
     if (error) {
@@ -67,24 +68,13 @@ const Verification = () => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('fullName')}</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="id_front_url"
                   render={() => (
                     <FormItem>
+                      <FormLabel>{t('idFront')}</FormLabel>
                       <ImageUpload 
                         label={t('idFront')} 
                         onUploadSuccess={(url) => form.setValue('id_front_url', url, { shouldValidate: true })} 
@@ -99,6 +89,7 @@ const Verification = () => {
                   name="id_back_url"
                   render={() => (
                     <FormItem>
+                      <FormLabel>{t('idBack')}</FormLabel>
                       <ImageUpload 
                         label={t('idBack')} 
                         onUploadSuccess={(url) => form.setValue('id_back_url', url, { shouldValidate: true })} 
@@ -113,6 +104,7 @@ const Verification = () => {
                   name="residential_card_url"
                   render={() => (
                     <FormItem>
+                      <FormLabel>{t('residentCardFront')}</FormLabel>
                       <ImageUpload 
                         label={t('residentCardFront')} 
                         onUploadSuccess={(url) => form.setValue('residential_card_url', url, { shouldValidate: true })} 
@@ -127,6 +119,7 @@ const Verification = () => {
                   name="photo_id_url"
                   render={() => (
                     <FormItem>
+                      <FormLabel>{t('faceWithId')}</FormLabel>
                       <ImageUpload 
                         label={t('faceWithId')} 
                         onUploadSuccess={(url) => form.setValue('photo_id_url', url, { shouldValidate: true })} 
