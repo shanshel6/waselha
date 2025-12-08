@@ -42,7 +42,6 @@ const AddTrip = () => {
   const { user } = useSession();
   const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(false);
   const queryClient = useQueryClient();
-  // Ticket file is only kept locally for UI, not uploaded anywhere
   const [ticketFile, setTicketFile] = useState<File | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,7 +57,6 @@ const AddTrip = () => {
 
   const { from_country, to_country, free_kg } = form.watch();
 
-  // Auto-manage Iraq selection
   React.useEffect(() => {
     if (from_country && from_country !== "Iraq" && to_country !== "Iraq") {
       form.setValue("to_country", "Iraq");
@@ -76,6 +74,29 @@ const AddTrip = () => {
     return null;
   }, [from_country, to_country, free_kg]);
 
+  const uploadTicketAndGetUrl = async (file: File, userId: string) => {
+    const bucket = 'trip-tickets';
+    const ext = file.name.split('.').pop() || 'pdf';
+    const filePath = `${userId}/${Date.now()}-ticket.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl;
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
@@ -90,19 +111,18 @@ const AddTrip = () => {
     }
 
     if (!ticketFile) {
-      // We still enforce that user selects a ticket, but we don't upload it.
       showError(t('ticketRequired'));
       return;
     }
 
     try {
-      // Calculate charge_per_kg based on base price
+      const ticketUrl = await uploadTicketAndGetUrl(ticketFile, user.id);
+
       let charge_per_kg = 0;
       if (estimatedProfit) {
         charge_per_kg = estimatedProfit.pricePerKgUSD;
       }
 
-      // Insert trip WITHOUT touching storage
       const { error } = await supabase
         .from('trips')
         .insert({
@@ -114,7 +134,7 @@ const AddTrip = () => {
           traveler_location: values.traveler_location,
           notes: values.notes,
           charge_per_kg: charge_per_kg,
-          // ticket_file_url intentionally omitted to avoid storage usage
+          ticket_file_url: ticketUrl,
           is_approved: false,
         });
 
@@ -129,7 +149,7 @@ const AddTrip = () => {
         navigate('/my-flights');
       }
     } catch (err: any) {
-      console.error('Error adding trip:', err);
+      console.error('Error uploading ticket or adding trip:', err);
       showError(err.message || t('tripAddedError'));
     }
   };
@@ -283,7 +303,6 @@ const AddTrip = () => {
             </Card>
           )}
 
-          {/* Ticket upload – required for UX only, not stored */}
           <TicketUpload
             onFileSelected={setTicketFile}
           />
