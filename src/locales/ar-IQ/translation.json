@@ -4,7 +4,7 @@
   "login": "تسجيل الدخول",
   "logout": "تسجيل الخروج",
   "email": "البريد الإلكتروني",
-  "password": "كلمة المرور",
+  "password": "كلمة المرفر",
   "forgotPassword": "هل نسيت كلمة المرور؟",
   "signUp": "إنشاء حساب",
   "noAccount": "ليس لديك حساب؟",
@@ -365,5 +365,13 @@
   "insuranceExplanation": "اختر التأمين فقط إذا كانت بضائعك ذات قيمة عالية. ستحصل على المبلغ المحدد إذا لم تصل بضائعك إلى الوجهة المطلوبة.",
   "generalOrderTitle": "طلب شحن عام",
   "statusNew": "جديد",
-  "newChatMessageNotification": "لديك رسالة جديدة من {{name}} بخصوص طلب الطرد."
+  "newChatMessageNotification": "لديك رسالة جديدة من {{name}} بخصوص طلب الطرد.",
+  "pendingOrders": "الطلبات المعلقة",
+  "reviewedOrders": "الطلبات المراجعة",
+  "noPendingOrders": "لا توجد طلبات شحن عامة معلقة حالياً",
+  "noReviewedOrders": "لا توجد طلبات شحن عامة تمت مراجعتها",
+  "pendingOrderApprovals": "طلبات موافقة الشحن العامة المعلقة",
+  "orderApprovedSuccess": "تمت الموافقة على الطلب بنجاح",
+  "orderRejectedSuccess": "تم رفض الطلب بنجاح",
+  "adminReviewNotes": "ملاحظات المراجعة"
 }
