@@ -69,13 +69,13 @@ const MyProfile = () => {
   };
 
   const status = verificationInfo?.status || 'none';
-  const showVerifyButton = status === 'none' || status === 'rejected';
+  // Always allow opening the verification page so the user can re-apply if they want
+  const showVerifyButton = true;
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myProfile')}</h1>
       
-      {/* Profile Display Card */}
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
@@ -100,7 +100,6 @@ const MyProfile = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Verification status block */}
           <div className="p-4 rounded-lg border bg-gray-50 dark:bg-gray-800 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -112,7 +111,7 @@ const MyProfile = () => {
               {showVerifyButton && (
                 <Link to="/verification">
                   <Button size="sm">
-                    {t('verifyNow')}
+                    {status === 'pending' ? t('pendingVerification') : t('verifyNow')}
                   </Button>
                 </Link>
               )}
@@ -122,7 +121,6 @@ const MyProfile = () => {
             </p>
           </div>
 
-          {/* Contact Info Block */}
           <div className="space-y-3 p-4 rounded-lg border bg-card">
             <div className="flex justify-between items-center">
               <h3 className="font-semibold text-lg">{t('contactInformation')}</h3>
@@ -157,13 +155,11 @@ const MyProfile = () => {
             </div>
           </div>
 
-          {/* Role Info */}
           <div className="flex items-center gap-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800">
             <Briefcase className="h-5 w-5 text-gray-500" />
             <Badge variant="outline">{roleText(profile?.role)}</Badge>
           </div>
           
-          {/* Link to My Flights Page */}
           <div className="pt-4 border-t">
             <Link to="/my-flights">
               <Button variant="secondary" className="w-full">
@@ -175,7 +171,6 @@ const MyProfile = () => {
         </CardContent>
       </Card>
 
-      {/* Dialogs */}
       {profile && (
         <>
           <EditNameDialog 

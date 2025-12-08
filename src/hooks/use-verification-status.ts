@@ -21,7 +21,7 @@ export const useVerificationStatus = () => {
         return { status: 'none' as VerificationStatus };
       }
 
-      // 1) حاول جلب آخر طلب تحقق للمستخدم
+      // Latest request
       const { data: reqData, error: reqError } = await supabase
         .from('verification_requests')
         .select('status, created_at')
@@ -35,11 +35,10 @@ export const useVerificationStatus = () => {
       }
 
       if (reqData) {
-        // status في الجدول: pending | approved | rejected
         return { status: reqData.status as VerificationStatus };
       }
 
-      // 2) لا يوجد طلب تحقق، نعتمد على profiles.is_verified
+      // Fallback to profile flag
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('is_verified')
