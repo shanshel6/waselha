@@ -44,8 +44,8 @@ export const useUnreadChatCountByTab = () => {
 
     console.log('useUnreadChatCountByTab: Fetched chats:', chats);
 
-    let sentCount = 0;
-    let receivedCount = 0;
+    let totalSentUnread = 0;
+    let totalReceivedUnread = 0;
 
     for (const chat of chats) {
       const chatId = chat.id;
@@ -86,15 +86,15 @@ export const useUnreadChatCountByTab = () => {
 
       if ((unreadCount || 0) > 0) {
         if (isSender) {
-          sentCount++;
+          totalSentUnread += unreadCount || 0;
         } else if (isTraveler) {
-          receivedCount++;
+          totalReceivedUnread += unreadCount || 0;
         }
       }
     }
 
-    console.log(`useUnreadChatCountByTab: Final counts - Sent: ${sentCount}, Received: ${receivedCount}`);
-    return { sent: sentCount, received: receivedCount };
+    console.log(`useUnreadChatCountByTab: Final counts - Sent: ${totalSentUnread}, Received: ${totalReceivedUnread}`);
+    return { sent: totalSentUnread, received: totalReceivedUnread };
   }, [userId, session]);
 
   const query = useQuery<UnreadCounts, Error>({
