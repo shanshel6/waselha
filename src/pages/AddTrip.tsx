@@ -41,7 +41,8 @@ const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
-  const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(true); // Apply verification check
+  // Set redirectIfUnverified to false to allow access to the page
+  const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(false); 
   const queryClient = useQueryClient();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -83,6 +84,7 @@ const AddTrip = () => {
       return;
     }
     
+    // Check verification status on submission
     if (!isVerified) {
       showError(t('verificationRequiredTitle'));
       navigate('/my-profile');
@@ -129,10 +131,7 @@ const AddTrip = () => {
     );
   }
   
-  if (!isVerified) {
-    // The hook handles the redirect and error message, we just render nothing while redirecting
-    return null;
-  }
+  // We no longer block rendering if not verified, only submission.
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
