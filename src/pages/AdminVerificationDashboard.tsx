@@ -81,7 +81,6 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ status }: { status: 'approved' | 'rejected' }) => {
-      // Call Edge Function so it can bypass RLS securely with service role
       const { data, error } = await supabase.functions.invoke('admin-verification', {
         body: {
           request_id: request.id,
@@ -100,7 +99,6 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
       }
     },
     onSuccess: (_, variables) => {
-      // Refetch everything that depends on verification
       queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['profile', request.user_id] });
