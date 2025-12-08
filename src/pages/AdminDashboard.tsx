@@ -1,5 +1,4 @@
 "use client";
-
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -43,7 +42,7 @@ interface Trip {
   ticket_file_url: string | null;
   is_approved: boolean;
   admin_review_notes: string | null;
-  is_deleted_by_user: boolean; // Added new field
+  is_deleted_by_user: boolean;
   created_at: string;
   profiles: {
     first_name: string | null;
@@ -72,7 +71,7 @@ const AdminDashboard = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
-      
+
       const requests = data as VerificationRequest[];
       
       // Collect user IDs
@@ -80,12 +79,12 @@ const AdminDashboard = () => {
       
       // Fetch emails using the Edge Function
       const emailMap = await fetchAdminEmails(userIds);
-
+      
       return requests.map(req => ({
         ...req,
         profiles: {
           ...req.profiles,
-          email: emailMap[req.user_id] || 'N/A', // Inject fetched email
+          email: emailMap[req.user_id] || 'N/A',  // Inject fetched email
         }
       })) as VerificationRequest[];
     },
@@ -106,7 +105,7 @@ const AdminDashboard = () => {
         `)
         .eq('is_approved', false)
         .is('admin_review_notes', null)
-        .eq('is_deleted_by_user', false) // Exclude trips marked as deleted by user
+        .eq('is_deleted_by_user', false)
         .order('created_at', { ascending: true });
 
       if (error) throw new Error(error.message);
@@ -127,7 +126,7 @@ const AdminDashboard = () => {
             last_name
           )
         `)
-        .not('admin_review_notes', 'is', null) // Reviewed trips have admin_review_notes
+        .not('admin_review_notes', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw new Error(error.message);
@@ -141,9 +140,9 @@ const AdminDashboard = () => {
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
       const { error } = await supabase
         .from('trips')
-        .update({ 
-          is_approved: true, 
-          admin_review_notes: notes || '' // Changed from null to empty string to ensure it appears in reviewed list
+        .update({
+          is_approved: true,
+          admin_review_notes: notes || ''
         })
         .eq('id', tripId);
 
@@ -178,7 +177,7 @@ const AdminDashboard = () => {
       // Fetch the trip again to get the user_id (traveler_id)
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
-        .select('user_id, from_country, to_country') // Also get countries for potential general order match
+        .select('user_id, from_country, to_country')
         .eq('id', tripId)
         .single();
 
@@ -220,9 +219,9 @@ const AdminDashboard = () => {
       // Update trip status to rejected (is_approved stays false, but we add notes)
       const { error } = await supabase
         .from('trips')
-        .update({ 
-          is_approved: false, 
-          admin_review_notes: notes || 'تم رفض الرحلة' 
+        .update({
+          is_approved: false,
+          admin_review_notes: notes || 'تم رفض الرحلة'
         })
         .eq('id', tripId);
 
@@ -319,7 +318,7 @@ const AdminDashboard = () => {
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                           <CountryFlag country={trip.from_country} showName={false} />
-                          {getArabicCountryName(trip.from_country)} 
+                          {getArabicCountryName(trip.from_country)}
                           <span className="text-lg">→</span>
                           <CountryFlag country={trip.to_country} showName={false} />
                           {getArabicCountryName(trip.to_country)}
@@ -364,7 +363,7 @@ const AdminDashboard = () => {
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                           <CountryFlag country={trip.from_country} showName={false} />
-                          {getArabicCountryName(trip.from_country)} 
+                          {getArabicCountryName(trip.from_country)}
                           <span className="text-lg">→</span>
                           <CountryFlag country={trip.to_country} showName={false} />
                           {getArabicCountryName(trip.to_country)}
@@ -413,7 +412,9 @@ const AdminDashboard = () => {
         
         <TabsContent value="verification-pending" className="mt-6">
           <Card>
-            <CardHeader><CardTitle>{t('pendingVerification')}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>{t('pendingVerification')}</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-6">
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
@@ -430,7 +431,9 @@ const AdminDashboard = () => {
         
         <TabsContent value="verification-reviewed" className="mt-6">
           <Card>
-            <CardHeader><CardTitle>{t('reviewedRequests')}</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>{t('reviewedRequests')}</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-6">
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
