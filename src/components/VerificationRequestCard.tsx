@@ -1,4 +1,5 @@
 "use client";
+
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,18 +13,18 @@ import { CheckCircle, XCircle, User, Mail, Phone, Link as LinkIcon } from 'lucid
 interface VerificationRequest {
   id: string;
   user_id: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: string;
   id_front_url: string;
   id_back_url: string;
-  photo_id_url: string; // fixed: matches DB column and form usage
+  photo_id_url: string;
   residential_card_url?: string;
   created_at: string;
   profiles: {
-    first_name: string;
-    last_name: string;
+    first_name: string | null;
+    last_name: string | null;
     email: string;
-    phone: string;
-  };
+    phone: string | null;
+  } | null;
 }
 
 interface VerificationRequestCardProps {
@@ -32,46 +33,11 @@ interface VerificationRequestCardProps {
 
 const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ request }) => {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ status }: { status: 'approved' | 'rejected' }) => {
-      const { error: requestError } = await supabase
-        .from('verification_requests')
-        .update({
-          status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', request.id);
-
-      if (requestError) throw requestError;
-
-      if (status === 'approved') {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ is_verified: true })
-          .eq('id', request.user_id);
-
-        if (profileError) throw profileError;
-      }
-    },
-    onSuccess: (_, variables) => {
-      showSuccess(
-        t(variables.status === 'approved' ? 'verificationApproved' : 'verificationRejected'),
-      );
-      queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
-    },
-    onError: (err: any) => {
-      showError(err.message);
-    },
-  });
-
-  const handleAction = (status: 'approved' | 'rejected') => {
-    updateStatusMutation.mutate({ status });
-  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
+      case 'pending':
+        return 'secondary';
       case 'approved':
         return 'default';
       case 'rejected':
@@ -81,68 +47,42 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
     }
   };
 
-  const DocumentLink: React.FC<{ url: string; label: string }> = ({ url, label }) => (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-2 text-sm text-primary hover:underline"
-    >
-      <LinkIcon className="h-4 w-4" />
-      {label}
-    </a>
-  );
+  // Thumbnail helper
+  const renderThumbnail = (url?: string, alt?: string) => {
+    if (!url) return null;
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+        <img src={url} alt={alt ?? 'document'} className="h-20 w-20 object-cover rounded-md border" />
+      </a>
+    );
+  };
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-xl font-bold flex items-center gap-2">
-          <User className="h-5 w-5" />
-          {request.profiles.first_name} {request.profiles.last_name}
+    <Card className="border-2 border-dashed">
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <User className="h-4 w-4" />
+          {request.profiles?.first_name || 'Unknown'} {request.profiles?.last_name || ''}
         </CardTitle>
-        <Badge variant={getStatusVariant(request.status)}>{t(request.status)}</Badge>
+        <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
+          <Mail className="h-3 w-3" />
+          {request.profiles?.email || ''}
+          <Phone className="h-3 w-3" />
+          {request.profiles?.phone || ''}
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4 pt-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <p className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" /> {request.profiles.email}
-          </p>
-          <p className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-muted-foreground" />{' '}
-            {request.profiles.phone || t('noPhoneProvided')}
-          </p>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-4 gap-2">
+          <div>{renderThumbnail(request.id_front_url, 'ID Front')}</div>
+          <div>{renderThumbnail(request.id_back_url, 'ID Back')}</div>
+          <div>{renderThumbnail(request.photo_id_url, 'Photo with ID')}</div>
+          {request.residential_card_url && (
+            <div>{renderThumbnail(request.residential_card_url, 'Residence Card')}</div>
+          )}
         </div>
-        <div className="space-y-2 border-t pt-4">
-          <h4 className="font-semibold">{t('verificationDocuments')}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <DocumentLink url={request.id_front_url} label={t('idFront')} />
-            <DocumentLink url={request.id_back_url} label={t('idBack')} />
-            <DocumentLink url={request.photo_id_url} label={t('faceWithId')} />
-            {request.residential_card_url && (
-              <DocumentLink url={request.residential_card_url} label={t('residentCard')} />
-            )}
-          </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <span className="text-xs text-muted-foreground">{t('verificationDocuments')}</span>
         </div>
-        {request.status === 'pending' && (
-          <div className="flex gap-4 pt-4">
-            <Button
-              onClick={() => handleAction('approved')}
-              disabled={updateStatusMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {t('approve')}
-            </Button>
-            <Button
-              onClick={() => handleAction('rejected')}
-              disabled={updateStatusMutation.isPending}
-              variant="destructive"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              {t('reject')}
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
