@@ -69,8 +69,14 @@ const MyProfile = () => {
   };
 
   const status = verificationInfo?.status || 'none';
-  // Always allow opening the verification page so the user can re-apply if they want
-  const showVerifyButton = true;
+  // نسمح دائماً بالانتقال لصفحة التحقق، لكن نعطّل الزر إذا كان هناك طلب قيد الانتظار
+  const verifyButtonDisabled = status === 'pending';
+  const verifyButtonLabel =
+    status === 'pending'
+      ? 'في انتظار تأكيد التحقق'
+      : status === 'rejected'
+        ? t('verifyNow')
+        : t('verifyNow');
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -108,13 +114,11 @@ const MyProfile = () => {
                   {t('verifyYourself')}
                 </span>
               </div>
-              {showVerifyButton && (
-                <Link to="/verification">
-                  <Button size="sm">
-                    {status === 'pending' ? t('pendingVerification') : t('verifyNow')}
-                  </Button>
-                </Link>
-              )}
+              <Link to="/verification">
+                <Button size="sm" disabled={verifyButtonDisabled}>
+                  {verifyButtonLabel}
+                </Button>
+              </Link>
             </div>
             <p className="text-sm text-muted-foreground">
               {t('verificationInstructions')}
