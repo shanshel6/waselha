@@ -36,16 +36,22 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* flex-row-reverse ليكون الشعار على اليمين والقائمة على اليسار في RTL */}
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 flex-row-reverse">
-        {/* Logo on the right */}
+      {/* RTL: نستخدم flex-row بحيث تكون بداية الـ flex (يمين) فيها الأيقونات، ثم الشعار، ثم القائمة على أقصى اليسار */}
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 flex-row">
+        {/* Far right: notifications + user menu */}
+        <div className="flex items-center gap-2">
+          {session && <Notifications />}
+          <UserNav />
+        </div>
+
+        {/* Center/right-ish: logo */}
         <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-primary">
           <Send className="h-6 w-6" />
           Waselha
         </Link>
         
-        {/* Desktop Navigation on the left */}
-        <div className="hidden md:flex items-center space-x-6 space-x-reverse">
+        {/* Far left (desktop navigation) */}
+        <div className="hidden md:flex items-center space-x-6">
           {publicNavItems.map((item) => (
             <Link 
               key={item.name} 
@@ -71,26 +77,15 @@ const Navbar: React.FC = () => {
             </Link>
           ))}
           
-          {session ? (
-            <div className="flex items-center gap-2">
-              <Notifications />
-              <UserNav />
-            </div>
-          ) : (
+          {!session && (
             <Link to="/login">
               <Button variant="ghost">{t('login')}</Button>
             </Link>
           )}
         </div>
         
-        {/* Mobile Navigation (menu button on the left in RTL) */}
+        {/* Mobile Navigation (menu button on the left side) */}
         <div className="md:hidden flex items-center">
-          {session && (
-            <div className="flex items-center gap-1">
-              <Notifications />
-            </div>
-          )}
-          
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-foreground ml-2">
@@ -116,7 +111,10 @@ const Navbar: React.FC = () => {
                 
                 <div className="pt-4 border-t">
                   {session ? (
-                    <UserNav />
+                    <div className="flex items-center justify-between">
+                      <UserNav />
+                      <Notifications />
+                    </div>
                   ) : (
                     <Link to="/login">
                       <Button className="w-full">{t('login')}</Button>
