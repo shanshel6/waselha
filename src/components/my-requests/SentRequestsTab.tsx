@@ -88,11 +88,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     queryFn: async () => {
       if (!user) return { items: [], count: 0 };
       
-      // 1. Fetch all general orders and trip requests for the user
-      // We fetch all items first to get the total count and then apply pagination client-side 
-      // because combining two different tables with pagination in a single query is complex/impossible in Supabase RLS context.
-      
-      // Fetch all trip requests sent by the user
+      // 1. Fetch all trip requests sent by the user
       const { data: requests, error: requestsError } = await supabase
         .from('requests')
         .select(`
@@ -109,7 +105,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         throw new Error(requestsError.message);
       }
 
-      // Fetch all general orders created by the user
+      // 2. Fetch all general orders created by the user
       const { data: orders, error: ordersError } = await supabase
         .from('general_orders')
         .select('*')
@@ -121,28 +117,35 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         throw new Error(ordersError.message);
       }
 
-      // 2. Combine and map items
-      const tripRequestsWithProfiles: SentItem[] = requests.map(request => ({
-        ...request,
-        type: 'trip_request' as const
-      })) as RequestWithProfiles[];
-      
-      const generalOrders: SentItem[] = orders.map(order => ({
+      // 3. Identify general orders that have a corresponding trip request
+      const generalOrderIdsWithRequests = new Set(
+        requests.filter(req => req.general_order_id).map(req => req.general_order_id)
+      );
+
+      // 4. Filter general orders: only include those that are 'new' OR
+      //    those that are 'matched'/'claimed' but DO NOT have a corresponding trip request (edge case)
+      const filteredGeneralOrders: GeneralOrder[] = orders.filter(order => 
+        order.status === 'new' || !generalOrderIdsWithRequests.has(order.id)
+      ).map(order => ({
         ...order,
         type: 'general_order' as const
-      })) as GeneralOrder[];
+      }));
 
-      let combinedItems = [...tripRequestsWithProfiles, ...generalOrders];
+      // 5. Combine filtered general orders with trip requests
+      let combinedItems: SentItem[] = [...filteredGeneralOrders, ...requests.map(req => ({
+        ...req,
+        type: 'trip_request' as const
+      }))];
       
       // Sort by creation date descending
       combinedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       const totalCount = combinedItems.length;
       
-      // 3. Apply client-side pagination
+      // 6. Apply client-side pagination
       const paginatedItems = combinedItems.slice(offset, offset + ITEMS_PER_PAGE);
 
-      // 4. Collect traveler IDs for paginated trip requests
+      // 7. Collect traveler IDs for paginated trip requests
       const travelerIds = paginatedItems
         .filter((item): item is Request => !isGeneralOrder(item) && !!item.trips?.user_id)
         .map(req => (req as Request).trips.user_id)
@@ -167,7 +170,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         return acc;
       }, {} as Record<string, Profile>);
 
-      // 5. Map profiles back to paginated trip requests
+      // 8. Map profiles back to paginated trip requests
       const finalItems = paginatedItems.map(item => {
         if (!isGeneralOrder(item)) {
           const req = item as Request;
@@ -270,12 +273,12 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     <div className="space-y-3">
       {allSentItems && allSentItems.length > 0 ? (
         <>
-          {allSentItems.map(req => {
-            if (isGeneralOrder(req)) {
+          {allSentItems.map(item => {
+            if (isGeneralOrder(item)) {
               return (
                 <GeneralOrderCard
-                  key={req.id}
-                  order={req}
+                  key={item.id}
+                  order={item}
                   onCancelRequest={onCancelRequest}
                   deleteRequestMutation={deleteRequestMutation}
                   t={t}
@@ -283,7 +286,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
               );
             } else {
               // Trip Request (includes those generated from General Orders)
-              const tripReq = req as RequestWithProfiles;
+              const tripReq = item as RequestWithProfiles;
               const priceCalculation = calculateShippingCost(
                 tripReq.trips?.from_country || '',
                 tripReq.trips?.to_country || '',
@@ -292,7 +295,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
 
               return (
                 <TripRequestCard
-                  key={req.id}
+                  key={item.id}
                   req={tripReq}
                   priceCalculation={priceCalculation}
                   onCancelRequest={onCancelRequest}
