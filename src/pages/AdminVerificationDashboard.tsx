@@ -12,6 +12,25 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 import { fetchAdminEmails } from '@/utils/admin';
 
+interface ProfileRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+}
+
+interface VerificationRequestRow {
+  id: string;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  id_front_url: string | null;
+  id_back_url: string | null;
+  residential_card_url: string | null;
+  photo_id_url: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 interface VerificationRequest {
   id: string;
   user_id: string;
@@ -27,71 +46,72 @@ interface VerificationRequest {
     last_name: string | null;
     phone: string | null;
     email?: string;
-  } | null;
+  };
 }
 
 const AdminVerificationDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
 
-  const { data: verificationRequests, isLoading: isRequestsLoading, error } = useQuery<
-    VerificationRequest[],
-    Error
-  >({
+  const {
+    data: verificationRequests,
+    isLoading: isRequestsLoading,
+    error,
+  } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
-      // اجلب كل طلبات التحقق مع بروفايل المستخدم
-      const { data, error: allRequestsError } = await supabase
+      // 1) Fetch all verification requests
+      const { data: requestsData, error: requestsError } = await supabase
         .from('verification_requests')
         .select(
-          `
-          id,
-          user_id,
-          status,
-          id_front_url,
-          id_back_url,
-          residential_card_url,
-          photo_id_url,
-          created_at,
-          updated_at,
-          profiles (
-            first_name,
-            last_name,
-            phone
-          )
-        `
+          'id, user_id, status, id_front_url, id_back_url, residential_card_url, photo_id_url, created_at, updated_at'
         )
         .order('created_at', { ascending: true });
 
-      if (allRequestsError) {
-        console.error('Error fetching verification_requests:', allRequestsError);
-        throw new Error(allRequestsError.message);
+      if (requestsError) {
+        throw new Error(requestsError.message);
       }
 
-      const requests = (data || []) as VerificationRequest[];
+      const requests = (requestsData || []) as VerificationRequestRow[];
 
-      if (!requests.length) {
-        return [];
+      if (!requests.length) return [];
+
+      // 2) Fetch related profiles in a separate query
+      const userIds = Array.from(new Set(requests.map((r) => r.user_id)));
+
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, phone')
+        .in('id', userIds);
+
+      if (profilesError) {
+        throw new Error(profilesError.message);
       }
 
-      // نضيف الإيميل من auth.users عن طريق edge function
-      const userIds = requests.map((req) => req.user_id);
+      const profiles = (profilesData || []) as ProfileRow[];
+
+      const profileMap: Record<string, ProfileRow> = {};
+      profiles.forEach((p) => {
+        profileMap[p.id] = p;
+      });
+
+      // 3) Get emails from auth via edge function
       const emailMap = await fetchAdminEmails(userIds);
 
-      const enriched = requests.map((req) => ({
-        ...req,
-        profiles: req.profiles
-          ? {
-              ...req.profiles,
-              email: emailMap[req.user_id] || 'N/A',
-            }
-          : {
-              first_name: null,
-              last_name: null,
-              phone: null,
-              email: emailMap[req.user_id] || 'N/A',
-            },
-      }));
+      // 4) Merge data into the shape expected by VerificationRequestCard
+      const enriched: VerificationRequest[] = requests.map((req) => {
+        const profile = profileMap[req.user_id];
+
+        return {
+          ...req,
+          profiles: {
+            first_name: profile?.first_name ?? null,
+            last_name: profile?.last_name ?? null,
+            phone: profile?.phone ?? null,
+            email: emailMap[req.user_id] || 'N/A',
+          },
+        };
+      });
 
       return enriched;
     },
