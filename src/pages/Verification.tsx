@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2, IdCard, Camera } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
 
@@ -198,86 +198,6 @@ const uploadVerificationFile = async (file: File, userId: string, key: string) =
   return publicUrlData.publicUrl;
 };
 
-/**
- * Simple infographic-style illustration:
- * A stylized person holding an ID card, with small step captions underneath
- * so users can visually copy the pose for their "photo with ID".
- */
-const VerificationIllustration: React.FC = () => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="mb-6 rounded-2xl border bg-muted/40 p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-        {/* Person + ID graphic */}
-        <div className="relative flex items-center justify-center">
-          {/* Person */}
-          <div className="relative flex flex-col items-center">
-            {/* Head */}
-            <div className="h-12 w-12 rounded-full bg-blue-300 dark:bg-blue-700 mb-1 border border-blue-400 dark:border-blue-500" />
-            {/* Body */}
-            <div className="w-20 h-16 rounded-3xl bg-blue-500 dark:bg-blue-600 flex items-center justify-center shadow-md">
-              {/* Shoulders / arms implied by card placement */}
-              <IdCard className="h-8 w-8 text-blue-100" />
-            </div>
-          </div>
-
-          {/* ID card held in front */}
-          <div className="absolute -right-4 sm:-right-6 top-7 sm:top-8">
-            <div className="flex items-center gap-2 rounded-xl bg-white dark:bg-slate-900 shadow-lg border px-3 py-2">
-              <div className="h-6 w-6 rounded-full bg-blue-200 dark:bg-blue-700" />
-              <div className="space-y-1">
-                <div className="h-1.5 w-14 rounded bg-slate-200 dark:bg-slate-700" />
-                <div className="h-1.5 w-10 rounded bg-slate-200 dark:bg-slate-700" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Textual guidance */}
-        <div className="flex-1 space-y-2 text-sm">
-          <p className="font-semibold text-foreground text-center sm:text-right">
-            {t('faceWithId')}
-          </p>
-          <ul className="space-y-1 text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <span className="mt-0.5 h-4 w-4 rounded-full bg-blue-500 text-[11px] text-white flex items-center justify-center">
-                1
-              </span>
-              <span>
-                قم بالوقوف في مكان مضيء، واجعل وجهك واضحاً بالكامل في الصورة.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-0.5 h-4 w-4 rounded-full bg-blue-500 text-[11px] text-white flex items-center justify-center">
-                2
-              </span>
-              <span>
-                أمسك الهوية بيدك أمام صدرك بحيث يظهر <strong>الاسم والصورة</strong> بوضوح.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-0.5 h-4 w-4 rounded-full bg-blue-500 text-[11px] text-white flex items-center justify-center">
-                3
-              </span>
-              <span>
-                تأكد أن النص الموجود على الهوية غير مغطى أو مشوّه، ثم التقط الصورة وارفعها هنا.
-              </span>
-            </li>
-          </ul>
-
-          <div className="mt-2 flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
-            <Camera className="h-3 w-3" />
-            <span>
-              حاول أن تجعل صورتك مشابهة لهذا الرسم التوضيحي قدر الإمكان لسهولة مراجعة طلبك.
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Verification = () => {
   const { t } = useTranslation();
   const { user, session } = useSession();
@@ -301,7 +221,6 @@ const Verification = () => {
   const isPending = status === 'pending';
   const isApproved = status === 'approved';
 
-  // If already verified, do not allow re-verification at all
   if (isVerificationLoading) {
     return (
       <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] flex items-center justify-center">
@@ -322,7 +241,6 @@ const Verification = () => {
       return;
     }
 
-    // Re-check latest status just before submitting
     if (verificationInfo?.status === 'pending') {
       showError(t('pendingVerification'));
       return;
@@ -387,9 +305,6 @@ const Verification = () => {
           <CardDescription>{t('verificationInstructions')}</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* New infographic-style illustration */}
-          <VerificationIllustration />
-
           {status === 'pending' && (
             <Alert className="mb-4">
               <AlertDescription>{t('pendingVerification')}</AlertDescription>
