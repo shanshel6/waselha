@@ -19,6 +19,8 @@ const Navbar: React.FC = () => {
   const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
+    { name: 'عن وصلها', path: '/about' },
+    { name: 'الأسئلة الشائعة', path: '/faq' },
   ];
 
   const authenticatedNavItems = [
@@ -61,7 +63,7 @@ const Navbar: React.FC = () => {
         </Link>
 
         {/* Center: desktop nav links */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-4">
           {publicNavItems.map((item) => (
             <Link key={item.path} to={item.path}>
               <span

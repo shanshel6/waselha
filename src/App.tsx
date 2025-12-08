@@ -24,6 +24,8 @@ import ProfileCheckWrapper from "./components/ProfileCheckWrapper";
 import { SessionContextProvider, useSession } from "./integrations/supabase/SessionContextProvider";
 import PlaceOrder from "./pages/PlaceOrder";
 import ChatUnreadNotificationBridge from "./components/ChatUnreadNotificationBridge";
+import About from "./pages/About";
+import FAQ from "./pages/FAQ";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,8 @@ const MainLayout = () => (
     <ProfileCheckWrapper>
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/faq" element={<FAQ />} />
         <Route path="/trips" element={<Trips />} />
         <Route path="/trips/:tripId" element={<TripDetails />} />
         <Route path="/my-profile" element={<MyProfile />} />
