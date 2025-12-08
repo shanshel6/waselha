@@ -21,7 +21,7 @@ interface VerificationRequest {
   status: 'pending' | 'approved' | 'rejected';
   id_front_url: string;
   id_back_url: string;
-  face_with_id_url: string;
+  photo_id_url: string; // fixed: matches DB column
   residential_card_url?: string;
   created_at: string;
   profiles: {
@@ -55,58 +55,73 @@ const AdminDashboard = () => {
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
 
-  const { data: verificationRequests, isLoading: isRequestsLoading, error: verificationError } = useQuery<VerificationRequest[], Error>({
+  const {
+    data: verificationRequests,
+    isLoading: isRequestsLoading,
+    error: verificationError,
+  } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
-      // First, let's check if we can fetch all verification requests
       const { data: allRequests, error: allRequestsError } = await supabase
         .from('verification_requests')
-        .select(`
-          *,
+        .select(
+          `
+          id,
+          user_id,
+          status,
+          id_front_url,
+          id_back_url,
+          photo_id_url,
+          residential_card_url,
+          created_at,
           profiles (
             first_name,
             last_name,
             phone
           )
-        `)
+        `,
+        )
         .order('created_at', { ascending: true });
 
       if (allRequestsError) {
-        console.error("Error fetching all verification requests:", allRequestsError);
+        console.error('Error fetching all verification requests:', allRequestsError);
         throw new Error(allRequestsError.message);
       }
 
-      const requests = allRequests as VerificationRequest[];
-      
-      // Collect user IDs
-      const userIds = requests.map(req => req.user_id);
-      
-      // Fetch emails using the Edge Function
+      const requests = allRequests as any[];
+
+      const userIds = requests.map((req) => req.user_id as string);
       const emailMap = await fetchAdminEmails(userIds);
-      
-      return requests.map(req => ({
+
+      return requests.map((req) => ({
         ...req,
         profiles: {
           ...req.profiles,
-          email: emailMap[req.user_id] || 'N/A',  // Inject fetched email
-        }
+          email: emailMap[req.user_id] || 'N/A',
+        },
       })) as VerificationRequest[];
     },
     enabled: isAdmin,
   });
 
-  const { data: pendingTrips, isLoading: isTripsLoading, error: tripsError } = useQuery<Trip[], Error>({
+  const {
+    data: pendingTrips,
+    isLoading: isTripsLoading,
+    error: tripsError,
+  } = useQuery<Trip[], Error>({
     queryKey: ['pendingTrips'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select(`
+        .select(
+          `
           *,
           profiles (
             first_name,
             last_name
           )
-        `)
+        `,
+        )
         .eq('is_approved', false)
         .is('admin_review_notes', null)
         .eq('is_deleted_by_user', false)
@@ -118,18 +133,23 @@ const AdminDashboard = () => {
     enabled: isAdmin,
   });
 
-  const { data: reviewedTrips, isLoading: isReviewedTripsLoading } = useQuery<Trip[], Error>({
+  const {
+    data: reviewedTrips,
+    isLoading: isReviewedTripsLoading,
+  } = useQuery<Trip[], Error>({
     queryKey: ['reviewedTrips'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select(`
+        .select(
+          `
           *,
           profiles (
             first_name,
             last_name
           )
-        `)
+        `,
+        )
         .not('admin_review_notes', 'is', null)
         .order('created_at', { ascending: false });
 
@@ -139,20 +159,18 @@ const AdminDashboard = () => {
     enabled: isAdmin,
   });
 
-  // Mutation for approving trips
   const approveTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
       const { error } = await supabase
         .from('trips')
         .update({
           is_approved: true,
-          admin_review_notes: notes || ''
+          admin_review_notes: notes || '',
         })
         .eq('id', tripId);
 
       if (error) throw error;
 
-      // Create notification for the user
       const { data: tripData } = await supabase
         .from('trips')
         .select('user_id, from_country, to_country')
@@ -162,14 +180,12 @@ const AdminDashboard = () => {
       if (tripData) {
         const fromCountryName = arabicCountries[tripData.from_country] || tripData.from_country;
         const toCountryName = arabicCountries[tripData.to_country] || tripData.to_country;
-        
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: tripData.user_id,
-            message: `تمت الموافقة على رحلتك من ${fromCountryName} إلى ${toCountryName}`,
-            link: '/my-flights'
-          });
+
+        await supabase.from('notifications').insert({
+          user_id: tripData.user_id,
+          message: `تمت الموافقة على رحلتك من ${fromCountryName} إلى ${toCountryName}`,
+          link: '/my-flights',
+        });
       }
     },
     onSuccess: async (_, { tripId }) => {
@@ -178,7 +194,6 @@ const AdminDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       showSuccess(t('tripApprovedSuccess'));
 
-      // Fetch the trip again to get the user_id (traveler_id)
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
         .select('user_id, from_country, to_country')
@@ -186,17 +201,14 @@ const AdminDashboard = () => {
         .single();
 
       if (tripError) {
-        console.error("Error fetching trip data for invalidation:", tripError);
+        console.error('Error fetching trip data for invalidation:', tripError);
         return;
       }
 
       if (tripData?.user_id) {
-        // Invalidate the traveler's received requests query
         queryClient.invalidateQueries({ queryKey: ['receivedRequests', tripData.user_id] });
       }
 
-      // Also, if a general order was matched, invalidate the sender's sent requests
-      // This is done by checking if a request linked to this trip has a general_order_id
       const { data: matchedRequest, error: requestError } = await supabase
         .from('requests')
         .select('sender_id')
@@ -204,8 +216,8 @@ const AdminDashboard = () => {
         .not('general_order_id', 'is', null)
         .single();
 
-      if (requestError && requestError.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error("Error checking for matched general order:", requestError);
+      if (requestError && requestError.code !== 'PGRST116') {
+        console.error('Error checking for matched general order:', requestError);
       }
 
       if (matchedRequest?.sender_id) {
@@ -214,24 +226,21 @@ const AdminDashboard = () => {
     },
     onError: (error: any) => {
       showError(error.message);
-    }
+    },
   });
 
-  // Mutation for rejecting trips
   const rejectTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
-      // Update trip status to rejected (is_approved stays false, but we add notes)
       const { error } = await supabase
         .from('trips')
         .update({
           is_approved: false,
-          admin_review_notes: notes || 'تم رفض الرحلة'
+          admin_review_notes: notes || 'تم رفض الرحلة',
         })
         .eq('id', tripId);
 
       if (error) throw error;
 
-      // Create notification for the user
       const { data: tripData } = await supabase
         .from('trips')
         .select('user_id, from_country, to_country')
@@ -241,14 +250,12 @@ const AdminDashboard = () => {
       if (tripData) {
         const fromCountryName = arabicCountries[tripData.from_country] || tripData.from_country;
         const toCountryName = arabicCountries[tripData.to_country] || tripData.to_country;
-        
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: tripData.user_id,
-            message: `تم رفض رحلتك من ${fromCountryName} إلى ${toCountryName}`,
-            link: '/my-flights'
-          });
+
+        await supabase.from('notifications').insert({
+          user_id: tripData.user_id,
+          message: `تم رفض رحلتك من ${fromCountryName} إلى ${toCountryName}`,
+          link: '/my-flights',
+        });
       }
     },
     onSuccess: () => {
@@ -259,11 +266,15 @@ const AdminDashboard = () => {
     },
     onError: (error: any) => {
       showError(error.message);
-    }
+    },
   });
 
   if (isAdminLoading) {
-    return <div className="container p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>;
+    return (
+      <div className="container p-8 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+      </div>
+    );
   }
 
   if (!isAdmin) {
@@ -278,10 +289,11 @@ const AdminDashboard = () => {
     );
   }
 
-  const pendingVerificationRequests = verificationRequests?.filter(r => r.status === 'pending') || [];
-  const reviewedVerificationRequests = verificationRequests?.filter(r => r.status !== 'pending') || [];
+  const pendingVerificationRequests =
+    verificationRequests?.filter((r) => r.status === 'pending') || [];
+  const reviewedVerificationRequests =
+    verificationRequests?.filter((r) => r.status !== 'pending') || [];
 
-  // Function to get Arabic country name
   const getArabicCountryName = (country: string) => {
     return arabicCountries[country] || country;
   };
@@ -289,7 +301,7 @@ const AdminDashboard = () => {
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
-      
+
       <Tabs defaultValue="trips-pending" className="w-full">
         <TabsList className="grid w-full grid-cols-4 max-w-2xl">
           <TabsTrigger value="trips-pending">
@@ -306,7 +318,7 @@ const AdminDashboard = () => {
             {t('reviewedRequests')} ({reviewedVerificationRequests.length})
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="trips-pending" className="mt-6">
           <Card>
             <CardHeader>
@@ -316,7 +328,7 @@ const AdminDashboard = () => {
               {isTripsLoading ? (
                 <p>{t('loading')}</p>
               ) : pendingTrips && pendingTrips.length > 0 ? (
-                pendingTrips.map(trip => (
+                pendingTrips.map((trip) => (
                   <Card key={trip.id} className="p-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -338,10 +350,14 @@ const AdminDashboard = () => {
                         </p>
                       </div>
                     </div>
-                    <AdminTripApproval 
-                      trip={trip} 
-                      onApprove={(notes) => approveTripMutation.mutate({ tripId: trip.id, notes })}
-                      onReject={(notes) => rejectTripMutation.mutate({ tripId: trip.id, notes })}
+                    <AdminTripApproval
+                      trip={trip}
+                      onApprove={(notes) =>
+                        approveTripMutation.mutate({ tripId: trip.id, notes })
+                      }
+                      onReject={(notes) =>
+                        rejectTripMutation.mutate({ tripId: trip.id, notes })
+                      }
                     />
                   </Card>
                 ))
@@ -351,7 +367,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="trips-reviewed" className="mt-6">
           <Card>
             <CardHeader>
@@ -361,7 +377,7 @@ const AdminDashboard = () => {
               {isReviewedTripsLoading ? (
                 <p>{t('loading')}</p>
               ) : reviewedTrips && reviewedTrips.length > 0 ? (
-                reviewedTrips.map(trip => (
+                reviewedTrips.map((trip) => (
                   <Card key={trip.id} className="p-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -413,7 +429,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="verification-pending" className="mt-6">
           <Card>
             <CardHeader>
@@ -424,7 +440,7 @@ const AdminDashboard = () => {
                 <p>{t('loading')}</p>
               ) : verificationRequests ? (
                 pendingVerificationRequests.length > 0 ? (
-                  pendingVerificationRequests.map(req => (
+                  pendingVerificationRequests.map((req) => (
                     <VerificationRequestCard key={req.id} request={req} />
                   ))
                 ) : (
@@ -436,7 +452,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="verification-reviewed" className="mt-6">
           <Card>
             <CardHeader>
@@ -447,7 +463,7 @@ const AdminDashboard = () => {
                 <p>{t('loading')}</p>
               ) : verificationRequests ? (
                 reviewedVerificationRequests.length > 0 ? (
-                  reviewedVerificationRequests.map(req => (
+                  reviewedVerificationRequests.map((req) => (
                     <VerificationRequestCard key={req.id} request={req} />
                   ))
                 ) : (
