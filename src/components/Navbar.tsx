@@ -9,7 +9,6 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
 import { useUnreadChatCount } from '@/hooks/use-unread-chat-count';
-import { Badge } from '@/components/ui/badge';
 
 const Navbar: React.FC = () => {
   const { t } = useTranslation();
@@ -56,14 +55,7 @@ const Navbar: React.FC = () => {
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary relative"
             >
               {item.name}
-              {item.path === '/my-requests' && unreadCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-2 -right-4 h-4 w-4 p-0 flex items-center justify-center text-xs"
-                >
-                  {unreadCount}
-                </Badge>
-              )}
+              {/* Removed per‑tab unread badge; chat notifications now live solely in the bell popover */}
             </Link>
           ))}
         </div>
@@ -94,6 +86,7 @@ const Navbar: React.FC = () => {
           <div className="md:hidden flex items-center">
             {session && (
               <div className="flex items-center gap-1">
+                {/* Notifications bell already shows count inside its own badge */}
                 <Notifications />
               </div>
             )}
@@ -115,11 +108,7 @@ const Navbar: React.FC = () => {
                       className="text-lg hover:text-primary transition-colors flex items-center justify-between"
                     >
                       <span>{item.name}</span>
-                      {item.path === '/my-requests' && unreadCount > 0 && (
-                        <Badge variant="destructive" className="h-5 px-2">
-                          {unreadCount}
-                        </Badge>
-                      )}
+                      {/* Removed unread badge next to My Requests on mobile as well */}
                     </Link>
                   ))}
                   <div className="pt-4 border-t">
