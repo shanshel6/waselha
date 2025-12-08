@@ -2,15 +2,15 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import VerificationRequestCard from '@/components/VerificationRequestCard';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ShieldAlert, Loader2 } from 'lucide-react';
+import { ShieldAlert, Loader2, Link as LinkIcon } from 'lucide-react';
 import { fetchAdminEmails } from '@/utils/admin';
+import { showSuccess, showError } from '@/utils/toast';
 
 interface ProfileRow {
   id: string;
@@ -49,6 +49,140 @@ interface VerificationRequest {
   };
 }
 
+// Local card that uses raw URLs from verification_requests (no storage buckets)
+interface VerificationRequestCardProps {
+  request: VerificationRequest;
+}
+
+const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ request }) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ status }: { status: 'approved' | 'rejected' }) => {
+      const { error: requestError } = await supabase
+        .from('verification_requests')
+        .update({
+          status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', request.id);
+
+      if (requestError) throw requestError;
+
+      if (status === 'approved') {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ is_verified: true })
+          .eq('id', request.user_id);
+
+        if (profileError) throw profileError;
+      }
+    },
+    onSuccess: (_, variables) => {
+      showSuccess(
+        t(variables.status === 'approved' ? 'verificationApproved' : 'verificationRejected'),
+      );
+      queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
+    },
+    onError: (err: any) => {
+      showError(err.message);
+    },
+  });
+
+  const handleAction = (status: 'approved' | 'rejected') => {
+    updateStatusMutation.mutate({ status });
+  };
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return 'default';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
+
+  const fullName =
+    `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() ||
+    t('user');
+  const email = request.profiles.email || 'N/A';
+  const phone = request.profiles.phone || t('noPhoneProvided');
+
+  const DocumentLink: React.FC<{ url: string | null; label: string }> = ({ url, label }) =>
+    !url ? null : (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
+      >
+        <LinkIcon className="h-4 w-4" />
+        {label}
+      </a>
+    );
+
+  return (
+    <Card className="shadow-lg">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-xl font-bold flex items-center gap-2">
+          {fullName}
+        </CardTitle>
+        <span
+          className={`px-2 py-1 rounded-full text-xs ${
+            getStatusVariant(request.status) === 'default'
+              ? 'bg-green-100 text-green-800'
+              : getStatusVariant(request.status) === 'destructive'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-gray-100 text-gray-800'
+          }`}
+        >
+          {t(request.status)}
+        </span>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <p className="flex items-center gap-2">
+            {email}
+          </p>
+          <p className="flex items-center gap-2">
+            {phone}
+          </p>
+        </div>
+        <div className="space-y-2 border-t pt-4">
+          <h4 className="font-semibold">{t('verificationDocuments')}</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <DocumentLink url={request.id_front_url} label={t('idFront')} />
+            <DocumentLink url={request.id_back_url} label={t('idBack')} />
+            <DocumentLink url={request.photo_id_url} label={t('faceWithId')} />
+            <DocumentLink url={request.residential_card_url} label={t('residentCard')} />
+          </div>
+        </div>
+        {request.status === 'pending' && (
+          <div className="flex gap-4 pt-4">
+            <button
+              onClick={() => handleAction('approved')}
+              disabled={updateStatusMutation.isPending}
+              className="inline-flex items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {t('approve')}
+            </button>
+            <button
+              onClick={() => handleAction('rejected')}
+              disabled={updateStatusMutation.isPending}
+              className="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {t('reject')}
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const AdminVerificationDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
@@ -60,7 +194,6 @@ const AdminVerificationDashboard = () => {
   } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
-      // 1) Fetch all verification requests
       const { data: requestsData, error: requestsError } = await supabase
         .from('verification_requests')
         .select(
@@ -76,7 +209,6 @@ const AdminVerificationDashboard = () => {
 
       if (!requests.length) return [];
 
-      // 2) Fetch related profiles in a separate query
       const userIds = Array.from(new Set(requests.map((r) => r.user_id)));
 
       const { data: profilesData, error: profilesError } = await supabase
@@ -95,10 +227,8 @@ const AdminVerificationDashboard = () => {
         profileMap[p.id] = p;
       });
 
-      // 3) Get emails from auth via edge function
       const emailMap = await fetchAdminEmails(userIds);
 
-      // 4) Merge data into the shape expected by VerificationRequestCard
       const enriched: VerificationRequest[] = requests.map((req) => {
         const profile = profileMap[req.user_id];
 
