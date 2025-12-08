@@ -26,6 +26,9 @@ import PlaceOrder from "./pages/PlaceOrder";
 import ChatUnreadNotificationBridge from "./components/ChatUnreadNotificationBridge";
 import About from "./pages/About";
 import FAQ from "./pages/FAQ";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +42,8 @@ const MainLayout = () => (
         <Route path="/" element={<Index />} />
         <Route path="/about" element={<About />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/trips" element={<Trips />} />
         <Route path="/trips/:tripId" element={<TripDetails />} />
         <Route path="/my-profile" element={<MyProfile />} />
@@ -53,6 +58,7 @@ const MainLayout = () => (
         <Route path="*" element={<NotFound />} />
       </Routes>
     </ProfileCheckWrapper>
+    <Footer />
   </>
 );
 
