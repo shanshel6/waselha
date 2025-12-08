@@ -81,31 +81,22 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ status }: { status: 'approved' | 'rejected' }) => {
-      // Update verification_requests row and check for errors
-      const { error: requestError } = await supabase
-        .from('verification_requests')
-        .update({
+      // Call Edge Function so it can bypass RLS securely with service role
+      const { data, error } = await supabase.functions.invoke('admin-verification', {
+        body: {
+          request_id: request.id,
+          user_id: request.user_id,
           status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', request.id);
+        },
+      });
 
-      if (requestError) {
-        console.error('Error updating verification_requests:', requestError);
-        throw requestError;
+      if (error) {
+        console.error('admin-verification invoke error:', error);
+        throw new Error(error.message || 'Failed to update verification via Edge Function');
       }
 
-      // Update profiles.is_verified based on status
-      const shouldBeVerified = status === 'approved';
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ is_verified: shouldBeVerified })
-        .eq('id', request.user_id);
-
-      if (profileError) {
-        console.error('Error updating profiles.is_verified:', profileError);
-        throw profileError;
+      if (!data?.success) {
+        throw new Error('Verification function did not complete successfully');
       }
     },
     onSuccess: (_, variables) => {
@@ -170,7 +161,6 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
           </p>
         </div>
 
-        {/* Thumbnails row */}
         <div className="space-y-2 border-t pt-4">
           <h4 className="font-semibold">{t('verificationDocuments')}</h4>
           <div className="flex flex-wrap gap-4">
