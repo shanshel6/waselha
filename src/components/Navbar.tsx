@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Send } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
@@ -78,13 +78,10 @@ const Navbar: React.FC = () => {
             ))}
         </div>
 
-        {/* Center: brand */}
+        {/* Center: brand (text-only capsule) */}
         <Link to="/" className="flex-1 flex justify-center">
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/5 px-4 py-1.5 shadow-sm border border-primary/10">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-              <Send className="h-4 w-4" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-primary">
+          <div className="inline-flex items-center rounded-full bg-muted/70 px-4 py-1.5 border border-border/60 shadow-sm">
+            <span className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
               وصلها
             </span>
           </div>
@@ -124,11 +121,10 @@ const Navbar: React.FC = () => {
                 className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
               >
                 <div className="mt-4 mb-6 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                      <Send className="h-4 w-4" />
-                    </div>
-                    <span className="text-lg font-bold text-primary">وصلها</span>
+                  <div className="inline-flex items-center rounded-full bg-muted/70 px-3 py-1 border border-border/60">
+                    <span className="text-base font-semibold text-foreground">
+                      وصلها
+                    </span>
                   </div>
                 </div>
 
