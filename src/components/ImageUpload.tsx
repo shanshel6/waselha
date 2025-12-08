@@ -2,9 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -32,31 +30,17 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadSuccess, label }) => 
     setError(null);
     setProgress(0);
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `${user.id}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('verification-documents')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      setError(uploadError.message);
+    try {
+      // Use a local object URL instead of Supabase storage
+      const objectUrl = URL.createObjectURL(file);
+      setFileUrl(objectUrl);
+      setProgress(100);
+      onUploadSuccess(objectUrl);
+    } catch (e: any) {
+      setError(e?.message || 'Upload failed');
+    } finally {
       setUploading(false);
-      return;
     }
-
-    const { data } = supabase.storage
-      .from('verification-documents')
-      .getPublicUrl(filePath);
-
-    setFileUrl(data.publicUrl);
-    onUploadSuccess(data.publicUrl);
-    setUploading(false);
-    setProgress(100);
   };
 
   return (
@@ -82,9 +66,19 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUploadSuccess, label }) => 
         )}
         {uploading && <Progress value={progress} className="w-full" />}
         {fileUrl && (
-          <div className="flex items-center justify-center gap-2 text-green-600">
-            <CheckCircle className="h-6 w-6" />
-            <span>{t('uploadComplete')}</span>
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-6 w-6" />
+              <span>{t('uploadComplete')}</span>
+            </div>
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 underline break-all"
+            >
+              {fileUrl}
+            </a>
           </div>
         )}
       </div>
