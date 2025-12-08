@@ -14,8 +14,6 @@ import { Badge } from '@/components/ui/badge';
 const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { session } = useSession();
-  // We keep this hook for potential future use or if other components rely on it, 
-  // but we remove the display logic from the My Requests link.
   const { data: unreadCount = 0 } = useUnreadChatCount(); 
   
   const publicNavItems = [
@@ -64,6 +62,11 @@ const Navbar: React.FC = () => {
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary relative"
             >
               {item.name}
+              {item.path === '/my-requests' && unreadCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-2 -right-4 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                  {unreadCount}
+                </Badge>
+              )}
             </Link>
           ))}
           
@@ -102,6 +105,11 @@ const Navbar: React.FC = () => {
                     className="text-lg hover:text-primary transition-colors flex items-center justify-between"
                   >
                     <span>{item.name}</span>
+                    {item.path === '/my-requests' && unreadCount > 0 && (
+                      <Badge variant="destructive" className="h-5 px-2">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </Link>
                 ))}
                 
