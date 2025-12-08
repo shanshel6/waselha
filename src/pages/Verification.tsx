@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2, IdCard, Camera } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2, Camera } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
 
@@ -198,40 +198,19 @@ const uploadVerificationFile = async (file: File, userId: string, key: string) =
   return publicUrlData.publicUrl;
 };
 
-/**
- * Simple infographic-style illustration:
- * A stylized person holding an ID card, with small step captions underneath
- * so users can visually copy the pose for their "photo with ID".
- */
 const VerificationIllustration: React.FC = () => {
   const { t } = useTranslation();
 
   return (
     <div className="mb-6 rounded-2xl border bg-muted/40 p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-        {/* Person + ID graphic */}
-        <div className="relative flex items-center justify-center">
-          {/* Person */}
-          <div className="relative flex flex-col items-center">
-            {/* Head */}
-            <div className="h-12 w-12 rounded-full bg-blue-300 dark:bg-blue-700 mb-1 border border-blue-400 dark:border-blue-500" />
-            {/* Body */}
-            <div className="w-20 h-16 rounded-3xl bg-blue-500 dark:bg-blue-600 flex items-center justify-center shadow-md">
-              {/* Shoulders / arms implied by card placement */}
-              <IdCard className="h-8 w-8 text-blue-100" />
-            </div>
-          </div>
-
-          {/* ID card held in front */}
-          <div className="absolute -right-4 sm:-right-6 top-7 sm:top-8">
-            <div className="flex items-center gap-2 rounded-xl bg-white dark:bg-slate-900 shadow-lg border px-3 py-2">
-              <div className="h-6 w-6 rounded-full bg-blue-200 dark:bg-blue-700" />
-              <div className="space-y-1">
-                <div className="h-1.5 w-14 rounded bg-slate-200 dark:bg-slate-700" />
-                <div className="h-1.5 w-10 rounded bg-slate-200 dark:bg-slate-700" />
-              </div>
-            </div>
-          </div>
+        {/* Illustration image */}
+        <div className="w-full max-w-xs overflow-hidden rounded-2xl shadow-md border bg-background">
+          <img
+            src="/holding-id.png"
+            alt={t('faceWithId')}
+            className="w-full h-auto object-cover"
+          />
         </div>
 
         {/* Textual guidance */}
@@ -269,7 +248,7 @@ const VerificationIllustration: React.FC = () => {
           <div className="mt-2 flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
             <Camera className="h-3 w-3" />
             <span>
-              حاول أن تجعل صورتك مشابهة لهذا الرسم التوضيحي قدر الإمكان لسهولة مراجعة طلبك.
+              حاول أن تجعل صورتك مشابهة لهذه الصورة التوضيحية قدر الإمكان لسهولة مراجعة طلبك.
             </span>
           </div>
         </div>
@@ -301,7 +280,6 @@ const Verification = () => {
   const isPending = status === 'pending';
   const isApproved = status === 'approved';
 
-  // If already verified, do not allow re-verification at all
   if (isVerificationLoading) {
     return (
       <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] flex items-center justify-center">
@@ -322,7 +300,6 @@ const Verification = () => {
       return;
     }
 
-    // Re-check latest status just before submitting
     if (verificationInfo?.status === 'pending') {
       showError(t('pendingVerification'));
       return;
@@ -387,7 +364,6 @@ const Verification = () => {
           <CardDescription>{t('verificationInstructions')}</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* New infographic-style illustration */}
           <VerificationIllustration />
 
           {status === 'pending' && (
