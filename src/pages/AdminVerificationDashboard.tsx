@@ -34,13 +34,14 @@ const AdminVerificationDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
 
-  const { data: verificationRequests, isLoading: isRequestsLoading } = useQuery<
+  const { data: verificationRequests, isLoading: isRequestsLoading, error } = useQuery<
     VerificationRequest[],
     Error
   >({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
-      const { data: allRequests, error: allRequestsError } = await supabase
+      // اجلب كل طلبات التحقق مع بروفايل المستخدم
+      const { data, error: allRequestsError } = await supabase
         .from('verification_requests')
         .select(
           `
@@ -63,17 +64,21 @@ const AdminVerificationDashboard = () => {
         .order('created_at', { ascending: true });
 
       if (allRequestsError) {
+        console.error('Error fetching verification_requests:', allRequestsError);
         throw new Error(allRequestsError.message);
       }
 
-      const requests = (allRequests || []) as VerificationRequest[];
+      const requests = (data || []) as VerificationRequest[];
 
-      if (!requests.length) return [];
+      if (!requests.length) {
+        return [];
+      }
 
+      // نضيف الإيميل من auth.users عن طريق edge function
       const userIds = requests.map((req) => req.user_id);
       const emailMap = await fetchAdminEmails(userIds);
 
-      return requests.map((req) => ({
+      const enriched = requests.map((req) => ({
         ...req,
         profiles: req.profiles
           ? {
@@ -87,6 +92,8 @@ const AdminVerificationDashboard = () => {
               email: emailMap[req.user_id] || 'N/A',
             },
       }));
+
+      return enriched;
     },
     enabled: isAdmin,
   });
@@ -111,23 +118,31 @@ const AdminVerificationDashboard = () => {
     );
   }
 
-  const pendingVerificationRequests =
-    verificationRequests?.filter((r) => r.status === 'pending') || [];
-  const processedVerificationRequests =
-    verificationRequests?.filter((r) => r.status !== 'pending') || [];
+  if (error) {
+    return (
+      <div className="container mx-auto p-8">
+        <Alert variant="destructive">
+          <AlertTitle>خطأ</AlertTitle>
+          <AlertDescription>{error.message}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const all = verificationRequests || [];
+  const pendingVerificationRequests = all.filter((r) => r.status === 'pending');
+  const processedVerificationRequests = all.filter((r) => r.status !== 'pending');
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
-      <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')} – {t('pendingVerification')}</h1>
+      <h1 className="text-3xl font-bold mb-6">
+        {t('adminDashboard')} – {t('pendingVerification')}
+      </h1>
 
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-2 max-w-xl">
-          <TabsTrigger value="pending">
-            {t('pendingVerification')}
-          </TabsTrigger>
-          <TabsTrigger value="achievements">
-            {t('verificationsReviewedSection')}
-          </TabsTrigger>
+          <TabsTrigger value="pending">{t('pendingVerification')}</TabsTrigger>
+          <TabsTrigger value="achievements">{t('verificationsReviewedSection')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-6">
