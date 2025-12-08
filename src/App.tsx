@@ -28,6 +28,7 @@ import About from "./pages/About";
 import FAQ from "./pages/FAQ";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const MainLayout = () => (
         <Route path="/faq" element={<FAQ />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/trips" element={<Trips />} />
         <Route path="/trips/:tripId" element={<TripDetails />} />
         <Route path="/my-profile" element={<MyProfile />} />

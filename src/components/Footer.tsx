@@ -31,6 +31,10 @@ const Footer: React.FC = () => {
           <Link to="/privacy" className="hover:text-primary transition-colors">
             سياسة الخصوصية
           </Link>
+          <span className="text-border">|</span>
+          <Link to="/contact" className="hover:text-primary transition-colors">
+            تواصل معنا
+          </Link>
         </div>
       </div>
     </footer>
