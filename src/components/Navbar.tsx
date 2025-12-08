@@ -14,23 +14,25 @@ import { Badge } from '@/components/ui/badge';
 const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { session } = useSession();
-  const { data: unreadCount = 0 } = useUnreadChatCount();
+  // We keep this hook for potential future use or if other components rely on it, 
+  // but we remove the display logic from the My Requests link.
+  const { data: unreadCount = 0 } = useUnreadChatCount(); 
   
   const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
   ];
   
-  // Only keep My Requests in the main nav
+  // Only keep My Requests in the main nav without the chat badge
   const authenticatedNavItems = [
-    { name: t('myRequests'), path: '/my-requests', unread: unreadCount },
+    { name: t('myRequests'), path: '/my-requests' },
   ];
   
   const mobileNavItems = [
     ...publicNavItems,
     ...(session ? [
-      { name: t('myRequests'), path: '/my-requests', unread: unreadCount },
-      { name: t('myFlights'), path: '/my-flights' }, // Updated path
+      { name: t('myRequests'), path: '/my-requests' },
+      { name: t('myFlights'), path: '/my-flights' },
       { name: t('myProfile'), path: '/my-profile' },
     ] : []),
   ];
@@ -62,11 +64,6 @@ const Navbar: React.FC = () => {
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary relative"
             >
               {item.name}
-              {item.unread > 0 && (
-                <Badge className="absolute -top-2 -right-4 h-4 w-4 p-0 flex items-center justify-center text-xs bg-red-500 hover:bg-red-600">
-                  {item.unread}
-                </Badge>
-              )}
             </Link>
           ))}
           
@@ -105,11 +102,6 @@ const Navbar: React.FC = () => {
                     className="text-lg hover:text-primary transition-colors flex items-center justify-between"
                   >
                     <span>{item.name}</span>
-                    {item.unread > 0 && (
-                      <Badge className="h-5 w-5 p-0 flex items-center justify-center text-sm bg-red-500 hover:bg-red-600">
-                        {item.unread}
-                      </Badge>
-                    )}
                   </Link>
                 ))}
                 

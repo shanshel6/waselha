@@ -3,14 +3,10 @@
 import React, { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import { toast } from 'sonner';
-import { MessageSquare, Plane } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getChatParticipants } from '@/utils/chat';
-
-// Store active toast IDs keyed by requestId to manage dismissal
-const activeChatToasts = new Map<string, string>();
+import { getFirstName } from '@/utils/profile'; // Import new utility
 
 interface NewMessagePayload {
   chat_id: string;
@@ -45,53 +41,30 @@ const ChatNotificationListener = () => {
 
       const { requestId, senderId, travelerId } = participants;
       
-      // 3. Check if the current user is a participant (should be, due to RLS, but good check)
-      if (user.id !== senderId && user.id !== travelerId) {
-        return;
-      }
-
-      // 4. Check if the user is already on the chat page for this request
+      // 3. Determine the recipient (the current user)
+      const recipientId = user.id;
+      
+      // 4. Check if the current user is already on the chat page for this request
       if (currentPathRef.current === `/chat/${requestId}`) {
         return;
       }
 
-      // 5. Dismiss any existing toast for this chat
-      if (activeChatToasts.has(requestId)) {
-        toast.dismiss(activeChatToasts.get(requestId));
-      }
+      // 5. Get sender name
+      const senderName = await getFirstName(newMessage.sender_id);
+      const displaySenderName = senderName || t('user');
 
-      // 6. Show the new custom toast
-      const toastId = toast.custom((tId) => (
-        <Link 
-          to={`/chat/${requestId}`} 
-          onClick={() => {
-            toast.dismiss(tId);
-            activeChatToasts.delete(requestId);
-          }}
-          className="flex items-start gap-3 p-4 bg-card border rounded-lg shadow-lg hover:bg-accent transition-colors w-full max-w-sm"
-        >
-          <MessageSquare className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-          <div className="flex-grow">
-            <p className="font-semibold text-sm">{t('newMessage')}</p>
-            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-              {newMessage.content}
-            </p>
-            <p className="text-xs text-primary mt-2 flex items-center gap-1">
-              <Plane className="h-3 w-3" />
-              {t('viewChat')}
-            </p>
-          </div>
-        </Link>
-      ), {
-        duration: 10000, // Keep it visible for 10 seconds
-        onDismiss: () => activeChatToasts.delete(requestId),
-        onAutoClose: () => activeChatToasts.delete(requestId),
-      });
-
-      activeChatToasts.set(requestId, toastId);
+      // 6. Insert notification into the database
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: recipientId,
+          message: t('newChatMessageNotification', { name: displaySenderName }),
+          link: `/chat/${requestId}`
+        });
     };
 
-    const channel = supabase.channel(`chat-messages:${user.id}`);
+    // We subscribe to all chat messages inserts.
+    const channel = supabase.channel(`chat-messages-db-notifier`);
     channel
       .on(
         'postgres_changes',
@@ -102,14 +75,14 @@ const ChatNotificationListener = () => {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('Real-time chat notifications enabled.');
+          console.log('Real-time chat DB notification listener enabled.');
         }
       });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, t]); // Dependency changed to user.id for stability
+  }, [user?.id, t]);
 
   return null;
 };

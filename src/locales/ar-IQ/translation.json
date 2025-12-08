@@ -364,5 +364,6 @@
   "includesInsurance": "يشمل التأمين",
   "insuranceExplanation": "اختر التأمين فقط إذا كانت بضائعك ذات قيمة عالية. ستحصل على المبلغ المحدد إذا لم تصل بضائعك إلى الوجهة المطلوبة.",
   "generalOrderTitle": "طلب شحن عام",
-  "statusNew": "جديد"
+  "statusNew": "جديد",
+  "newChatMessageNotification": "لديك رسالة جديدة من {{name}} بخصوص طلب الطرد."
 }
