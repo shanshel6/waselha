@@ -218,8 +218,10 @@ const Verification = () => {
   });
 
   const status = verificationInfo?.status || 'none';
+  const isPending = status === 'pending';
+  const isApproved = status === 'approved';
 
-  // If already verified, do not allow re-verification
+  // If already verified, do not allow re-verification at all
   if (isVerificationLoading) {
     return (
       <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] flex items-center justify-center">
@@ -228,8 +230,7 @@ const Verification = () => {
     );
   }
 
-  if (status === 'approved') {
-    // Optionally show a quick message before redirect
+  if (isApproved) {
     navigate('/my-profile', { replace: true });
     return null;
   }
@@ -241,7 +242,11 @@ const Verification = () => {
       return;
     }
 
-    // Double-check on submit in case status changed between load and click
+    // Re-check latest status just before submitting
+    if (verificationInfo?.status === 'pending') {
+      showError(t('pendingVerification'));
+      return;
+    }
     if (verificationInfo?.status === 'approved') {
       showError(t('verificationApproved'));
       navigate('/my-profile');
@@ -292,6 +297,8 @@ const Verification = () => {
     }
   };
 
+  const submitDisabled = isPending || submitting || form.formState.isSubmitting;
+
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <Card className="max-w-3xl mx-auto">
@@ -306,6 +313,12 @@ const Verification = () => {
             </Alert>
           )}
 
+          {status === 'rejected' && (
+            <Alert className="mb-4" variant="destructive">
+              <AlertDescription>{t('verificationRejected')}</AlertDescription>
+            </Alert>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -316,7 +329,7 @@ const Verification = () => {
                     <FormItem>
                       <FormLabel>{t('firstName')}</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} disabled={submitDisabled} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -329,7 +342,7 @@ const Verification = () => {
                     <FormItem>
                       <FormLabel>{t('lastName')}</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} disabled={submitDisabled} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -406,9 +419,9 @@ const Verification = () => {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={form.formState.isSubmitting || submitting}
+                disabled={submitDisabled}
               >
-                {submitting ? t('uploading') : t('submitVerification')}
+                {submitDisabled ? t('pendingVerification') : t('submitVerification')}
               </Button>
             </form>
           </Form>
