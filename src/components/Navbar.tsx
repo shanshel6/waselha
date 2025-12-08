@@ -78,7 +78,7 @@ const Navbar: React.FC = () => {
             ))}
         </div>
 
-        {/* Center: horizontal brand logo */}
+        {/* Center: horizontal logo */}
         <Link to="/" className="flex-1 flex justify-center">
           <div className="inline-flex items-center">
             <img
