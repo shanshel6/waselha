@@ -8,7 +8,7 @@ import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ShieldAlert, Loader2, Link as LinkIcon } from 'lucide-react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 import { fetchAdminEmails } from '@/utils/admin';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -49,10 +49,31 @@ interface VerificationRequest {
   };
 }
 
-// Local card that uses raw URLs from verification_requests (no storage buckets)
 interface VerificationRequestCardProps {
   request: VerificationRequest;
 }
+
+const Thumbnail: React.FC<{ url: string | null; label: string }> = ({ url, label }) => {
+  if (!url) return null;
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <span className="text-xs font-medium">{label}</span>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <img
+          src={url}
+          alt={label}
+          className="h-20 w-20 object-cover rounded-md border"
+        />
+      </a>
+    </div>
+  );
+};
 
 const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ request }) => {
   const { t } = useTranslation();
@@ -60,6 +81,7 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ status }: { status: 'approved' | 'rejected' }) => {
+      // Update verification_requests row
       const { error: requestError } = await supabase
         .from('verification_requests')
         .update({
@@ -70,10 +92,21 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
 
       if (requestError) throw requestError;
 
+      // If approved: mark profile is_verified = true
       if (status === 'approved') {
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ is_verified: true })
+          .eq('id', request.user_id);
+
+        if (profileError) throw profileError;
+      }
+
+      // If rejected: ensure profile is_verified = false so user can retry later
+      if (status === 'rejected') {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ is_verified: false })
           .eq('id', request.user_id);
 
         if (profileError) throw profileError;
@@ -83,6 +116,7 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
       showSuccess(
         t(variables.status === 'approved' ? 'verificationApproved' : 'verificationRejected'),
       );
+      // Refetch list so item moves from pending to reviewed tab (archive behavior)
       queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
     },
     onError: (err: any) => {
@@ -94,14 +128,14 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
     updateStatusMutation.mutate({ status });
   };
 
-  const getStatusVariant = (status: string) => {
+  const getStatusVariantClass = (status: string) => {
     switch (status) {
       case 'approved':
-        return 'default';
+        return 'bg-green-100 text-green-800';
       case 'rejected':
-        return 'destructive';
+        return 'bg-red-100 text-red-800';
       default:
-        return 'secondary';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -111,19 +145,6 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
   const email = request.profiles.email || 'N/A';
   const phone = request.profiles.phone || t('noPhoneProvided');
 
-  const DocumentLink: React.FC<{ url: string | null; label: string }> = ({ url, label }) =>
-    !url ? null : (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 text-sm text-primary hover:underline break-all"
-      >
-        <LinkIcon className="h-4 w-4" />
-        {label}
-      </a>
-    );
-
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -131,13 +152,9 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
           {fullName}
         </CardTitle>
         <span
-          className={`px-2 py-1 rounded-full text-xs ${
-            getStatusVariant(request.status) === 'default'
-              ? 'bg-green-100 text-green-800'
-              : getStatusVariant(request.status) === 'destructive'
-              ? 'bg-red-100 text-red-800'
-              : 'bg-gray-100 text-gray-800'
-          }`}
+          className={`px-2 py-1 rounded-full text-xs ${getStatusVariantClass(
+            request.status,
+          )}`}
         >
           {t(request.status)}
         </span>
@@ -151,15 +168,18 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
             {phone}
           </p>
         </div>
+
+        {/* Thumbnails row */}
         <div className="space-y-2 border-t pt-4">
           <h4 className="font-semibold">{t('verificationDocuments')}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <DocumentLink url={request.id_front_url} label={t('idFront')} />
-            <DocumentLink url={request.id_back_url} label={t('idBack')} />
-            <DocumentLink url={request.photo_id_url} label={t('faceWithId')} />
-            <DocumentLink url={request.residential_card_url} label={t('residentCard')} />
+          <div className="flex flex-wrap gap-4">
+            <Thumbnail url={request.id_front_url} label={t('idFront')} />
+            <Thumbnail url={request.id_back_url} label={t('idBack')} />
+            <Thumbnail url={request.photo_id_url} label={t('faceWithId')} />
+            <Thumbnail url={request.residential_card_url} label={t('residentCard')} />
           </div>
         </div>
+
         {request.status === 'pending' && (
           <div className="flex gap-4 pt-4">
             <button
