@@ -36,6 +36,8 @@ const formSchema = z.object({
   notes: z.string().optional(),
 });
 
+const BUCKET_NAME = 'trip-tickets';
+
 const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -74,13 +76,22 @@ const AddTrip = () => {
     return null;
   }, [from_country, to_country, free_kg]);
 
+  const ensureBucketExists = async () => {
+    // Call edge function to create bucket if needed
+    const { error } = await supabase.functions.invoke('create-trip-tickets-bucket');
+    if (error) {
+      throw error;
+    }
+  };
+
   const uploadTicketAndGetUrl = async (file: File, userId: string) => {
-    const bucket = 'trip-tickets';
+    await ensureBucketExists();
+
     const ext = file.name.split('.').pop() || 'pdf';
     const filePath = `${userId}/${Date.now()}-ticket.${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from(bucket)
+      .from(BUCKET_NAME)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -91,7 +102,7 @@ const AddTrip = () => {
     }
 
     const { data: publicUrlData } = supabase.storage
-      .from(bucket)
+      .from(BUCKET_NAME)
       .getPublicUrl(filePath);
 
     return publicUrlData.publicUrl;
