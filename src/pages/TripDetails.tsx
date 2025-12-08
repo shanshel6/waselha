@@ -22,7 +22,6 @@ import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-re
 import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
-// Removed PhotoUpload import
 
 // Define the expected structure of the fetched trip data
 interface TripData {
@@ -46,7 +45,6 @@ const TripDetails = () => {
   const navigate = useNavigate();
   const { user } = useSession();
   const [isForbiddenItemsDialogOpen, setIsForbiddenItemsDialogOpen] = useState(false);
-  // Removed senderItemPhotos state
 
   const { data: trip, isLoading, error } = useQuery<TripData, Error>({
     queryKey: ['trip', tripId],
@@ -73,7 +71,6 @@ const TripDetails = () => {
       description: z.string().min(10, { message: t("descriptionTooShort") }),
       destination_city: z.string().min(2, { message: t("requiredField") }),
       receiver_details: z.string().min(10, { message: t("requiredField") }),
-      // sender_item_photos removed
     });
   }, [trip, t]);
 
@@ -84,7 +81,6 @@ const TripDetails = () => {
       description: "",
       destination_city: "",
       receiver_details: "",
-      // sender_item_photos removed
     },
   });
 
@@ -120,7 +116,6 @@ const TripDetails = () => {
         trip_id: trip.id,
         sender_id: user.id,
         ...values,
-        // sender_item_photos is now null by default in DB
       });
 
     if (error) {
@@ -318,8 +313,6 @@ const TripDetails = () => {
                       </FormItem>
                     )}
                   />
-                  
-                  {/* Removed Photo Upload Section */}
                   
                   <Button 
                     type="button" 

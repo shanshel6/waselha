@@ -2,11 +2,9 @@
 
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { supabase } from '@/integrations/supabase/client';
-import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import { showError } from '@/utils/toast';
 
 interface PhotoUploadProps {
@@ -17,6 +15,12 @@ interface PhotoUploadProps {
   existingPhotos?: string[];
 }
 
+/**
+ * NOTE:
+ * This component NO LONGER uses Supabase storage.
+ * It only creates local object URLs (via URL.createObjectURL).
+ * These URLs are valid only in the browser session, but they avoid any "Bucket not found" errors.
+ */
 const PhotoUpload: React.FC<PhotoUploadProps> = ({ 
   onPhotosChange, 
   maxPhotos = 4, 
@@ -24,57 +28,33 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
   label,
   existingPhotos = []
 }) => {
-  const { user } = useSession();
   const [uploading, setUploading] = useState(false);
   const [photos, setPhotos] = useState<string[]>(existingPhotos);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (!user) {
-      showError("You must be logged in to upload photos");
-      return;
-    }
-
     if (photos.length + acceptedFiles.length > maxPhotos) {
       showError(`You can upload a maximum of ${maxPhotos} photos`);
       return;
     }
 
     setUploading(true);
-    
+
     try {
       const newPhotos = [...photos];
-      
+
       for (const file of acceptedFiles) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('item-photos')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data } = supabase.storage
-          .from('item-photos')
-          .getPublicUrl(filePath);
-        
-        newPhotos.push(data.publicUrl);
+        const objectUrl = URL.createObjectURL(file);
+        newPhotos.push(objectUrl);
       }
-      
+
       setPhotos(newPhotos);
       onPhotosChange(newPhotos);
     } catch (error: any) {
-      showError(error.message || "Error uploading photos");
+      showError(error?.message || "Error handling photos");
     } finally {
       setUploading(false);
     }
-  }, [user, photos, maxPhotos, onPhotosChange]);
+  }, [photos, maxPhotos, onPhotosChange]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -85,24 +65,13 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
     disabled: uploading
   });
 
-  const removePhoto = async (index: number) => {
+  const removePhoto = (index: number) => {
     const photoUrl = photos[index];
-    
-    // Extract file path from URL
-    const url = new URL(photoUrl);
-    const filePath = url.pathname.split('/').slice(2).join('/');
-    
-    try {
-      await supabase.storage
-        .from('item-photos')
-        .remove([filePath]);
-      
-      const newPhotos = photos.filter((_, i) => i !== index);
-      setPhotos(newPhotos);
-      onPhotosChange(newPhotos);
-    } catch (error: any) {
-      showError("Error removing photo: " + error.message);
-    }
+    URL.revokeObjectURL(photoUrl);
+
+    const newPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(newPhotos);
+    onPhotosChange(newPhotos);
   };
 
   return (

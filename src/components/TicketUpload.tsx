@@ -2,8 +2,6 @@
 
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '@/integrations/supabase/client';
-import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -15,9 +13,12 @@ interface TicketUploadProps {
   existingFileUrl?: string;
 }
 
+/**
+ * This version does NOT use Supabase storage at all.
+ * It only generates local object URLs so no bucket is required.
+ */
 const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFileUrl }) => {
   const { t } = useTranslation();
-  const { user } = useSession();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -26,16 +27,14 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
 
-    // Validate file type
     const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       setError(t('invalidFileType'));
       return;
     }
 
-    // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       setError(t('fileTooLarge'));
       return;
@@ -45,37 +44,11 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
     setError(null);
     setProgress(0);
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `ticket_${Date.now()}.${fileExt}`;
-    const filePath = `${user.id}/tickets/${fileName}`;
-
     try {
-      // Check if bucket exists by trying to upload
-      const { error: uploadError } = await supabase.storage
-        .from('trip-documents')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        // If it's a bucket not found error, we'll show a specific message
-        if (uploadError.message.includes('Bucket not found')) {
-          setError('Storage bucket not configured. Please contact administrator.');
-        } else {
-          setError(uploadError.message);
-        }
-        setUploading(false);
-        return;
-      }
-
-      const { data } = supabase.storage
-        .from('trip-documents')
-        .getPublicUrl(filePath);
-
-      setFileUrl(data.publicUrl);
-      onUploadSuccess(data.publicUrl);
+      const objectUrl = URL.createObjectURL(file);
+      setFileUrl(objectUrl);
       setProgress(100);
+      onUploadSuccess(objectUrl);
     } catch (err: any) {
       setError(err.message || 'An error occurred during upload');
     } finally {
@@ -83,28 +56,12 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
     }
   };
 
-  const removeFile = async () => {
-    if (!fileUrl || !user) return;
-
-    try {
-      // Extract file path from URL
-      const url = new URL(fileUrl);
-      const filePath = url.pathname.split('/').slice(2).join('/');
-      
-      const { error } = await supabase.storage
-        .from('trip-documents')
-        .remove([filePath]);
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      setFileUrl(null);
-      onUploadSuccess('');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while removing the file');
+  const removeFile = () => {
+    if (fileUrl) {
+      URL.revokeObjectURL(fileUrl);
     }
+    setFileUrl(null);
+    onUploadSuccess('');
   };
 
   return (
@@ -135,7 +92,7 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onUploadSuccess, existingFi
               href={fileUrl} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm"
+              className="text-blue-600 hover:underline text-sm break-all"
             >
               {t('viewTicket')}
             </a>
