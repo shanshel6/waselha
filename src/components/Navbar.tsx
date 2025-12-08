@@ -61,12 +61,12 @@ const Navbar: React.FC = () => {
         </Link>
 
         {/* Center: desktop nav links */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-6">
           {publicNavItems.map((item) => (
             <Link key={item.path} to={item.path}>
               <span
                 className={cn(
-                  'text-sm font-medium transition-colors px-2 py-1 rounded-full',
+                  'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
                   isActive(item.path)
                     ? 'text-primary bg-primary/10'
                     : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
@@ -82,7 +82,7 @@ const Navbar: React.FC = () => {
               <Link key={item.path} to={item.path}>
                 <span
                   className={cn(
-                    'text-sm font-medium transition-colors px-2 py-1 rounded-full',
+                    'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
                     isActive(item.path)
                       ? 'text-primary bg-primary/10'
                       : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
@@ -95,15 +95,19 @@ const Navbar: React.FC = () => {
         </div>
 
         {/* Right: desktop user / notifications + mobile menu */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {/* Desktop */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-3">
             {session && <Notifications />}
             {session ? (
               <UserNav />
             ) : (
               <Link to="/login">
-                <Button variant="outline" size="sm" className="rounded-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full px-4 py-2 text-sm"
+                >
                   {t('login')}
                 </Button>
               </Link>
@@ -153,7 +157,7 @@ const Navbar: React.FC = () => {
                     <UserNav />
                   ) : (
                     <Link to="/login">
-                      <Button className="w-full rounded-full">
+                      <Button className="w-full rounded-full py-2">
                         {t('login')}
                       </Button>
                     </Link>
