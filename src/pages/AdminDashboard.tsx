@@ -55,10 +55,9 @@ const AdminDashboard = () => {
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
 
-  const { data: verificationRequests, isLoading: isRequestsLoading, error: verificationError } = useQuery<VerificationRequest[], Error>({
+  const { data: verificationRequests, isLoading: isRequestsLoading } = useQuery<VerificationRequest[], Error>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
-      // First, let's check if we can fetch all verification requests
       const { data: allRequests, error: allRequestsError } = await supabase
         .from('verification_requests')
         .select(`
@@ -72,30 +71,25 @@ const AdminDashboard = () => {
         .order('created_at', { ascending: true });
 
       if (allRequestsError) {
-        console.error("Error fetching all verification requests:", allRequestsError);
         throw new Error(allRequestsError.message);
       }
 
       const requests = allRequests as VerificationRequest[];
-      
-      // Collect user IDs
       const userIds = requests.map(req => req.user_id);
-      
-      // Fetch emails using the Edge Function
       const emailMap = await fetchAdminEmails(userIds);
-      
+
       return requests.map(req => ({
         ...req,
         profiles: {
           ...req.profiles,
-          email: emailMap[req.user_id] || 'N/A',  // Inject fetched email
+          email: emailMap[req.user_id] || 'N/A',
         }
       })) as VerificationRequest[];
     },
     enabled: isAdmin,
   });
 
-  const { data: pendingTrips, isLoading: isTripsLoading, error: tripsError } = useQuery<Trip[], Error>({
+  const { data: pendingTrips, isLoading: isTripsLoading } = useQuery<Trip[], Error>({
     queryKey: ['pendingTrips'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -139,7 +133,6 @@ const AdminDashboard = () => {
     enabled: isAdmin,
   });
 
-  // Mutation for approving trips
   const approveTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
       const { error } = await supabase
@@ -152,7 +145,6 @@ const AdminDashboard = () => {
 
       if (error) throw error;
 
-      // Create notification for the user
       const { data: tripData } = await supabase
         .from('trips')
         .select('user_id, from_country, to_country')
@@ -162,7 +154,7 @@ const AdminDashboard = () => {
       if (tripData) {
         const fromCountryName = arabicCountries[tripData.from_country] || tripData.from_country;
         const toCountryName = arabicCountries[tripData.to_country] || tripData.to_country;
-        
+
         await supabase
           .from('notifications')
           .insert({
@@ -178,38 +170,18 @@ const AdminDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       showSuccess(t('tripApprovedSuccess'));
 
-      // Fetch the trip again to get the user_id (traveler_id)
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
-        .select('user_id, from_country, to_country')
+        .select('user_id')
         .eq('id', tripId)
         .single();
 
-      if (tripError) {
+      if (tripError && tripError.code !== 'PGRST116') {
         console.error("Error fetching trip data for invalidation:", tripError);
-        return;
       }
 
       if (tripData?.user_id) {
-        // Invalidate the traveler's received requests query
         queryClient.invalidateQueries({ queryKey: ['receivedRequests', tripData.user_id] });
-      }
-
-      // Also, if a general order was matched, invalidate the sender's sent requests
-      // This is done by checking if a request linked to this trip has a general_order_id
-      const { data: matchedRequest, error: requestError } = await supabase
-        .from('requests')
-        .select('sender_id')
-        .eq('trip_id', tripId)
-        .not('general_order_id', 'is', null)
-        .single();
-
-      if (requestError && requestError.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error("Error checking for matched general order:", requestError);
-      }
-
-      if (matchedRequest?.sender_id) {
-        queryClient.invalidateQueries({ queryKey: ['sentRequests', matchedRequest.sender_id] });
       }
     },
     onError: (error: any) => {
@@ -217,10 +189,8 @@ const AdminDashboard = () => {
     }
   });
 
-  // Mutation for rejecting trips
   const rejectTripMutation = useMutation({
     mutationFn: async ({ tripId, notes }: { tripId: string; notes: string | null }) => {
-      // Update trip status to rejected (is_approved stays false, but we add notes)
       const { error } = await supabase
         .from('trips')
         .update({
@@ -231,7 +201,6 @@ const AdminDashboard = () => {
 
       if (error) throw error;
 
-      // Create notification for the user
       const { data: tripData } = await supabase
         .from('trips')
         .select('user_id, from_country, to_country')
@@ -279,34 +248,27 @@ const AdminDashboard = () => {
   }
 
   const pendingVerificationRequests = verificationRequests?.filter(r => r.status === 'pending') || [];
-  const reviewedVerificationRequests = verificationRequests?.filter(r => r.status !== 'pending') || [];
-
-  // Function to get Arabic country name
-  const getArabicCountryName = (country: string) => {
-    return arabicCountries[country] || country;
-  };
+  const processedVerificationRequests = verificationRequests?.filter(r => r.status !== 'pending') || [];
+  const getArabicCountryName = (country: string) => arabicCountries[country] || country;
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
-      
+
       <Tabs defaultValue="trips-pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-3 max-w-3xl">
           <TabsTrigger value="trips-pending">
             <Plane className="h-4 w-4 mr-2" />
-            {t('pendingTrips')} ({pendingTrips?.length || 0})
+            {t('pendingTrips')}
           </TabsTrigger>
-          <TabsTrigger value="trips-reviewed">
-            {t('reviewedRequests')} ({reviewedTrips?.length || 0})
+          <TabsTrigger value="verifications-pending">
+            {t('pendingVerification')}
           </TabsTrigger>
-          <TabsTrigger value="verification-pending">
-            {t('pendingVerification')} ({pendingVerificationRequests.length})
-          </TabsTrigger>
-          <TabsTrigger value="verification-reviewed">
-            {t('reviewedRequests')} ({reviewedVerificationRequests.length})
+          <TabsTrigger value="achievements">
+            {t('adminAchievements')}
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="trips-pending" className="mt-6">
           <Card>
             <CardHeader>
@@ -317,7 +279,7 @@ const AdminDashboard = () => {
                 <p>{t('loading')}</p>
               ) : pendingTrips && pendingTrips.length > 0 ? (
                 pendingTrips.map(trip => (
-                  <Card key={trip.id} className="p-4">
+                  <Card key={trip.id} className="p-4 border">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
@@ -337,9 +299,24 @@ const AdminDashboard = () => {
                           {t('availableWeight')}: {trip.free_kg} kg
                         </p>
                       </div>
+                      <div className="flex flex-col items-end gap-2 text-sm">
+                        <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                          {t('pendingApproval')}
+                        </span>
+                        {trip.ticket_file_url && (
+                          <a
+                            href={trip.ticket_file_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            {t('viewTicket')}
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <AdminTripApproval 
-                      trip={trip} 
+                    <AdminTripApproval
+                      trip={trip}
                       onApprove={(notes) => approveTripMutation.mutate({ tripId: trip.id, notes })}
                       onReject={(notes) => rejectTripMutation.mutate({ tripId: trip.id, notes })}
                     />
@@ -351,70 +328,8 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="trips-reviewed" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('reviewedRequests')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isReviewedTripsLoading ? (
-                <p>{t('loading')}</p>
-              ) : reviewedTrips && reviewedTrips.length > 0 ? (
-                reviewedTrips.map(trip => (
-                  <Card key={trip.id} className="p-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                          <CountryFlag country={trip.from_country} showName={false} />
-                          {getArabicCountryName(trip.from_country)}
-                          <span className="text-lg">→</span>
-                          <CountryFlag country={trip.to_country} showName={false} />
-                          {getArabicCountryName(trip.to_country)}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {t('traveler')}: {trip.profiles?.first_name} {trip.profiles?.last_name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {t('availableWeight')}: {trip.free_kg} kg
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        {trip.is_approved ? (
-                          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                            {t('approved')}
-                          </span>
-                        ) : (
-                          <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                            {t('rejected')}
-                          </span>
-                        )}
-                        {trip.is_deleted_by_user && (
-                          <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full mt-1">
-                            {t('deletedByUser')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {trip.admin_review_notes && (
-                      <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                        <p className="text-sm font-medium">{t('adminReviewNotes')}:</p>
-                        <p className="text-sm">{trip.admin_review_notes}</p>
-                      </div>
-                    )}
-                  </Card>
-                ))
-              ) : (
-                <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="verification-pending" className="mt-6">
+
+        <TabsContent value="verifications-pending" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle>{t('pendingVerification')}</CardTitle>
@@ -422,42 +337,89 @@ const AdminDashboard = () => {
             <CardContent className="space-y-6">
               {isRequestsLoading ? (
                 <p>{t('loading')}</p>
-              ) : verificationRequests ? (
-                pendingVerificationRequests.length > 0 ? (
-                  pendingVerificationRequests.map(req => (
-                    <VerificationRequestCard key={req.id} request={req} />
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">{t('noPendingRequests')}</p>
-                )
+              ) : pendingVerificationRequests.length > 0 ? (
+                pendingVerificationRequests.map(req => (
+                  <VerificationRequestCard key={req.id} request={req} />
+                ))
               ) : (
                 <p className="text-muted-foreground">{t('noPendingRequests')}</p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="verification-reviewed" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('reviewedRequests')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isRequestsLoading ? (
-                <p>{t('loading')}</p>
-              ) : verificationRequests ? (
-                reviewedVerificationRequests.length > 0 ? (
-                  reviewedVerificationRequests.map(req => (
+
+        <TabsContent value="achievements" className="mt-6">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('tripsReviewedSection')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isReviewedTripsLoading ? (
+                  <p>{t('loading')}</p>
+                ) : reviewedTrips && reviewedTrips.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviewedTrips.map(trip => (
+                      <div key={trip.id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold flex items-center gap-2">
+                              <CountryFlag country={trip.from_country} showName={false} />
+                              {getArabicCountryName(trip.from_country)}
+                              <span className="text-lg">→</span>
+                              <CountryFlag country={trip.to_country} showName={false} />
+                              {getArabicCountryName(trip.to_country)}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {t('traveler')}: {trip.profiles?.first_name} {trip.profiles?.last_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t('availableWeight')}: {trip.free_kg} kg
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs ${trip.is_approved ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {trip.is_approved ? t('approved') : t('rejected')}
+                            </span>
+                            {trip.is_deleted_by_user && (
+                              <span className="text-xs text-muted-foreground">{t('deletedByUser')}</span>
+                            )}
+                          </div>
+                        </div>
+                        {trip.admin_review_notes && (
+                          <p className="text-sm text-muted-foreground pt-3 border-t mt-3">
+                            {t('adminReviewNotes')}: {trip.admin_review_notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('verificationsReviewedSection')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isRequestsLoading ? (
+                  <p>{t('loading')}</p>
+                ) : processedVerificationRequests.length > 0 ? (
+                  processedVerificationRequests.map(req => (
                     <VerificationRequestCard key={req.id} request={req} />
                   ))
                 ) : (
                   <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
-                )
-              ) : (
-                <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
