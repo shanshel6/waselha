@@ -5,7 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, Briefcase } from 'lucide-react';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
@@ -40,6 +40,17 @@ const Navbar: React.FC = () => {
     path === '/'
       ? location.pathname === '/'
       : location.pathname.startsWith(path);
+
+  const Brand = () => (
+    <div className="inline-flex items-center gap-2">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Briefcase className="h-5 w-5" />
+      </div>
+      <span className="text-xl font-extrabold tracking-tight text-primary">
+        وصلها
+      </span>
+    </div>
+  );
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
@@ -78,15 +89,9 @@ const Navbar: React.FC = () => {
             ))}
         </div>
 
-        {/* Center: horizontal logo */}
+        {/* Center: brand logo (text + suitcase icon) */}
         <Link to="/" className="flex-1 flex justify-center">
-          <div className="inline-flex items-center">
-            <img
-              src="/logo-waselha-horizontal.png"
-              alt="Waselha"
-              className="h-8 sm:h-9 w-auto object-contain"
-            />
-          </div>
+          <Brand />
         </Link>
 
         {/* Right: desktop user / notifications + mobile menu */}
@@ -123,11 +128,7 @@ const Navbar: React.FC = () => {
                 className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
               >
                 <div className="mt-4 mb-6 flex items-center justify-between">
-                  <img
-                    src="/logo-waselha-horizontal.png"
-                    alt="Waselha"
-                    className="h-8 w-auto object-contain"
-                  />
+                  <Brand />
                 </div>
 
                 <div className="flex flex-col space-y-2">
@@ -152,7 +153,9 @@ const Navbar: React.FC = () => {
                     <UserNav />
                   ) : (
                     <Link to="/login">
-                      <Button className="w-full rounded-full">{t('login')}</Button>
+                      <Button className="w-full rounded-full">
+                        {t('login')}
+                      </Button>
                     </Link>
                   )}
                 </div>
