@@ -176,16 +176,12 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
 };
 
 const ensureVerificationBucketExists = async () => {
-  const { data, error } = await supabase.functions.invoke('create-trip-tickets-bucket');
-  if (error) {
-    // we ignore here; this edge function is specific to trip tickets and may not exist
-    console.warn('create-trip-tickets-bucket invoke error (can be ignored for verification):', error);
-  }
-
-  // Ensure verification-docs bucket exists using storage API; if it already exists, createBucket will fail harmlessly.
+  // Create bucket if it doesn't exist (public so edge/admin dashboard can show thumbnails)
   const { error: bucketError } = await supabase.storage.createBucket(VERIFICATION_BUCKET, {
     public: true,
   });
+
+  // If bucket already exists, ignore that specific error
   if (bucketError && !bucketError.message.toLowerCase().includes('already exists')) {
     throw bucketError;
   }
@@ -217,7 +213,7 @@ const uploadVerificationFile = async (file: File, userId: string, key: string) =
 
 const Verification = () => {
   const { t } = useTranslation();
-  const { user } = useSession();
+  const { user, session } = useSession();
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
 
@@ -234,8 +230,10 @@ const Verification = () => {
   });
 
   const onSubmit = async (values: VerificationFormValues) => {
-    if (!user) {
+    // Hard guard so we never hit RLS without a user
+    if (!user || !session) {
       showError(t('mustBeLoggedIn'));
+      navigate('/login');
       return;
     }
 
@@ -252,6 +250,7 @@ const Verification = () => {
           uploadVerificationFile(values.photo_id_file, user.id, 'photo-id'),
         ]);
 
+      // This insert uses the authenticated client and matches the RLS policy: auth.uid() = user_id
       const { error } = await supabase.from('verification_requests').insert({
         user_id: user.id,
         id_front_url: idFrontUrl,
