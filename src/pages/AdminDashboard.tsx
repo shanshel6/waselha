@@ -6,32 +6,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import VerificationRequestCard from '@/components/VerificationRequestCard';
 import AdminTripApproval from '@/components/AdminTripApproval';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert, Loader2, Plane } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { arabicCountries } from '@/lib/countries-ar';
 import { showSuccess, showError } from '@/utils/toast';
-import { fetchAdminEmails } from '@/utils/admin';
-
-interface VerificationRequest {
-  id: string;
-  user_id: string;
-  status: 'pending' | 'approved' | 'rejected';
-  id_front_url: string | null;
-  id_back_url: string | null;
-  residential_card_url: string | null;
-  photo_id_url: string | null;
-  created_at: string;
-  updated_at: string | null;
-  profiles: {
-    first_name: string | null;
-    last_name: string | null;
-    phone: string | null;
-    email?: string;
-  } | null;
-}
 
 interface Trip {
   id: string;
@@ -55,60 +35,6 @@ const AdminDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
-
-  const { data: verificationRequests, isLoading: isRequestsLoading } = useQuery<VerificationRequest[], Error>({
-    queryKey: ['verificationRequests'],
-    queryFn: async () => {
-      const { data: allRequests, error: allRequestsError } = await supabase
-        .from('verification_requests')
-        .select(
-          `
-          id,
-          user_id,
-          status,
-          id_front_url,
-          id_back_url,
-          residential_card_url,
-          photo_id_url,
-          created_at,
-          updated_at,
-          profiles (
-            first_name,
-            last_name,
-            phone
-          )
-        `
-        )
-        .order('created_at', { ascending: true });
-
-      if (allRequestsError) {
-        throw new Error(allRequestsError.message);
-      }
-
-      const requests = (allRequests || []) as VerificationRequest[];
-
-      if (!requests.length) return [];
-
-      const userIds = requests.map((req) => req.user_id);
-      const emailMap = await fetchAdminEmails(userIds);
-
-      return requests.map((req) => ({
-        ...req,
-        profiles: req.profiles
-          ? {
-              ...req.profiles,
-              email: emailMap[req.user_id] || 'N/A',
-            }
-          : {
-              first_name: null,
-              last_name: null,
-              phone: null,
-              email: emailMap[req.user_id] || 'N/A',
-            },
-      }));
-    },
-    enabled: isAdmin,
-  });
 
   const { data: pendingTrips, isLoading: isTripsLoading } = useQuery<Trip[], Error>({
     queryKey: ['pendingTrips'],
@@ -272,11 +198,6 @@ const AdminDashboard = () => {
     );
   }
 
-  const pendingVerificationRequests =
-    verificationRequests?.filter((r) => r.status === 'pending') || [];
-  const processedVerificationRequests =
-    verificationRequests?.filter((r) => r.status !== 'pending') || [];
-
   const getArabicCountryName = (country: string) => arabicCountries[country] || country;
 
   return (
@@ -284,15 +205,14 @@ const AdminDashboard = () => {
       <h1 className="text-3xl font-bold mb-6">{t('adminDashboard')}</h1>
 
       <Tabs defaultValue="trips-pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-3xl">
+        <TabsList className="grid w-full grid-cols-2 max-w-2xl">
           <TabsTrigger value="trips-pending">
             <Plane className="h-4 w-4 mr-2" />
             {t('pendingTrips')}
           </TabsTrigger>
-          <TabsTrigger value="verifications-pending">
-            {t('pendingVerification')}
+          <TabsTrigger value="achievements">
+            {t('tripsReviewedSection')}
           </TabsTrigger>
-          <TabsTrigger value="achievements">{t('adminAchievements')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="trips-pending" className="mt-6">
@@ -359,106 +279,68 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="verifications-pending" className="mt-6">
+        <TabsContent value="achievements" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t('pendingVerification')}</CardTitle>
+              <CardTitle>{t('tripsReviewedSection')}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {isRequestsLoading ? (
+            <CardContent className="space-y-4">
+              {isReviewedTripsLoading ? (
                 <p>{t('loading')}</p>
-              ) : pendingVerificationRequests.length > 0 ? (
-                pendingVerificationRequests.map((req) => (
-                  <VerificationRequestCard key={req.id} request={req} />
-                ))
+              ) : reviewedTrips && reviewedTrips.length > 0 ? (
+                <div className="space-y-4">
+                  {reviewedTrips.map((trip) => (
+                    <div key={trip.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold flex items-center gap-2">
+                            <CountryFlag country={trip.from_country} showName={false} />
+                            {getArabicCountryName(trip.from_country)}
+                            <span className="text-lg">→</span>
+                            <CountryFlag country={trip.to_country} showName={false} />
+                            {getArabicCountryName(trip.to_country)}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {t('traveler')}: {trip.profiles?.first_name}{' '}
+                            {trip.profiles?.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {t('availableWeight')}: {trip.free_kg} kg
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              trip.is_approved
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {trip.is_approved ? t('approved') : t('rejected')}
+                          </span>
+                          {trip.is_deleted_by_user && (
+                            <span className="text-xs text-muted-foreground">
+                              {t('deletedByUser')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {trip.admin_review_notes && (
+                        <p className="text-sm text-muted-foreground pt-3 border-t mt-3">
+                          {t('adminReviewNotes')}: {trip.admin_review_notes}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <p className="text-muted-foreground">{t('noPendingRequests')}</p>
+                <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="achievements" className="mt-6">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('tripsReviewedSection')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isReviewedTripsLoading ? (
-                  <p>{t('loading')}</p>
-                ) : reviewedTrips && reviewedTrips.length > 0 ? (
-                  <div className="space-y-4">
-                    {reviewedTrips.map((trip) => (
-                      <div key={trip.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold flex items-center gap-2">
-                              <CountryFlag country={trip.from_country} showName={false} />
-                              {getArabicCountryName(trip.from_country)}
-                              <span className="text-lg">→</span>
-                              <CountryFlag country={trip.to_country} showName={false} />
-                              {getArabicCountryName(trip.to_country)}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {t('traveler')}: {trip.profiles?.first_name}{' '}
-                              {trip.profiles?.last_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {t('availableWeight')}: {trip.free_kg} kg
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs ${
-                                trip.is_approved
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}
-                            >
-                              {trip.is_approved ? t('approved') : t('rejected')}
-                            </span>
-                            {trip.is_deleted_by_user && (
-                              <span className="text-xs text-muted-foreground">
-                                {t('deletedByUser')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {trip.admin_review_notes && (
-                          <p className="text-sm text-muted-foreground pt-3 border-t mt-3">
-                            {t('adminReviewNotes')}: {trip.admin_review_notes}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('verificationsReviewedSection')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isRequestsLoading ? (
-                  <p>{t('loading')}</p>
-                ) : processedVerificationRequests.length > 0 ? (
-                  processedVerificationRequests.map((req) => (
-                    <VerificationRequestCard key={req.id} request={req} />
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">{t('noReviewedRequests')}</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
       </Tabs>
     </div>
