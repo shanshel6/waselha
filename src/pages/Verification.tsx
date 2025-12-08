@@ -54,9 +54,8 @@ interface FileUploadFieldProps {
   onChange: (file: File | undefined) => void;
 }
 
-/**
- * Pure client-side preview; NO Supabase Storage usage.
- */
+const VERIFICATION_BUCKET = 'verification-docs';
+
 const FileUploadField: React.FC<FileUploadFieldProps> = ({
   label,
   required,
@@ -176,6 +175,46 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
   );
 };
 
+const ensureVerificationBucketExists = async () => {
+  const { data, error } = await supabase.functions.invoke('create-trip-tickets-bucket');
+  if (error) {
+    // we ignore here; this edge function is specific to trip tickets and may not exist
+    console.warn('create-trip-tickets-bucket invoke error (can be ignored for verification):', error);
+  }
+
+  // Ensure verification-docs bucket exists using storage API; if it already exists, createBucket will fail harmlessly.
+  const { error: bucketError } = await supabase.storage.createBucket(VERIFICATION_BUCKET, {
+    public: true,
+  });
+  if (bucketError && !bucketError.message.toLowerCase().includes('already exists')) {
+    throw bucketError;
+  }
+};
+
+const uploadVerificationFile = async (file: File, userId: string, key: string) => {
+  await ensureVerificationBucketExists();
+
+  const ext = file.name.split('.').pop() || 'jpg';
+  const filePath = `${userId}/${key}-${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(VERIFICATION_BUCKET)
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from(VERIFICATION_BUCKET)
+    .getPublicUrl(filePath);
+
+  return publicUrlData.publicUrl;
+};
+
 const Verification = () => {
   const { t } = useTranslation();
   const { user } = useSession();
@@ -203,13 +242,22 @@ const Verification = () => {
     setSubmitting(true);
 
     try {
-      // No storage upload; we only record a verification request exists
+      const [idFrontUrl, idBackUrl, residentialCardUrl, photoIdUrl] =
+        await Promise.all([
+          uploadVerificationFile(values.id_front_file, user.id, 'id-front'),
+          uploadVerificationFile(values.id_back_file, user.id, 'id-back'),
+          values.residential_card_file
+            ? uploadVerificationFile(values.residential_card_file, user.id, 'residential-card')
+            : Promise.resolve<string | null>(null),
+          uploadVerificationFile(values.photo_id_file, user.id, 'photo-id'),
+        ]);
+
       const { error } = await supabase.from('verification_requests').insert({
         user_id: user.id,
-        id_front_url: null,
-        id_back_url: null,
-        residential_card_url: null,
-        photo_id_url: null,
+        id_front_url: idFrontUrl,
+        id_back_url: idBackUrl,
+        residential_card_url: residentialCardUrl,
+        photo_id_url: photoIdUrl,
         status: 'pending'
       });
 
@@ -217,7 +265,6 @@ const Verification = () => {
         throw error;
       }
 
-      // Sync name into profiles table
       await supabase
         .from('profiles')
         .update({
@@ -246,7 +293,6 @@ const Verification = () => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {/* Full name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
@@ -276,7 +322,6 @@ const Verification = () => {
                 />
               </div>
 
-              {/* Documents */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
