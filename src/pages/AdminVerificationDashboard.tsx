@@ -81,7 +81,7 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ status }: { status: 'approved' | 'rejected' }) => {
-      // Update verification_requests row
+      // Update verification_requests row and check for errors
       const { error: requestError } = await supabase
         .from('verification_requests')
         .update({
@@ -90,37 +90,38 @@ const VerificationRequestCard: React.FC<VerificationRequestCardProps> = ({ reque
         })
         .eq('id', request.id);
 
-      if (requestError) throw requestError;
-
-      // If approved: mark profile is_verified = true
-      if (status === 'approved') {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ is_verified: true })
-          .eq('id', request.user_id);
-
-        if (profileError) throw profileError;
+      if (requestError) {
+        console.error('Error updating verification_requests:', requestError);
+        throw requestError;
       }
 
-      // If rejected: ensure profile is_verified = false so user can retry later
-      if (status === 'rejected') {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ is_verified: false })
-          .eq('id', request.user_id);
+      // Update profiles.is_verified based on status
+      const shouldBeVerified = status === 'approved';
 
-        if (profileError) throw profileError;
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ is_verified: shouldBeVerified })
+        .eq('id', request.user_id);
+
+      if (profileError) {
+        console.error('Error updating profiles.is_verified:', profileError);
+        throw profileError;
       }
     },
     onSuccess: (_, variables) => {
+      // Refetch everything that depends on verification
+      queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['profile', request.user_id] });
+      queryClient.invalidateQueries({ queryKey: ['verificationStatus', request.user_id] });
+
       showSuccess(
         t(variables.status === 'approved' ? 'verificationApproved' : 'verificationRejected'),
       );
-      // Refetch list so item moves from pending to reviewed tab (archive behavior)
-      queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
     },
     onError: (err: any) => {
-      showError(err.message);
+      console.error('Verification status update failed:', err);
+      showError(err.message || 'Failed to update verification status');
     },
   });
 
