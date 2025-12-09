@@ -57,13 +57,17 @@ const Navbar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center px-3 sm:px-4">
-        {/* يسار: الإشعارات + الأفاتار أو زر الدخول (ديسكتوب) + زر القائمة (موبايل) */}
+        {/* يسار: الأفاتار + الإشعارات (ديسكتوب) + زر القائمة (موبايل) */}
         <div className="flex items-center gap-3">
-          {/* Desktop: notifications + avatar/login on the left */}
+          {/* Desktop: avatar then notifications on the left */}
           <div className="hidden md:flex items-center gap-2">
-            {session && <Notifications />}
             {session ? (
-              <UserNav />
+              <>
+                {/* الأفاتار أولاً */}
+                <UserNav />
+                {/* ثم أيقونة الإشعارات */}
+                <Notifications />
+              </>
             ) : (
               <Link to="/login">
                 <Button
@@ -77,7 +81,7 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile: فقط زر القائمة على اليسار */}
+          {/* Mobile: زر القائمة على اليسار */}
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -114,12 +118,12 @@ const Navbar: React.FC = () => {
                   ))}
                 </div>
 
-                {/* إشعارات + يوزر داخل القائمة في الموبايل */}
+                {/* داخل القائمة: الأفاتار ثم الإشعارات بنفس الترتيب */}
                 <div className="mt-2 border-t pt-4 flex flex-col gap-3">
                   {session && (
                     <div className="flex items-center gap-2">
-                      <Notifications />
                       <UserNav />
+                      <Notifications />
                     </div>
                   )}
                   {!session && (
@@ -171,7 +175,7 @@ const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* يمين: الشعار دائماً */}
+        {/* يمين: الشعار */}
         <div className="flex items-center justify-end">
           <Link to="/">
             <Brand />
