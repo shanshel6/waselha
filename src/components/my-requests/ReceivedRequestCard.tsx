@@ -162,9 +162,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
   };
 
   // زر فحص المسافر:
-  // يظهر فقط عندما يكون الطلب مقبولاً
-  // و tracking_status == 'sender_photos_uploaded' (تم تحميل صور الطرد من المرسل)
-  // ويكون هناك handler متوفر.
   const canShowInspectionButton =
     req.status === 'accepted' &&
     currentTrackingStatus === 'sender_photos_uploaded' &&
@@ -277,7 +274,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify_between text-xs"
+              className="w-full justify-between text-xs"
               onClick={() => setDetailsExpanded(!detailsExpanded)}
             >
               <span>{t('viewDetails')}</span>
@@ -352,9 +349,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
               {req.status === 'accepted' && (
                 <>
-                  {/* زر تحميل صور فحص المسافر:
-                      - يظهر فقط بعد "تم تحميل صور الطرد من المرسل"
-                      - يختفي بعد إكمال الفحص لأن الحالة تتغيّر إلى traveler_inspection_complete */}
                   {canShowInspectionButton && (
                     <Button
                       size="sm"
@@ -363,9 +357,8 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
                       disabled={trackingUpdateMutation.isPending}
                     >
                       <Camera className="mr-1 h-4 w-4" />
-                      {req.traveler_inspection_photos && req.traveler_inspection_photos.length > 0
-                        ? t('updateInspectionPhotos')
-                        : t('uploadInspectionPhotos')}
+                      {/* النص المطلوب بالعربية مباشرة */}
+                      ارفع صور للاغراض
                     </Button>
                   )}
 
