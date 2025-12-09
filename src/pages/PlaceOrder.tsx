@@ -40,6 +40,7 @@ import { calculateShippingCost } from '@/lib/pricing';
 import { DollarSign, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
+import { useVerificationStatus } from '@/hooks/use-verification-status';
 
 const orderSchema = z.object({
   from_country: z.string().min(1, { message: 'requiredField' }),
@@ -55,6 +56,7 @@ const PlaceOrder = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const navigate = useNavigate();
+  const { data: verificationInfo, isLoading: isVerificationLoading } = useVerificationStatus();
   const [showHelper, setShowHelper] = useState(false);
   const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
 
@@ -117,6 +119,13 @@ const PlaceOrder = () => {
       return;
     }
 
+    // منع إنشاء طلب شحن عام بدون توثيق
+    if (verificationInfo?.status !== 'approved') {
+      showError(t('verificationRequiredTitle'));
+      navigate('/verification');
+      return;
+    }
+
     try {
       const { error } = await supabase.from('general_orders').insert({
         user_id: user.id,
@@ -139,6 +148,14 @@ const PlaceOrder = () => {
       showError(t('orderSubmittedError'));
     }
   };
+
+  if (isVerificationLoading) {
+    return (
+      <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900 flex items-center justify-center">
+        <span className="text-sm text-muted-foreground">{t('loading')}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -333,7 +350,7 @@ const PlaceOrder = () => {
                               IQD
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {t('pricePerKg')}:{' '}
+                              {t('pricePerKg')}:{" "}
                               {baseCost.pricePerKgUSD.toFixed(2)} USD/kg
                             </p>
                           </>

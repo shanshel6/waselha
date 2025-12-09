@@ -27,6 +27,7 @@ import { Slider } from '@/components/ui/slider';
 import TicketUpload from '@/components/TicketUpload';
 import { useVerificationCheck } from '@/hooks/use-verification-check';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
+import { useVerificationStatus } from '@/hooks/use-verification-status';
 
 const MIN_KG = 1;
 const MAX_KG = 50;
@@ -49,7 +50,8 @@ const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
-  const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(false);
+  const { isVerified, isLoading: isVerificationLoadingLegacy } = useVerificationCheck(false);
+  const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [ticketFile, setTicketFile] = useState<File | null>(null);
   const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
@@ -126,9 +128,13 @@ const AddTrip = () => {
       return;
     }
 
-    if (!isVerified) {
+    // نستخدم حالة التحقق الفعلية: إما من useVerificationCheck أو useVerificationStatus
+    const verifiedByLegacyHook = isVerified;
+    const verifiedByStatusHook = verificationInfo?.status === 'approved';
+
+    if (!verifiedByLegacyHook && !verifiedByStatusHook) {
       showError(t('verificationRequiredTitle'));
-      navigate('/my-profile');
+      navigate('/verification');
       return;
     }
 
@@ -174,7 +180,7 @@ const AddTrip = () => {
     }
   };
 
-  if (isVerificationLoading) {
+  if (isVerificationLoadingLegacy || isVerificationStatusLoading) {
     return (
       <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -297,7 +303,7 @@ const AddTrip = () => {
                 )}
               />
 
-              {/* Free kg slider with swapped labels */}
+              {/* Free kg slider */}
               <FormField
                 control={form.control}
                 name="free_kg"
@@ -316,7 +322,6 @@ const AddTrip = () => {
                           onValueChange={(val) => field.onChange(val[0])}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          {/* الآن 50kg على اليسار و 1kg على اليمين */}
                           <span>50 kg</span>
                           <span>1 kg</span>
                         </div>
