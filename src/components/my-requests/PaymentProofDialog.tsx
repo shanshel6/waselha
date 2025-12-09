@@ -78,11 +78,6 @@ interface PaymentProofDialogProps {
 
 const PAYMENT_BUCKET = 'payment-proofs';
 
-/**
- * حوار يسمح للمرسل برفع لقطة شاشة لإثبات الدفع.
- * - "سوبر كي" (qi card) مع إظهار QR ورقم هاتف.
- * - "زين كاش" مع إظهار QR ورقم حساب.
- */
 const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
   request,
   isOpen,
@@ -207,7 +202,8 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      {/* نجعل المحتوى بأقصى ارتفاع 90% من الشاشة وقابل للتمرير داخلياً */}
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-lg">
             {t('placeOrder')} – الدفع اليدوي
@@ -217,7 +213,8 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        {/* جسم قابل للتمرير على الموبايل */}
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
           {/* amount */}
           <Card className="bg-primary/5 border-primary/30">
             <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -286,7 +283,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
                   />
                 </div>
                 <p className="text-xs mt-2">
-                  رقم الهاتف للدفع:{" "}
+                  رقم الهاتف للدفع:{' '}
                   <span className="font-mono font-semibold">{superKPhone}</span>
                 </p>
               </CardContent>
@@ -308,7 +305,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
                   />
                 </div>
                 <p className="text-xs mt-2">
-                  رقم حساب زين كاش:{" "}
+                  رقم حساب زين كاش:{' '}
                   <span className="font-mono font-semibold">{zainAccount}</span>
                 </p>
               </CardContent>
@@ -335,7 +332,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
           </div>
 
           {/* reference */}
-          <div className="space-y-1">
+          <div className="space-y-1 pb-2">
             <Label className="text-sm">رقم الإيصال / ملاحظات (اختياري)</Label>
             <Textarea
               rows={2}
@@ -346,7 +343,8 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
           </div>
         </div>
 
-        <DialogFooter>
+        {/* أزرار ثابتة في أسفل الحوار، تبقى ظاهرة على الموبايل */}
+        <DialogFooter className="mt-2 pt-2 border-t">
           <Button
             type="button"
             variant="outline"
