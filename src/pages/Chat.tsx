@@ -24,6 +24,46 @@ const messageSchema = z.object({
   content: z.string().min(1),
 });
 
+interface ProfileRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  is_verified: boolean;
+}
+
+interface TripRow {
+  id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  user_id: string;
+  free_kg: number;
+}
+
+interface RequestRow {
+  id: string;
+  trip_id: string;
+  sender_id: string;
+  description: string;
+  weight_kg: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  destination_city: string;
+  receiver_details: string;
+  tracking_status: string;
+  created_at: string;
+  general_order_id: string | null;
+  trips: TripRow | null;
+}
+
+interface ChatItemDetails {
+  type: 'trip_request';
+  data: RequestRow;
+  isCurrentUserSender: boolean;
+  senderProfile: ProfileRow | null;
+  travelerProfile: ProfileRow | null;
+}
+
 const Chat = () => {
   const { t } = useTranslation();
   const { requestId } = useParams();
@@ -63,6 +103,7 @@ const Chat = () => {
     }
   });
 
+  // Get chat row by requestId
   const { data: chatData, isLoading: isLoadingChat } = useQuery({
     queryKey: ['chatIdForRequest', requestId],
     queryFn: async () => {
@@ -82,41 +123,85 @@ const Chat = () => {
 
   const chatId = chatData?.id;
 
-  const { data: itemDetails, isLoading: isLoadingDetails, error: detailsError } = useQuery({
+  // Fetch request + trip + profiles (batched)
+  const { data: itemDetails, isLoading: isLoadingDetails, error: detailsError } = useQuery<ChatItemDetails | null, Error>({
     queryKey: ['itemDetailsForChat', requestId],
     queryFn: async () => {
       if (!requestId || !user) return null;
 
+      // 1) request + trip
       const { data: request, error: requestError } = await supabase
         .from('requests')
-        .select(`
-          id, trip_id, sender_id, description, weight_kg, status, destination_city, receiver_details, tracking_status, created_at, general_order_id,
-          trips( id, from_country, to_country, trip_date, user_id, free_kg ),
-          sender_profile:profiles!requests_sender_id_fkey(id, first_name, last_name, phone, is_verified),
-          traveler_profile:profiles!inner(id, first_name, last_name, phone, is_verified)
-        `)
+        .select(
+          `
+          id,
+          trip_id,
+          sender_id,
+          description,
+          weight_kg,
+          status,
+          destination_city,
+          receiver_details,
+          tracking_status,
+          created_at,
+          general_order_id,
+          trips (
+            id,
+            from_country,
+            to_country,
+            trip_date,
+            user_id,
+            free_kg
+          )
+        `
+        )
         .eq('id', requestId)
         .single();
 
       if (requestError && requestError.code !== 'PGRST116') throw requestError;
-      
-      if (request) {
-        const isCurrentUserSender = user.id === request.sender_id;
-        const otherUser = isCurrentUserSender ? request.traveler_profile : request.sender_profile;
+      if (!request) return null;
 
-        return {
-          type: 'trip_request',
-          data: request,
-          isCurrentUserSender,
-          otherUser,
-        };
+      const typedRequest = request as RequestRow;
+      const isCurrentUserSender = user.id === typedRequest.sender_id;
+      const tripUserId = typedRequest.trips?.user_id;
+
+      // 2) fetch sender & traveler profiles in batch (if IDs exist)
+      const profileIds: string[] = [];
+      if (typedRequest.sender_id) profileIds.push(typedRequest.sender_id);
+      if (tripUserId && tripUserId !== typedRequest.sender_id) profileIds.push(tripUserId);
+
+      let senderProfile: ProfileRow | null = null;
+      let travelerProfile: ProfileRow | null = null;
+
+      if (profileIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, phone, is_verified')
+          .in('id', profileIds);
+
+        if (profilesError && profilesError.code !== 'PGRST116') {
+          throw profilesError;
+        }
+
+        const profiles = (profilesData || []) as ProfileRow[];
+        senderProfile = profiles.find(p => p.id === typedRequest.sender_id) || null;
+        travelerProfile = tripUserId
+          ? profiles.find(p => p.id === tripUserId) || null
+          : null;
       }
 
-      return null;
+      return {
+        type: 'trip_request' as const,
+        data: typedRequest,
+        isCurrentUserSender,
+        senderProfile,
+        travelerProfile,
+      };
     },
     enabled: !!requestId && !!user,
   });
 
+  // Messages
   const { data: messages, isLoading: isLoadingMessages } = useQuery({
     queryKey: ['messages', chatId],
     queryFn: async () => {
@@ -147,6 +232,7 @@ const Chat = () => {
     return null;
   }, [itemDetails]);
 
+  // realtime & read-status
   useEffect(() => {
     if (!chatId) return;
 
@@ -178,6 +264,7 @@ const Chat = () => {
     };
   }, [chatId, queryClient, user?.id]);
 
+  // scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -246,11 +333,15 @@ const Chat = () => {
     return <div className="container p-4 flex items-center justify-center h-full">{t('tripDetailsNotAvailable')}</div>;
   }
 
-  const otherUserName = itemDetails.otherUser
-    ? `${itemDetails.otherUser.first_name || ''} ${itemDetails.otherUser.last_name || ''}`.trim() || t('user')
+  const otherUser = itemDetails.isCurrentUserSender
+    ? itemDetails.travelerProfile
+    : itemDetails.senderProfile;
+
+  const otherUserName = otherUser
+    ? `${otherUser.first_name || ''} ${otherUser.last_name || ''}`.trim() || t('user')
     : t('user');
-  const otherUserPhone = itemDetails.otherUser?.phone || t('noPhoneProvided');
-  const otherUserVerified = !!itemDetails.otherUser?.is_verified;
+  const otherUserPhone = otherUser?.phone || t('noPhoneProvided');
+  const otherUserVerified = !!otherUser?.is_verified;
   
   const isTripRequest = itemDetails.type === 'trip_request';
   const request = isTripRequest ? itemDetails.data : null;
@@ -297,7 +388,7 @@ const Chat = () => {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
+          <div className="flex flex-col sm:flex-row sm:justify_between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
             <div className="flex items-center gap-2">
               <Plane className="h-4 w-4 text-primary/80" />
               <span>{tripRoute}</span>
@@ -324,7 +415,7 @@ const Chat = () => {
           </div>
           
           {isAccepted && (
-            <div className="mt-2 p-2 bg-primary/10 rounded-md text-sm font-medium text-primary flex items-center gap-2">
+            <div className="mt-2 p-2 bg-primary/10 rounded-md text-sm font_medium text-primary flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               {t('trackingStatus')}: {t(trackingStatus)}
             </div>
