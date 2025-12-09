@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Settings, Plane, MessageCircle } from 'lucide-react';
+import { LogOut, User, Settings, Plane, MessageCircle, HelpCircle } from 'lucide-react';
 import type { Profile } from '@/hooks/use-profile';
 
 interface UserNavProps {
@@ -52,7 +52,7 @@ const UserNav = ({ profile }: UserNavProps) => {
     if (user.email) {
       return user.email[0].toUpperCase();
     }
-    return 'U'; // Unknown
+    return 'U';
   };
 
   const userName = profile?.first_name || user.email || t('myProfile');
@@ -110,6 +110,12 @@ const UserNav = ({ profile }: UserNavProps) => {
             <Link to="/contact" className="flex items-center cursor-pointer">
               <MessageCircle className="mr-2 h-4 w-4" />
               <span>تواصل معنا</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/faq" className="flex items-center cursor-pointer">
+              <HelpCircle className="mr-2 h-4 w-4" />
+              <span>الأسئلة الشائعة</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

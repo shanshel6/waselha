@@ -18,22 +18,19 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const { data: profile } = useProfile();
 
+  // Public navigation (top center)
   const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
+    { name: t('myRequests'), path: '/my-requests' }, // "طلباتي" بجانب "الرحلات"
     { name: 'عن وصلها', path: '/about' },
-    { name: 'الأسئلة الشائعة', path: '/faq' },
   ];
 
-  const authenticatedNavItems = [
-    { name: t('myRequests'), path: '/my-requests' },
-  ];
-
+  // For mobile sidebar we still show profile-related links when logged in
   const mobileNavItems = [
     ...publicNavItems,
     ...(session
       ? [
-          { name: t('myRequests'), path: '/my-requests' },
           { name: t('myFlights'), path: '/my-flights' },
           { name: t('myProfile'), path: '/my-profile' },
         ]
@@ -65,9 +62,7 @@ const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center gap-2">
             {session ? (
               <>
-                {/* الأفاتار أولاً */}
                 <UserNav profile={profile} />
-                {/* ثم أيقونة الإشعارات */}
                 <Notifications />
               </>
             ) : (
@@ -120,7 +115,6 @@ const Navbar: React.FC = () => {
                   ))}
                 </div>
 
-                {/* داخل القائمة: الأفاتار ثم الإشعارات بنفس الترتيب */}
                 <div className="mt-2 border-t pt-4 flex flex-col gap-3">
                   {session && (
                     <div className="flex items-center gap-2">
@@ -158,22 +152,6 @@ const Navbar: React.FC = () => {
                 </span>
               </Link>
             ))}
-
-            {session &&
-              authenticatedNavItems.map((item) => (
-                <Link key={item.path} to={item.path}>
-                  <span
-                    className={cn(
-                      'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
-                      isActive(item.path)
-                        ? 'text-primary bg-primary/10'
-                        : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
-                    )}
-                  >
-                    {item.name}
-                  </span>
-                </Link>
-              ))}
           </div>
         </div>
 
