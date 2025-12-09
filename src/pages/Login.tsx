@@ -6,7 +6,6 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
@@ -35,7 +34,6 @@ function Login() {
     });
 
     if (error) {
-      // نعتمد على toasts العامة في التطبيق إذا أردت لاحقاً
       console.error('OAuth error:', error.message);
     }
   };
@@ -186,7 +184,6 @@ function Login() {
       </div>
 
       <div className="mt-6 flex flex-col items-center gap-2 text-xs text-muted-foreground">
-        <MadeWithDyad />
         {!user && (
           <div className="inline-flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/60" />
