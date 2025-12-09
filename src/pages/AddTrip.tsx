@@ -297,7 +297,7 @@ const AddTrip = () => {
                 )}
               />
 
-              {/* Free kg slider: بصرياً من اليمين لليسار عبر direction:ltr مع نص 1–50 عادي */}
+              {/* Free kg slider with swapped labels */}
               <FormField
                 control={form.control}
                 name="free_kg"
@@ -307,7 +307,7 @@ const AddTrip = () => {
                       {t('freeKg')} ({field.value} kg)
                     </FormLabel>
                     <FormControl>
-                      <div className="mt-2" style={{ direction: 'ltr' }}>
+                      <div className="mt-2">
                         <Slider
                           min={MIN_KG}
                           max={MAX_KG}
@@ -315,10 +315,10 @@ const AddTrip = () => {
                           value={[field.value]}
                           onValueChange={(val) => field.onChange(val[0])}
                         />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1" style={{ direction: 'rtl' }}>
-                          {/* 1kg على اليسار بصرياً، 50kg على اليمين */}
-                          <span>1 kg</span>
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          {/* الآن 50kg على اليسار و 1kg على اليمين */}
                           <span>50 kg</span>
+                          <span>1 kg</span>
                         </div>
                       </div>
                     </FormControl>
