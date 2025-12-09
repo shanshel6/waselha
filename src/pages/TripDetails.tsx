@@ -120,11 +120,16 @@ const TripDetails = () => {
 
   const priceCalculation = useMemo(() => {
     if (!trip) return null;
-    return calculateShippingCost(
+    const result = calculateShippingCost(
       trip.from_country,
       trip.to_country,
       weight || 0,
     );
+    return {
+      pricePerKgUSD: result.pricePerKgUSD,
+      totalPriceUSD: result.totalPriceUSD,
+      error: result.error,
+    };
   }, [weight, trip]);
 
   const handleRequestSubmit = async () => {
@@ -293,30 +298,18 @@ const TripDetails = () => {
                         <CardTitle className="text-lg mb-2 text-center">
                           {t('estimatedCost')}
                         </CardTitle>
-                        <div className="flex justify-around text-center">
+                        <div className="flex justify-center text-center">
                           <div>
                             <p className="text-sm text-muted-foreground">
                               Total (USD)
                             </p>
                             <p className="font-bold text-xl">
-                              $
-                              {priceCalculation.totalPriceUSD.toFixed(2)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              Total (IQD)
-                            </p>
-                            <p className="font-bold text-xl">
-                              {priceCalculation.totalPriceIQD.toLocaleString(
-                                'en-US',
-                              )}
+                              ${priceCalculation.totalPriceUSD.toFixed(2)}
                             </p>
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground text-center mt-2">
-                          {t('pricePerKg')}:{' '}
-                          ${priceCalculation.pricePerKgUSD.toFixed(2)}
+                          {t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}
                         </p>
                       </Card>
                     )}

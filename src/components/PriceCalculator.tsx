@@ -15,11 +15,15 @@ const PriceCalculator = () => {
   const [weight, setWeight] = useState<number>(1);
 
   const calculation = useMemo(() => {
-    // Ensure one of the countries is Iraq for a valid calculation based on business rules
     if (origin !== 'Iraq' && destination !== 'Iraq') {
-      return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: t('eitherFromOrToIraq') };
+      return { pricePerKgUSD: 0, totalPriceUSD: 0, error: t('eitherFromOrToIraq') };
     }
-    return calculateShippingCost(origin, destination, weight);
+    const result = calculateShippingCost(origin, destination, weight);
+    return {
+      pricePerKgUSD: result.pricePerKgUSD,
+      totalPriceUSD: result.totalPriceUSD,
+      error: result.error,
+    };
   }, [origin, destination, weight, t]);
 
   const handleWeightChange = (value: number[]) => {
@@ -94,12 +98,6 @@ const PriceCalculator = () => {
                   <p className="text-4xl font-bold text-foreground flex items-center justify-center">
                     <DollarSign className="h-7 w-7 mr-1 text-primary" />
                     {calculation.totalPriceUSD.toFixed(2)}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <span className="text-sm text-muted-foreground">Total (IQD)</span>
-                  <p className="text-2xl font-bold text-foreground">
-                    {calculation.totalPriceIQD.toLocaleString('en-US')} IQD
                   </p>
                 </div>
                 <div className="text-center border-t pt-2 mt-2">
