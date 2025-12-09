@@ -1,4 +1,3 @@
-= payment_done.">
 "use client";
 
 import React, { useState } from 'react';
@@ -36,7 +35,68 @@ import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 import VerifiedBadge from '@/components/VerifiedBadge';
 
-// types unchanged...
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  is_verified?: boolean;
+}
+
+interface Trip {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  free_kg: number;
+  charge_per_kg: number | null;
+  traveler_location: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface RequestWithPayment {
+  id: string;
+  trip_id: string;
+  sender_id: string;
+  description: string;
+  weight_kg: number;
+  destination_city: string;
+  receiver_details: string;
+  handover_location: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  updated_at: string | null;
+  trips: Trip;
+  cancellation_requested_by: string | null;
+  proposed_changes: { weight_kg: number; description: string } | null;
+  sender_item_photos: string[] | null;
+  traveler_inspection_photos?: string[] | null;
+  tracking_status: RequestTrackingStatus;
+  general_order_id: string | null;
+  type: 'trip_request';
+  traveler_profile?: Profile | null;
+  payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
+  payment_method?: 'zaincash' | 'qicard' | 'other' | null;
+  payment_amount_iqd?: number | null;
+  payment_proof_url?: string | null;
+  payment_reference?: string | null;
+}
+
+interface TripRequestCardProps {
+  req: RequestWithPayment;
+  priceCalculation: ReturnType<typeof calculateShippingCost> | null;
+  onCancelRequest: (request: RequestWithPayment) => void;
+  deleteRequestMutation: any;
+  onCancelAcceptedRequest: (request: RequestWithPayment) => void;
+  onEditRequest: (request: RequestWithPayment) => void;
+  onUploadSenderPhotos: (request: RequestWithPayment) => void;
+  onTrackingUpdate: (request: RequestWithPayment, newStatus: RequestTrackingStatus) => void;
+  trackingUpdateMutation: any;
+  onOpenPaymentDialog: (request: RequestWithPayment) => void;
+  t: (key: string, options?: any) => string;
+}
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -92,7 +152,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const travelerName =
     `${req.traveler_profile?.first_name || ''} ${req.traveler_profile?.last_name || ''}`.trim() ||
     t('traveler');
-  const travelerIsVerified = !!req.traveler_profile?.id && false; // not wired to is_verified yet
+  const travelerIsVerified = !!req.traveler_profile?.is_verified;
   const fromCountry = req.trips?.from_country || 'N/A';
   const toCountry = req.trips?.to_country || 'N/A';
   const tripDate = req.trips?.trip_date;
@@ -106,9 +166,9 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const showPayButton =
     req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
 
-  // We only allow sender photo upload once tracking >= payment_done
-  const paymentDoneStage = TRACKING_STAGES.find(s => s.key === 'payment_done');
-  const currentStage = TRACKING_STAGES.find(s => s.key === currentTrackingStatus);
+  // Only allow sender photo upload once tracking >= payment_done
+  const paymentDoneStage = TRACKING_STAGES.find((s) => s.key === 'payment_done');
+  const currentStage = TRACKING_STAGES.find((s) => s.key === currentTrackingStatus);
   const isPaymentStepReached =
     !!paymentDoneStage && !!currentStage && currentStage.order >= paymentDoneStage.order;
 
@@ -301,7 +361,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => onOpenPaymentDialog(req as Request)}
+                  onClick={() => onOpenPaymentDialog(req)}
                 >
                   <Wallet className="mr-2 h-4 w-4" />
                   إرسال إثبات الدفع
