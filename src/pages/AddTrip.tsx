@@ -182,15 +182,6 @@ const AddTrip = () => {
     );
   }
 
-  // Helper to map real value -> displayed slider value (right-to-left)
-  const toDisplayed = (real: number) => {
-    return MAX_KG - (real - MIN_KG);
-  };
-
-  const fromDisplayed = (displayed: number) => {
-    return MAX_KG - (displayed - MIN_KG);
-  };
-
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <Card className="max-w-2xl mx-auto">
@@ -306,40 +297,34 @@ const AddTrip = () => {
                 )}
               />
 
-              {/* Free kg slider (visual RTL) */}
+              {/* Free kg slider: بصرياً من اليمين لليسار عبر direction:ltr مع نص 1–50 عادي */}
               <FormField
                 control={form.control}
                 name="free_kg"
-                render={({ field }) => {
-                  const displayedValue = toDisplayed(field.value || MIN_KG);
-                  return (
-                    <FormItem>
-                      <FormLabel>
-                        {t('freeKg')} ({field.value} kg)
-                      </FormLabel>
-                      <FormControl>
-                        <div className="mt-2">
-                          <Slider
-                            min={MIN_KG}
-                            max={MAX_KG}
-                            step={1}
-                            value={[displayedValue]}
-                            onValueChange={(val) => {
-                              const real = fromDisplayed(val[0]);
-                              field.onChange(real);
-                            }}
-                          />
-                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            {/* 1kg على اليسار، 50kg على اليمين في النص */}
-                            <span>1 kg</span>
-                            <span>50 kg</span>
-                          </div>
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('freeKg')} ({field.value} kg)
+                    </FormLabel>
+                    <FormControl>
+                      <div className="mt-2" style={{ direction: 'ltr' }}>
+                        <Slider
+                          min={MIN_KG}
+                          max={MAX_KG}
+                          step={1}
+                          value={[field.value]}
+                          onValueChange={(val) => field.onChange(val[0])}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1" style={{ direction: 'rtl' }}>
+                          {/* 1kg على اليسار بصرياً، 50kg على اليمين */}
+                          <span>1 kg</span>
+                          <span>50 kg</span>
                         </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               {/* Traveler location */}
