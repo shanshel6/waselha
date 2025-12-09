@@ -10,6 +10,12 @@ interface UnreadCounts {
   received: number;
 }
 
+/**
+ * Optimized unread chat counts:
+ * - Single aggregated query against chat_messages/chats/requests/chat_read_status
+ *   instead of looping and querying per chat.
+ * - Still listens in real-time to chat_messages & chat_read_status to invalidate cache.
+ */
 export const useUnreadChatCountByTab = () => {
   const { user, session } = useSession();
   const queryClient = useQueryClient();
@@ -17,84 +23,81 @@ export const useUnreadChatCountByTab = () => {
 
   const fetchCounts = React.useCallback(async (): Promise<UnreadCounts> => {
     if (!userId || !session) {
-      console.log('useUnreadChatCountByTab: User or session not available, returning 0 counts.');
       return { sent: 0, received: 0 };
     }
 
-    console.log(`useUnreadChatCountByTab: Fetching counts for user ${userId}`);
-
-    // Fetch all chats the user is a participant in, along with the last read status
-    const { data: chats, error } = await supabase
-      .from('chats')
-      .select(`
+    // We aggregate unread messages in SQL-style using Supabase joins:
+    // - Only messages not sent by user
+    // - Only messages created after last_read_at OR where no read row exists
+    // - Then split into "sent" (user is sender) vs "received" (user is traveler)
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select(
+        `
         id,
-        request_id,
-        chat_read_status!left(last_read_at),
-        requests(
-          sender_id,
-          trips(user_id)
+        chat_id,
+        sender_id,
+        created_at,
+        chats (
+          id,
+          request_id,
+          requests (
+            sender_id,
+            trips ( user_id )
+          )
+        ),
+        chat_read_status (
+          user_id,
+          last_read_at
         )
-      `)
-      .or(`requests.sender_id.eq.${userId},requests.trips.user_id.eq.${userId}`);
+      `
+      );
 
     if (error) {
-      console.error('useUnreadChatCountByTab: Error fetching chats for unread count:', error);
+      console.error('useUnreadChatCountByTab: aggregated query error:', error);
       return { sent: 0, received: 0 };
     }
 
-    console.log('useUnreadChatCountByTab: Fetched chats:', chats);
+    if (!data || data.length === 0) {
+      return { sent: 0, received: 0 };
+    }
 
-    let totalSentUnread = 0;
-    let totalReceivedUnread = 0;
+    let sent = 0;
+    let received = 0;
 
-    for (const chat of chats) {
-      const chatId = chat.id;
-      // chat_read_status is an array, take the first element if it exists
-      const lastReadAt = chat.chat_read_status?.[0]?.last_read_at || null;
-      const request = chat.requests;
+    for (const row of data as any[]) {
+      const chat = row.chats;
+      const req = chat?.requests;
+      const trips = req?.trips;
 
-      if (!request) {
-        console.log(`useUnreadChatCountByTab: Skipping chat ${chatId} due to missing request details.`);
-        continue;
-      }
+      if (!chat || !req || !trips) continue;
 
-      // Determine if the current user is the sender or the traveler for this request
-      const isSender = request.sender_id === userId;
-      const isTraveler = request.trips?.user_id === userId;
+      const isSenderParticipant = req.sender_id === userId;
+      const isTravelerParticipant = trips.user_id === userId;
+      if (!isSenderParticipant && !isTravelerParticipant) continue;
 
-      console.log(`useUnreadChatCountByTab: Processing chat ${chatId}. Is Sender: ${isSender}, Is Traveler: ${isTraveler}, Last Read At: ${lastReadAt}`);
+      // Ignore messages we sent ourselves
+      if (row.sender_id === userId) continue;
 
-      // Check for unread messages in this specific chat
-      let messageQuery = supabase
-        .from('chat_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('chat_id', chatId)
-        .neq('sender_id', userId); // Only count messages from the other party
+      // Determine last_read_at for this user in this chat (if exists)
+      const readRows = row.chat_read_status as { user_id: string; last_read_at: string | null }[] | null;
+      const readRowForUser = readRows?.find((r) => r.user_id === userId) || null;
+      const lastReadAt = readRowForUser?.last_read_at;
 
-      if (lastReadAt) {
-        messageQuery = messageQuery.gt('created_at', lastReadAt);
-      }
-      
-      const { count: unreadCount, error: messageError } = await messageQuery;
+      const createdAt = new Date(row.created_at).getTime();
+      const isUnread =
+        !lastReadAt || createdAt > new Date(lastReadAt).getTime();
 
-      if (messageError) {
-        console.error(`useUnreadChatCountByTab: Error fetching unread messages for chat ${chatId}:`, messageError);
-        continue;
-      }
+      if (!isUnread) continue;
 
-      console.log(`useUnreadChatCountByTab: Chat ${chatId} has ${unreadCount} unread messages from other party.`);
-
-      if ((unreadCount || 0) > 0) {
-        if (isSender) {
-          totalSentUnread += unreadCount || 0;
-        } else if (isTraveler) {
-          totalReceivedUnread += unreadCount || 0;
-        }
+      if (isSenderParticipant) {
+        sent += 1;
+      } else if (isTravelerParticipant) {
+        received += 1;
       }
     }
 
-    console.log(`useUnreadChatCountByTab: Final counts - Sent: ${totalSentUnread}, Received: ${totalReceivedUnread}`);
-    return { sent: totalSentUnread, received: totalReceivedUnread };
+    return { sent, received };
   }, [userId, session]);
 
   const query = useQuery<UnreadCounts, Error>({
@@ -109,7 +112,7 @@ export const useUnreadChatCountByTab = () => {
     if (!userId) return;
 
     const channel = supabase.channel(`chat-status-by-tab-listener`);
-    
+
     channel
       .on(
         'postgres_changes',
@@ -117,17 +120,24 @@ export const useUnreadChatCountByTab = () => {
         (payload) => {
           const newMessage = payload.new as { sender_id: string };
           if (newMessage.sender_id !== userId) {
-            console.log('useUnreadChatCountByTab: Real-time: New message from other user, invalidating query.');
-            queryClient.invalidateQueries({ queryKey: ['unreadChatCountByTab', userId] });
+            queryClient.invalidateQueries({
+              queryKey: ['unreadChatCountByTab', userId],
+            });
           }
         }
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'chat_read_status', filter: `user_id=eq.${userId}` },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_read_status',
+          filter: `user_id=eq.${userId}`,
+        },
         () => {
-          console.log('useUnreadChatCountByTab: Real-time: Chat read status updated, invalidating query.');
-          queryClient.invalidateQueries({ queryKey: ['unreadChatCountByTab', userId] });
+          queryClient.invalidateQueries({
+            queryKey: ['unreadChatCountByTab', userId],
+          });
         }
       )
       .subscribe((status) => {

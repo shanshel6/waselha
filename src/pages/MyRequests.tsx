@@ -5,7 +5,16 @@ import { useTranslation } from 'react-i18next';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { ReceivedRequestsTab } from '@/components/my-requests/ReceivedRequestsTab';
 import { SentRequestsTab } from '@/components/my-requests/SentRequestsTab';
 import { EditRequestModal } from '@/components/my-requests/EditRequestModal';
@@ -16,12 +25,31 @@ import { PlusCircle } from 'lucide-react';
 import { useUnreadChatCountByTab } from '@/hooks/use-unread-chat-count-by-tab';
 import { Badge } from '@/components/ui/badge';
 import { useRequestManagement } from '@/hooks/use-request-management';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const ListSkeleton: React.FC = () => (
+  <div className="space-y-3">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <Card key={i}>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-2/3" />
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
 
 const MyRequests = () => {
   const { t } = useTranslation();
-  const { user } = useSession();
-  const { data: unreadCounts } = useUnreadChatCountByTab();
-  
+  const { user, isLoading: isSessionLoading } = useSession();
+  const { data: unreadCounts, isLoading: isUnreadLoading } = useUnreadChatCountByTab();
+
   const {
     itemToCancel,
     requestToEdit,
@@ -55,9 +83,11 @@ const MyRequests = () => {
     handleConfirmTrackingUpdate,
   } = useRequestManagement();
 
+  const isLoadingGlobal = isSessionLoading || isUnreadLoading;
+
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-      {/* Header: أفضل ترتيب للموبايل */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -96,34 +126,42 @@ const MyRequests = () => {
         </TabsList>
         
         <TabsContent value="received" className="mt-4">
-          <ReceivedRequestsTab 
-            user={user} 
-            onUpdateRequest={handleUpdateRequest} 
-            updateRequestMutation={updateRequestMutation} 
-            onCancelAcceptedRequest={handleAcceptedRequestCancel}
-            onReviewChanges={reviewChangesMutation.mutate}
-            reviewChangesMutation={reviewChangesMutation}
-            onUploadInspectionPhotos={setRequestForInspection}
-            onTrackingUpdate={handleTrackingUpdate}
-            trackingUpdateMutation={trackingUpdateMutation}
-          />
+          {isLoadingGlobal || !user ? (
+            <ListSkeleton />
+          ) : (
+            <ReceivedRequestsTab 
+              user={user} 
+              onUpdateRequest={handleUpdateRequest} 
+              updateRequestMutation={updateRequestMutation} 
+              onCancelAcceptedRequest={handleAcceptedRequestCancel}
+              onReviewChanges={reviewChangesMutation.mutate}
+              reviewChangesMutation={reviewChangesMutation}
+              onUploadInspectionPhotos={setRequestForInspection}
+              onTrackingUpdate={handleTrackingUpdate}
+              trackingUpdateMutation={trackingUpdateMutation}
+            />
+          )}
         </TabsContent>
         
         <TabsContent value="sent" className="mt-4">
-          <SentRequestsTab 
-            user={user} 
-            onCancelRequest={setItemToCancel} 
-            deleteRequestMutation={deleteRequestMutation} 
-            onCancelAcceptedRequest={handleAcceptedRequestCancel}
-            onEditRequest={setRequestToEdit}
-            onUploadSenderPhotos={handleSenderPhotoUpload}
-            onTrackingUpdate={handleTrackingUpdate}
-            trackingUpdateMutation={trackingUpdateMutation}
-          />
+          {isLoadingGlobal || !user ? (
+            <ListSkeleton />
+          ) : (
+            <SentRequestsTab 
+              user={user} 
+              onCancelRequest={setItemToCancel} 
+              deleteRequestMutation={deleteRequestMutation} 
+              onCancelAcceptedRequest={handleAcceptedRequestCancel}
+              onEditRequest={setRequestToEdit}
+              onUploadSenderPhotos={handleSenderPhotoUpload}
+              onTrackingUpdate={handleTrackingUpdate}
+              trackingUpdateMutation={trackingUpdateMutation}
+            />
+          )}
         </TabsContent>
       </Tabs>
       
-      {/* Dialogs تبقى كما هي */}
+      {/* Dialogs (unchanged except imports kept) */}
       <AlertDialog open={!!itemToCancel} onOpenChange={(open) => !open && setItemToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

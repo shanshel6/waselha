@@ -25,6 +25,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const searchSchema = z.object({
   from_country: z.string().optional(),
@@ -34,6 +35,26 @@ const searchSchema = z.object({
 type SearchFilters = z.infer<typeof searchSchema>;
 
 const TRIPS_PER_PAGE = 9;
+
+const TripsListSkeleton: React.FC = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <Card key={i} className="flex flex-col">
+        <CardHeader>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-32" />
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
 
 const Trips = () => {
   const { t } = useTranslation();
@@ -173,7 +194,7 @@ const Trips = () => {
 
   const renderContent = () => {
     if (isLoading) {
-      return <p>{t('loadingTrips')}</p>;
+      return <TripsListSkeleton />;
     }
 
     if (error) {
@@ -256,7 +277,6 @@ const Trips = () => {
           <h1 className="text-4xl font-bold">{t('trips')}</h1>
           <p className="text-muted-foreground">{t('searchDescription')}</p>
         </div>
-        {/* زر إضافة رحلة جديدة على اليمين */}
         <Link to="/add-trip">
           <Button size="lg">
             <PlusCircle className="mr-2 h-5 w-5" />

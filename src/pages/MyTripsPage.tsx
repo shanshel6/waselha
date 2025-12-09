@@ -22,6 +22,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Trip {
   id: string;
@@ -45,6 +46,26 @@ interface Trip {
 }
 
 const TRIPS_PER_PAGE = 9;
+
+const TripsSkeleton: React.FC = () => (
+  <div className="space-y-4">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <Card key={i} className="shadow-sm">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-28" />
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
 
 const MyTripsPage = () => {
   const { t } = useTranslation();
@@ -149,8 +170,11 @@ const MyTripsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] flex items-center justify-center">
-        <p className="text-gray-600 dark:text-gray-400">{t('loadingTrips')}</p>
+      <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
+        <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myFlights')}</h1>
+        <div className="max-w-4xl mx-auto">
+          <TripsSkeleton />
+        </div>
       </div>
     );
   }
@@ -257,7 +281,6 @@ const MyTripsPage = () => {
       </Pagination>
     );
   };
-
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
