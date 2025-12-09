@@ -314,13 +314,19 @@ export const useRequestManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
-      showSuccess('تم إرسال إثبات الدفع، بانتظار مراجعة المسؤول.');
+
+      // Show a clear "waiting for confirmation" message, not full success
+      showSuccess(
+        t('paymentPendingReview') ??
+          'تم إرسال إثبات الدفع، بانتظار تأكيد الدفع من المسؤول.'
+      );
+
       setRequestForPayment(null);
     },
     onError: (err: any) => showError(err.message),
   });
 
-  // Admin confirms / rejects payment (for future admin dashboard)
+  // Admin confirms / rejects payment
   const adminUpdatePaymentStatusMutation = useMutation({
     mutationFn: async (args: { requestId: string; status: 'paid' | 'rejected' }) => {
       const updates: any = {
@@ -351,7 +357,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Handlers
+  // Handlers...
 
   const handleUpdateRequest = (request: ManagedRequest, status: 'accepted' | 'rejected') => {
     updateRequestMutation.mutate({ request, status });
@@ -414,7 +420,6 @@ export const useRequestManagement = () => {
   };
 
   // Dialog helpers
-
   const isAcceptedRequest =
     !!itemToCancel && (itemToCancel as any).type === 'accepted_trip_request';
   const isFirstPartyRequesting =
