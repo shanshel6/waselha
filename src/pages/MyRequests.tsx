@@ -15,7 +15,7 @@ import { Link } from 'react-router-dom';
 import { PlusCircle } from 'lucide-react';
 import { useUnreadChatCountByTab } from '@/hooks/use-unread-chat-count-by-tab';
 import { Badge } from '@/components/ui/badge';
-import { useRequestManagement } from '@/hooks/use-request-management'; // Import the new hook
+import { useRequestManagement } from '@/hooks/use-request-management';
 
 const MyRequests = () => {
   const { t } = useTranslation();
@@ -23,7 +23,6 @@ const MyRequests = () => {
   const { data: unreadCounts } = useUnreadChatCountByTab();
   
   const {
-    // State
     itemToCancel,
     requestToEdit,
     requestForInspection,
@@ -35,23 +34,17 @@ const MyRequests = () => {
     trackingUpdateStage,
     dialogTitleKey,
     dialogDescriptionKey,
-
-    // Setters
     setItemToCancel,
     setRequestToEdit,
     setRequestForInspection,
     setRequestForSenderPhotos,
     setRequestForTrackingUpdate,
-
-    // Mutations
     updateRequestMutation,
     deleteRequestMutation,
     mutualCancelMutation,
     editRequestMutation,
     reviewChangesMutation,
     trackingUpdateMutation,
-
-    // Handlers
     handleUpdateRequest,
     handleAcceptedRequestCancel,
     handleConfirmCancellation,
@@ -64,10 +57,18 @@ const MyRequests = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('myRequests')}</h1>
-        <Link to="/place-order">
-          <Button>
+      {/* Header: أفضل ترتيب للموبايل */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+            {t('myRequests')}
+          </h1>
+          <p className="text-xs text-muted-foreground md:hidden">
+            راقب طلباتك المرسلة والمستلمة، وتابع حالة الطرد خطوة بخطوة.
+          </p>
+        </div>
+        <Link to="/place-order" className="w-full md:w-auto">
+          <Button className="w-full md:w-auto justify-center">
             <PlusCircle className="mr-2 h-4 w-4" />
             {t('placeOrder')}
           </Button>
@@ -76,25 +77,25 @@ const MyRequests = () => {
       
       <Tabs defaultValue="received" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="received" className="relative">
+          <TabsTrigger value="received" className="relative text-xs sm:text-sm">
             {t('receivedRequests')}
             {unreadCounts && unreadCounts.received > 0 && (
-              <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs">
+              <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                 {unreadCounts.received}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="sent" className="relative">
+          <TabsTrigger value="sent" className="relative text-xs sm:text-sm">
             {t('sentRequests')}
             {unreadCounts && unreadCounts.sent > 0 && (
-              <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs">
+              <Badge variant="destructive" className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                 {unreadCounts.sent}
               </Badge>
             )}
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="received">
+        <TabsContent value="received" className="mt-4">
           <ReceivedRequestsTab 
             user={user} 
             onUpdateRequest={handleUpdateRequest} 
@@ -108,7 +109,7 @@ const MyRequests = () => {
           />
         </TabsContent>
         
-        <TabsContent value="sent">
+        <TabsContent value="sent" className="mt-4">
           <SentRequestsTab 
             user={user} 
             onCancelRequest={setItemToCancel} 
@@ -122,6 +123,7 @@ const MyRequests = () => {
         </TabsContent>
       </Tabs>
       
+      {/* Dialogs تبقى كما هي */}
       <AlertDialog open={!!itemToCancel} onOpenChange={(open) => !open && setItemToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -159,7 +161,6 @@ const MyRequests = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Tracking Update Confirmation Dialog */}
       <AlertDialog open={!!requestForTrackingUpdate} onOpenChange={(open) => !open && setRequestForTrackingUpdate(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

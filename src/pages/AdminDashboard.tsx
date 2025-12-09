@@ -7,11 +7,12 @@ import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ShieldAlert, Loader2, Plane } from 'lucide-react';
+import { ShieldAlert, Loader2, Plane, ChevronDown, ChevronUp } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { arabicCountries } from '@/lib/countries-ar';
 import { showSuccess, showError } from '@/utils/toast';
 import AdminTripApproval from '@/components/AdminTripApproval';
+import { cn } from '@/lib/utils';
 
 interface Trip {
   id: string;
@@ -35,6 +36,7 @@ const AdminDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
+  const [expandedTripId, setExpandedTripId] = React.useState<string | null>(null);
 
   const { data: pendingTrips, isLoading: isTripsLoading } = useQuery<Trip[], Error>({
     queryKey: ['pendingTrips'],
@@ -254,7 +256,7 @@ const AdminDashboard = () => {
               ) : pendingTrips && pendingTrips.length > 0 ? (
                 pendingTrips.map((trip) => (
                   <Card key={trip.id} className="p-4 border">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                           <CountryFlag country={trip.from_country} showName={false} />
@@ -307,72 +309,113 @@ const AdminDashboard = () => {
               {isReviewedTripsLoading ? (
                 <p>{t('loading')}</p>
               ) : reviewedTrips && reviewedTrips.length > 0 ? (
-                <div className="space-y-4">
-                  {reviewedTrips.map((trip) => (
-                    <div key={trip.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold flex items-center gap-2">
+                <div className="space-y-3">
+                  {reviewedTrips.map((trip) => {
+                    const isExpanded = expandedTripId === trip.id;
+                    return (
+                      <div
+                        key={trip.id}
+                        className={cn(
+                          "border rounded-lg p-3 sm:p-4 transition-colors",
+                          "sm:hover:bg-muted/40"
+                        )}
+                      >
+                        {/* Header row (clickable on mobile) */}
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between gap-3 sm:cursor-default sm:pointer-events-none"
+                          onClick={() =>
+                            setExpandedTripId((prev) => (prev === trip.id ? null : trip.id))
+                          }
+                        >
+                          <div className="flex items-center gap-2 text-sm sm:text-base text-left">
+                            <Plane className="h-4 w-4 text-primary" />
                             <CountryFlag country={trip.from_country} showName={false} />
-                            {getArabicCountryName(trip.from_country)}
+                            <span className="text-xs sm:text-sm">
+                              {getArabicCountryName(trip.from_country)}
+                            </span>
                             <span className="text-lg">→</span>
                             <CountryFlag country={trip.to_country} showName={false} />
-                            {getArabicCountryName(trip.to_country)}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
+                            <span className="text-xs sm:text-sm">
+                              {getArabicCountryName(trip.to_country)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "px-2 py-1 rounded-full text-[11px] sm:text-xs",
+                                trip.is_approved
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              )}
+                            >
+                              {trip.is_approved ? t('approved') : t('rejected')}
+                            </span>
+                            <span className="hidden sm:inline text-[11px] text-muted-foreground">
+                              {new Date(trip.trip_date).toLocaleDateString()}
+                            </span>
+                            <span className="sm:hidden">
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </span>
+                          </div>
+                        </button>
+
+                        {/* Expanded content (always visible on md+, accordion-like on mobile) */}
+                        <div
+                          className={cn(
+                            "mt-3 space-y-2 text-xs sm:text-sm",
+                            "sm:block",
+                            isExpanded ? "block" : "hidden sm:block"
+                          )}
+                        >
+                          <p className="text-muted-foreground">
                             {t('traveler')}: {trip.profiles?.first_name}{' '}
                             {trip.profiles?.last_name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground">
                             {t('tripDate')}: {new Date(trip.trip_date).toLocaleDateString()}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground">
                             {t('availableWeight')}: {trip.free_kg} kg
                           </p>
                           {trip.admin_review_notes && (
-                            <p className="text-sm text-muted-foreground pt-3 border-t mt-3">
+                            <p className="text-muted-foreground pt-2 border-t mt-2">
                               {t('adminReviewNotes')}: {trip.admin_review_notes}
                             </p>
                           )}
-                        </div>
 
-                        {/* Ticket thumbnail + link */}
-                        <div className="flex flex-col items-end gap-2 min-w-[120px]">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs ${
-                              trip.is_approved
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {trip.is_approved ? t('approved') : t('rejected')}
-                          </span>
-                          {trip.is_deleted_by_user && (
-                            <span className="text-xs text-muted-foreground">
-                              {t('deletedByUser')}
-                            </span>
-                          )}
-
-                          {trip.ticket_file_url && isImageUrl(trip.ticket_file_url) && (
-                            <a
-                              href={trip.ticket_file_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="block"
-                            >
-                              <img
-                                src={trip.ticket_file_url}
-                                alt={t('flightTicket')}
-                                className="w-24 h-16 object-cover rounded border"
-                              />
-                            </a>
-                          )}
-
-                          {renderTicketLink(trip.ticket_file_url)}
+                          <div className="flex items-start gap-3 pt-2">
+                            {trip.ticket_file_url && isImageUrl(trip.ticket_file_url) && (
+                              <a
+                                href={trip.ticket_file_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={trip.ticket_file_url}
+                                  alt={t('flightTicket')}
+                                  className="w-20 h-14 object-cover rounded border"
+                                />
+                              </a>
+                            )}
+                            <div className="flex flex-col gap-1">
+                              {renderTicketLink(trip.ticket_file_url)}
+                              {trip.is_deleted_by_user && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  {t('deletedByUser')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-muted-foreground">{t('noReviewedRequests')}</p>

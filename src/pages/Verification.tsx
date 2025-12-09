@@ -115,7 +115,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
 
   return (
     <div className="space-y-2">
-      <FormLabel className="flex items-center gap-2">
+      <FormLabel className="flex items-center gap-2 text-sm">
         <FileImage className="h-4 w-4" />
         {label}
         {required && <span className="text-destructive">*</span>}
@@ -311,26 +311,28 @@ const Verification = () => {
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold">{t('verifyYourself')}</CardTitle>
-          <CardDescription>{t('verificationInstructions')}</CardDescription>
+          <CardTitle className="text-2xl md:text-3xl font-bold">{t('verifyYourself')}</CardTitle>
+          <CardDescription className="text-xs md:text-sm">
+            {t('verificationInstructions')}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {status === 'pending' && (
-            <Alert className="mb-4">
-              <AlertDescription>{t('pendingVerification')}</AlertDescription>
+            <Alert className="mb-2">
+              <AlertDescription className="text-xs md:text-sm">{t('pendingVerification')}</AlertDescription>
             </Alert>
           )}
 
           {status === 'rejected' && (
-            <Alert className="mb-4" variant="destructive">
-              <AlertDescription>{t('verificationRejected')}</AlertDescription>
+            <Alert className="mb-2" variant="destructive">
+              <AlertDescription className="text-xs md:text-sm">{t('verificationRejected')}</AlertDescription>
             </Alert>
           )}
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Basic info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="first_name"
@@ -360,7 +362,7 @@ const Verification = () => {
               </div>
 
               {/* ID front/back */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="id_front_file"
@@ -394,7 +396,7 @@ const Verification = () => {
               </div>
 
               {/* Housing card front/back */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="residential_card_front_file"
@@ -428,11 +430,11 @@ const Verification = () => {
               </div>
 
               {/* Selfie with ID */}
-              <div className="space-y-4">
-                <p className="font-semibold text-base">
+              <div className="space-y-3">
+                <p className="font-semibold text-sm md:text-base">
                   {t('faceWithId')}
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
                   <div className="order-2 md:order-1">
                     <FormField
                       control={form.control}
@@ -451,13 +453,13 @@ const Verification = () => {
                     />
                   </div>
                   <div className="order-1 md:order-2">
-                    <div className="rounded-2xl border bg-muted/40 p-3 md:p-4">
+                    <div className="rounded-2xl border bg-muted/40 p-3">
                       <img
                         src="/holding-id.png"
                         alt="Example of selfie with ID"
                         className="w-full h-auto rounded-xl object-cover"
                       />
-                      <p className="mt-2 text-xs text-muted-foreground text-center md:text-right">
+                      <p className="mt-2 text-[11px] md:text-xs text-muted-foreground text-center md:text-right">
                         هذه صورة توضيحية توضح الشكل المطلوب: وجهك واضح والهوية ممسوكة بيدك بحيث تظهر بياناتها بوضوح.
                       </p>
                     </div>
