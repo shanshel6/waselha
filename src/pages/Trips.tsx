@@ -1,4 +1,4 @@
-0.">
+0).">
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -61,7 +61,7 @@ const TripsListSkeleton: React.FC = () => (
 
 const Trips = () => {
   const { t } = useTranslation();
-  const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
+  const [filters, setFilters] = useState<SearchFilters>({ from_country: 'Iraq' });
   const [currentPage, setCurrentPage] = useState(1);
   const { user } = useSession();
   const [showHelper, setShowHelper] = useState(false);
@@ -84,8 +84,8 @@ const Trips = () => {
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),
     defaultValues: {
-      from_country: "Iraq",
-      to_country: "",
+      from_country: 'Iraq',
+      to_country: '',
     },
   });
 
@@ -95,31 +95,34 @@ const Trips = () => {
     queryKey: ['trips', filters, user?.id, currentPage],
     queryFn: async () => {
       let tripIdsToExclude: string[] = [];
-      
+
       if (user) {
         const { data: activeRequests } = await supabase
           .from('requests')
           .select('trip_id')
           .eq('sender_id', user.id)
           .in('status', ['pending', 'accepted']);
-          
+
         if (activeRequests) {
-          tripIdsToExclude = activeRequests.map(r => r.trip_id);
+          tripIdsToExclude = activeRequests.map((r) => r.trip_id);
         }
       }
 
       let query = supabase
         .from('trips')
-        .select(`
+        .select(
+          `
           *,
           profiles (
             first_name,
             last_name,
             is_verified
           )
-        `, { count: 'exact' });
+        `,
+          { count: 'exact' },
+        );
 
-      // احسب تاريخ الغد (اليوم + 1) بحيث لا تظهر رحلات اليوم (أي أقل من 24 ساعة تقريبًا)
+      // Hide past/today trips (show from tomorrow onwards)
       const now = new Date();
       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       const tomorrowDateStr = format(tomorrow, 'yyyy-MM-dd');
@@ -127,9 +130,8 @@ const Trips = () => {
       query = query
         .eq('is_approved', true)
         .eq('is_deleted_by_user', false)
-        // لا نظهر الرحلات التي تاريخها اليوم، نبدأ من الغد فصاعدًا
         .gte('trip_date', tomorrowDateStr)
-        // الشرط الجديد: لا نظهر الرحلات التي أصبح وزنها المتاح 0 أو أقل
+        // Key condition: don't show fully used trips (no remaining kg)
         .gt('free_kg', 0);
 
       if (filters.from_country) {
@@ -168,8 +170,8 @@ const Trips = () => {
   };
 
   const resetFilters = () => {
-    form.reset({ from_country: "Iraq", to_country: "" });
-    setFilters({ from_country: "Iraq" });
+    form.reset({ from_country: 'Iraq', to_country: '' });
+    setFilters({ from_country: 'Iraq' });
     setCurrentPage(1);
   };
 
@@ -191,15 +193,15 @@ const Trips = () => {
       <Pagination className="mt-8">
         <PaginationContent>
           <PaginationItem>
-            <PaginationPrevious 
-              onClick={() => handlePageChange(currentPage - 1)} 
+            <PaginationPrevious
+              onClick={() => handlePageChange(currentPage - 1)}
               className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
             />
           </PaginationItem>
-          
-          {pageNumbers.map(page => (
+
+          {pageNumbers.map((page) => (
             <PaginationItem key={page}>
-              <PaginationLink 
+              <PaginationLink
                 onClick={() => handlePageChange(page)}
                 isActive={page === currentPage}
                 className="cursor-pointer"
@@ -210,8 +212,8 @@ const Trips = () => {
           ))}
 
           <PaginationItem>
-            <PaginationNext 
-              onClick={() => handlePageChange(currentPage + 1)} 
+            <PaginationNext
+              onClick={() => handlePageChange(currentPage + 1)}
               className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
             />
           </PaginationItem>
@@ -226,7 +228,11 @@ const Trips = () => {
     }
 
     if (error) {
-      return <p className="text-red-500">{t('errorLoadingTrips')}: {error.message}</p>;
+      return (
+        <p className="text-red-500">
+          {t('errorLoadingTrips')}: {error.message}
+        </p>
+      );
     }
 
     if (trips && trips.length > 0) {
@@ -245,7 +251,9 @@ const Trips = () => {
                           <span className="text-lg">←</span>
                           <CountryFlag country={trip.to_country} showName className="text-base" />
                         </CardTitle>
-                        <CardDescription>{format(new Date(trip.trip_date), 'PPP')}</CardDescription>
+                        <CardDescription>
+                          {format(new Date(trip.trip_date), 'PPP')}
+                        </CardDescription>
                       </div>
                     </div>
                   </CardHeader>
@@ -259,15 +267,17 @@ const Trips = () => {
                       <Package className="h-5 w-5 text-primary/80" />
                       <div>
                         <p className="font-semibold">{trip.free_kg} kg</p>
-                        <p className="text-xs text-muted-foreground">{t('availableWeight')}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t('availableWeight')}
+                        </p>
                       </div>
                     </div>
-                    {trip.traveler_location && 
+                    {trip.traveler_location && (
                       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4" /> 
+                        <MapPin className="h-4 w-4" />
                         {trip.traveler_location}
                       </p>
-                    }
+                    )}
                   </CardContent>
                   <div className="p-4 pt-0 mt-auto">
                     <div className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-primary text-primary-foreground group-hover:bg-primary/90">
@@ -309,7 +319,9 @@ const Trips = () => {
       <div className="flex justify-between items-center mb-4 md:mb-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold">{t('trips')}</h1>
-          <p className="text-muted-foreground text-sm md:text-base">{t('searchDescription')}</p>
+          <p className="text-muted-foreground text-sm md:text-base">
+            {t('searchDescription')}
+          </p>
         </div>
         <Link to="/add-trip">
           <Button size="lg">
@@ -324,7 +336,8 @@ const Trips = () => {
           <div className="flex-1">
             <p className="font-semibold">نصيحة سريعة</p>
             <p className="text-muted-foreground mt-1">
-              تصفّح الرحلات من هنا، ثم افتح تفاصيل الرحلة واضغط &quot;{t('viewTripAndRequest')}&quot; لإرسال طلب إلى المسافر.
+              تصفّح الرحلات من هنا، ثم افتح تفاصيل الرحلة واضغط &quot;
+              {t('viewTripAndRequest')}&quot; لإرسال طلب إلى المسافر.
               لن تظهر لك الرحلات التي لديك طلب نشط بالفعل.
             </p>
           </div>
@@ -332,18 +345,21 @@ const Trips = () => {
             type="button"
             onClick={dismissHelper}
             className={cn(
-              "ml-2 mt-1 text-muted-foreground hover:text-foreground transition-colors"
+              'ml-2 mt-1 text-muted-foreground hover:text-foreground transition-colors',
             )}
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
-      
+
       <Card className="mb-2">
         <CardContent className="p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end"
+            >
               <FormField
                 control={form.control}
                 name="from_country"
@@ -367,14 +383,14 @@ const Trips = () => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="to_country"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('toCountry')}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={field.onChange} value={field.value || ''}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={t('selectCountry')} />
@@ -391,13 +407,18 @@ const Trips = () => {
                   </FormItem>
                 )}
               />
-              
+
               <div className="flex gap-2 col-span-1 md:col-span-1 lg:col-span-2">
                 <Button type="submit" className="w-full">
                   <Search className="mr-2 h-4 w-4" />
                   {t('searchNow')}
                 </Button>
-                <Button type="button" variant="outline" onClick={resetFilters} className="w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="w-full"
+                >
                   {t('resetFilters')}
                 </Button>
               </div>
@@ -408,16 +429,20 @@ const Trips = () => {
 
       {user && (
         <p className="text-xs text-muted-foreground mb-4 px-1">
-          لن تظهر الرحلات التي لديك طلب نشط عليها بالفعل، وكذلك الرحلات التي موعدها اليوم أو أقرب من 24 ساعة، أو التي نفذ منها الوزن المتاح.
+          لن تظهر الرحلات التي لديك طلب نشط عليها بالفعل، وكذلك الرحلات التي موعدها اليوم أو أقرب من
+          24 ساعة، أو التي نفذ منها الوزن المتاح.
         </p>
       )}
-      
+
       {renderContent()}
-      
+
       {renderPagination()}
-      
+
       <div className="mt-12 text-center">
-        <Link to="/place-order" className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors underline underline-offset-4 flex items-center justify-center gap-2">
+        <Link
+          to="/place-order"
+          className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors underline underline-offset-4 flex items-center justify-center gap-2"
+        >
           <Package className="h-5 w-5" />
           {t('cantFindTrip')} {t('placeOrderLink')}
         </Link>
