@@ -95,12 +95,12 @@ export const ReceivedRequestsTab = ({
   const [currentPage, setCurrentPage] = useState(1);
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  const { data: queryResult, isLoading, error } = useQuery<{ requests: Request[], count: number } | null, Error>({
+  const { data: queryResult, isLoading, error } = useQuery<{ requests: RequestWithProfiles[], count: number } | null, Error>({
     queryKey: ['receivedRequests', user?.id, currentPage],
     queryFn: async () => {
       if (!user) return { requests: [], count: 0 };
 
-      const { data: allRequests, error: requestsError, count } = await supabase
+      const { data: allRequestsRaw, error: requestsError } = await supabase
         .from('requests')
         .select(`
           *, 
@@ -112,15 +112,18 @@ export const ReceivedRequestsTab = ({
 
       if (requestsError) throw new Error(requestsError.message);
 
-      const travelerRequests = allRequests
-        .filter(req => req.trips && req.trips.user_id === user.id);
-      
+      const allRequests = Array.isArray(allRequestsRaw) ? allRequestsRaw : [];
+
+      // فقط الطلبات التي تخص رحلات هذا المستخدم
+      const travelerRequests = allRequests.filter((req: any) => req.trips && req.trips.user_id === user.id);
+
       const totalCount = travelerRequests.length;
       const paginatedRequests = travelerRequests.slice(offset, offset + ITEMS_PER_PAGE);
 
+      // جمع معرفات المرسل لجلب بروفايلاتهم
       const senderIds = paginatedRequests
-        .map(req => req.sender_id)
-        .filter((id, index, self) => self.indexOf(id) === index);
+        .map((req: any) => req.sender_id)
+        .filter((id, index, self) => !!id && self.indexOf(id) === index);
 
       let senderProfiles: Profile[] = [];
       if (senderIds.length > 0) {
@@ -141,14 +144,15 @@ export const ReceivedRequestsTab = ({
         return acc;
       }, {} as Record<string, Profile>);
 
-      const tripRequestsWithProfiles: RequestWithProfiles[] = paginatedRequests
-        .map(req => ({
+      const requestsWithProfiles: RequestWithProfiles[] = paginatedRequests
+        .filter((req: any) => !!req.trips && !!req.trips.from_country && !!req.trips.to_country)
+        .map((req: any) => ({
           ...req,
           sender_profile: profileMap[req.sender_id] || null,
-          type: 'trip_request' as const
-        })) as RequestWithProfiles[];
-      
-      return { requests: tripRequestsWithProfiles, count: totalCount };
+          type: 'trip_request' as const,
+        }));
+
+      return { requests: requestsWithProfiles, count: totalCount };
     },
     enabled: !!user,
     keepPreviousData: true,
@@ -240,12 +244,10 @@ export const ReceivedRequestsTab = ({
       {receivedItems && receivedItems.length > 0 ? (
         <>
           {receivedItems.map(req => {
-            let priceCalculation = null;
-            const tripReq = req as RequestWithProfiles;
-            priceCalculation = calculateShippingCost(
-              tripReq.trips?.from_country || '',
-              tripReq.trips?.to_country || '',
-              tripReq.weight_kg
+            const priceCalculation = calculateShippingCost(
+              req.trips?.from_country || '',
+              req.trips?.to_country || '',
+              req.weight_kg
             );
 
             return (
