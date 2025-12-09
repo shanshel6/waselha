@@ -44,8 +44,13 @@ const Navbar: React.FC = () => {
 
   const Brand = () => (
     <div className="inline-flex items-center gap-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <Briefcase className="h-5 w-5" />
+      {/* شعار الصورة الجديد */}
+      <div className="h-9 w-9 rounded-lg overflow-hidden bg-primary/10 flex items-center justify-center">
+        <img
+          src="/logo-waselha.png"
+          alt="Waselha logo"
+          className="h-full w-full object-cover"
+        />
       </div>
       <span className="text-xl font-extrabold tracking-tight text-primary">
         وصلها
