@@ -20,6 +20,7 @@ import {
   XCircle,
   Clock,
   Camera,
+  Trash2, // <-- added
 } from 'lucide-react';
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
@@ -156,7 +157,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
   const handleReviewAccept = () => onReviewChanges({ request: req, accept: true });
   const handleReviewReject = () => onReviewChanges({ request: req, accept: false });
   const handleOpenChat = () => {
-    // مجرد رابط إلى صفحة الشات
     window.location.href = `/chat/${req.id}`;
   };
 
@@ -267,7 +267,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           )}
 
-          {/* Toggle details */}
+          {/* Details toggle */}
           <div>
             <Button
               variant="ghost"
@@ -309,7 +309,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 justify-between items-center pt-2">
-            {/* Left side: chat */}
+            {/* Chat Button */}
             <Button
               size="sm"
               variant="outline"
@@ -320,8 +320,9 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
               {t('viewChat')}
             </Button>
 
-            {/* Right side: main actions */}
+            {/* Right side actions */}
             <div className="flex flex-wrap gap-2 justify-end">
+              {/* Inspection photos, tracking, cancellation */}
               {req.status === 'pending' && (
                 <>
                   <Button
@@ -385,13 +386,13 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
                     </Button>
                   )}
 
-                  {/* إلغاء طلب مقبول (يبدأ عملية الإلغاء المتبادل) */}
+                  {/* Mutual cancellation */}
                   <Button
                     size="sm"
                     variant="destructive"
                     onClick={() => onCancelAcceptedRequest(req)}
                   >
-                    <Trash2 className="mr-1 h-4 w-4" />
+                    <Trash2 className="mr-2 h-4 w-4" />
                     {t('requestCancellation')}
                   </Button>
                 </>
