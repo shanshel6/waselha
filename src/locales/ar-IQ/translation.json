@@ -272,10 +272,12 @@
   "newChatMessageNotification": "لديك رسالة جديدة من {{name}} بخصوص طلب الطرد.",
   "senderCannotUploadBeforePayment": "لا يمكنك تحميل صور الطرد قبل إكمال الدفع وتأكيده.",
   "travelerCannotInspectBeforePayment": "لا يمكنك إكمال فحص الطرد قبل تأكيد الدفع من المرسل.",
-  "paymentPendingReview": "تم إرسال إثبات الدفع وهو الآن قيد المراجعة من قبل المسؤول.",
+  "paymentPendingReview": "تم إرسال إثبات الدفع، وهو الآن قيد المراجعة من قبل المسؤول.",
   "paymentPendingReviewTraveler": "قام المرسل بإرسال إثبات الدفع وهو قيد المراجعة. يرجى الانتظار حتى يتم التأكيد قبل متابعة الفحص.",
   "paymentRejectedMessage": "تم رفض إثبات الدفع السابق. يرجى إعادة إرسال إثبات دفع صحيح قبل تحميل الصور.",
   "paymentRejectedTravelerMessage": "تم رفض إثبات الدفع من المرسل. يرجى طلب تحديث إثبات الدفع قبل المتابعة.",
   "paymentRequired": "الدفع مطلوب",
-  "uploadItemPhotos": "ارفع صور الأغراض"
+  "uploadItemPhotos": "ارفع صور الأغراض",
+  "confirmCompletedTitle": "هل تريد إنهاء الطلب؟",
+  "confirmCompletedDescription": "تأكيد الإكمال يعني أن الطرد وصل وتم استلامه بنجاح من المستلم، ولن تكون هناك حاجة لمتابعة إضافية داخل التطبيق. لا تستخدم هذا الخيار إذا ما زالت هناك أي مشكلة معلّقة."
 }
