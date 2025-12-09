@@ -17,6 +17,8 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { Inbox } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 // --- Type Definitions (Kept here as the source of truth for the tab) ---
 interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
@@ -122,8 +124,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         requests.filter(req => req.general_order_id).map(req => req.general_order_id)
       );
 
-      // 4. Filter general orders: only include those that are 'new' OR
-      //    those that are 'matched'/'claimed' but DO NOT have a corresponding trip request (edge case)
+      // 4. Filter general orders
       const filteredGeneralOrders: GeneralOrder[] = orders.filter(order => 
         order.status === 'new' || !generalOrderIdsWithRequests.has(order.id)
       ).map(order => ({
@@ -131,13 +132,12 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         type: 'general_order' as const
       }));
 
-      // 5. Combine filtered general orders with trip requests
+      // 5. Combine
       let combinedItems: SentItem[] = [...filteredGeneralOrders, ...requests.map(req => ({
         ...req,
         type: 'trip_request' as const
       }))];
       
-      // Sort by creation date descending
       combinedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       const totalCount = combinedItems.length;
@@ -145,7 +145,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
       // 6. Apply client-side pagination
       const paginatedItems = combinedItems.slice(offset, offset + ITEMS_PER_PAGE);
 
-      // 7. Collect traveler IDs for paginated trip requests
+      // 7. Collect traveler IDs
       const travelerIds = paginatedItems
         .filter((item): item is Request => !isGeneralOrder(item) && !!item.trips?.user_id)
         .map(req => (req as Request).trips.user_id)
@@ -170,7 +170,6 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         return acc;
       }, {} as Record<string, Profile>);
 
-      // 8. Map profiles back to paginated trip requests
       const finalItems = paginatedItems.map(item => {
         if (!isGeneralOrder(item)) {
           const req = item as Request;
@@ -285,7 +284,6 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
                 />
               );
             } else {
-              // Trip Request (includes those generated from General Orders)
               const tripReq = item as RequestWithProfiles;
               const priceCalculation = calculateShippingCost(
                 tripReq.trips?.from_country || '',
@@ -314,10 +312,29 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         </>
       ) : (
         <Card>
-          <CardContent className="p-8 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <CardContent className="p-8 text-center space-y-3">
+            <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
             <p className="text-lg font-semibold">{t('noSentRequests')}</p>
-            <p className="text-muted-foreground mt-2">لم تقم بإرسال أي طلبات بعد.</p>
+            <p className="text-muted-foreground mt-1">
+              لم تقم بإرسال أي طلبات بعد. يمكنك البدء بإرسال طلب لرحلة موجودة أو إنشاء طلب شحن عام أو نشر رحلتك.
+            </p>
+            <div className="mt-4 flex flex-col sm:flex-row justify-center gap-3">
+              <Link to="/trips">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  {t('trips')}
+                </Button>
+              </Link>
+              <Link to="/place-order">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  {t('placeOrder')}
+                </Button>
+              </Link>
+              <Link to="/add-trip">
+                <Button className="w-full sm:w-auto">
+                  {t('addTrip')}
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       )}

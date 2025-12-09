@@ -17,6 +17,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 // Define types for our data structure
 interface Profile {
@@ -113,7 +115,6 @@ export const ReceivedRequestsTab = ({
       if (requestsError) throw new Error(requestsError.message);
 
       // Filter client-side to ensure we only show requests where the current user is the trip owner (received requests)
-      // NOTE: RLS should handle this, but we filter here to get the correct count for pagination.
       const travelerRequests = allRequests
         .filter(req => req.trips && req.trips.user_id === user.id);
       
@@ -246,7 +247,6 @@ export const ReceivedRequestsTab = ({
       {receivedItems && receivedItems.length > 0 ? (
         <>
           {receivedItems.map(req => {
-            // Calculate price only for trip requests
             let priceCalculation = null;
             const tripReq = req as RequestWithProfiles;
             priceCalculation = calculateShippingCost(
@@ -276,10 +276,29 @@ export const ReceivedRequestsTab = ({
         </>
       ) : (
         <Card>
-          <CardContent className="p-8 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <CardContent className="p-8 text-center space-y-3">
+            <Inbox className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
             <p className="text-lg font-semibold">{t('noReceivedRequests')}</p>
-            <p className="text-muted-foreground mt-2">{t('noReceivedRequestsDescription')}</p>
+            <p className="text-muted-foreground mt-1">
+              {t('noReceivedRequestsDescription')}
+            </p>
+            <div className="mt-4 flex flex-col sm:flex-row justify-center gap-3">
+              <Link to="/trips">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  {t('trips')}
+                </Button>
+              </Link>
+              <Link to="/place-order">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  {t('placeOrder')}
+                </Button>
+              </Link>
+              <Link to="/add-trip">
+                <Button className="w-full sm:w-auto">
+                  {t('addTrip')}
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       )}

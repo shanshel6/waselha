@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plane, Package, User, MapPin, Search, PlusCircle } from 'lucide-react';
+import { Plane, Package, User, MapPin, Search, PlusCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
@@ -26,6 +26,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 const searchSchema = z.object({
   from_country: z.string().optional(),
@@ -61,6 +62,22 @@ const Trips = () => {
   const [filters, setFilters] = useState<SearchFilters>({ from_country: "Iraq" });
   const [currentPage, setCurrentPage] = useState(1);
   const { user } = useSession();
+  const [showHelper, setShowHelper] = useState(false);
+
+  useEffect(() => {
+    const key = 'hasSeenHelper_trips';
+    const seen = typeof window !== 'undefined' ? window.localStorage.getItem(key) : 'true';
+    if (!seen) {
+      setShowHelper(true);
+    }
+  }, []);
+
+  const dismissHelper = () => {
+    setShowHelper(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hasSeenHelper_trips', 'true');
+    }
+  };
 
   const form = useForm<SearchFilters>({
     resolver: zodResolver(searchSchema),
@@ -254,8 +271,9 @@ const Trips = () => {
       );
     }
 
+    // Stronger empty state with clear next steps
     return (
-      <Card className="text-center p-12">
+      <Card className="text-center p-8 md:p-12">
         <h3 className="text-xl font-semibold">{t('noTripsFound')}</h3>
         <p className="text-muted-foreground mt-2">{t('noTripsFoundDescription')}</p>
         <div className="mt-6 flex flex-col sm:flex-row justify-center gap-4">
@@ -265,6 +283,12 @@ const Trips = () => {
               {t('addTrip')}
             </Button>
           </Link>
+          <Link to="/place-order">
+            <Button size="lg" variant="outline">
+              <Package className="mr-2 h-5 w-5" />
+              {t('placeOrder')}
+            </Button>
+          </Link>
         </div>
       </Card>
     );
@@ -272,10 +296,10 @@ const Trips = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-4 md:mb-8">
         <div>
-          <h1 className="text-4xl font-bold">{t('trips')}</h1>
-          <p className="text-muted-foreground">{t('searchDescription')}</p>
+          <h1 className="text-3xl md:text-4xl font-bold">{t('trips')}</h1>
+          <p className="text-muted-foreground text-sm md:text-base">{t('searchDescription')}</p>
         </div>
         <Link to="/add-trip">
           <Button size="lg">
@@ -284,6 +308,27 @@ const Trips = () => {
           </Button>
         </Link>
       </div>
+
+      {showHelper && (
+        <div className="mb-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 p-3 flex items-start gap-2 text-xs md:text-sm">
+          <div className="flex-1">
+            <p className="font-semibold">نصيحة سريعة</p>
+            <p className="text-muted-foreground mt-1">
+              تصفّح الرحلات من هنا، ثم افتح تفاصيل الرحلة واضغط &quot;{t('viewTripAndRequest')}&quot; لإرسال طلب إلى المسافر.
+              لن تظهر لك الرحلات التي لديك عليها طلب نشط بالفعل.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={dismissHelper}
+            className={cn(
+              "ml-2 mt-1 text-muted-foreground hover:text-foreground transition-colors"
+            )}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       
       <Card className="mb-8">
         <CardContent className="p-6">

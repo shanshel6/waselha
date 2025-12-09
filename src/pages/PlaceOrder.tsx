@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +19,8 @@ import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import CountryFlag from '@/components/CountryFlag';
 import { calculateShippingCost } from '@/lib/pricing';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const orderSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -33,6 +34,22 @@ const PlaceOrder = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const navigate = useNavigate();
+  const [showHelper, setShowHelper] = useState(false);
+
+  useEffect(() => {
+    const key = 'hasSeenHelper_placeOrder';
+    const seen = typeof window !== 'undefined' ? window.localStorage.getItem(key) : 'true';
+    if (!seen) {
+      setShowHelper(true);
+    }
+  }, []);
+
+  const dismissHelper = () => {
+    setShowHelper(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('hasSeenHelper_placeOrder', 'true');
+    }
+  };
 
   const form = useForm<z.infer<typeof orderSchema>>({
     resolver: zodResolver(orderSchema),
@@ -104,7 +121,7 @@ const PlaceOrder = () => {
           from_country: values.from_country,
           to_country: values.to_country,
           description: values.description,
-          weight_kg: values.weight_kg, // Include weight_kg
+          weight_kg: values.weight_kg,
           is_valuable: values.insurance_percentage > 0,
           insurance_requested: values.insurance_percentage > 0,
           insurance_percentage: values.insurance_percentage,
@@ -135,10 +152,37 @@ const PlaceOrder = () => {
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <div className="max-w-2xl mx-auto">
-        <Card>
+        <Card className="mb-4">
           <CardHeader>
             <CardTitle className="text-2xl">{t('placeOrder')}</CardTitle>
             <CardDescription>{t('orderDescriptionPlaceholder')}</CardDescription>
+          </CardHeader>
+        </Card>
+
+        {showHelper && (
+          <div className="mb-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 p-3 flex items-start gap-2 text-xs md:text-sm">
+            <div className="flex-1">
+              <p className="font-semibold">ما هو طلب الشحن العام؟</p>
+              <p className="text-muted-foreground mt-1">
+                عند إنشاء &quot;طلب شحن عام&quot;، سيبحث النظام تلقائياً عن رحلات مطابقة من وإلى نفس الدول،
+                ويقوم بإنشاء طلب عادي مع المسافر المناسب. يمكنك متابعة هذه الطلبات من صفحة &quot;طلباتي&quot;.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissHelper}
+              className={cn(
+                "ml-2 mt-1 text-muted-foreground hover:text-foreground transition-colors"
+              )}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">تفاصيل الطلب</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>

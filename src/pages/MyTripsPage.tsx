@@ -52,7 +52,7 @@ const TripsSkeleton: React.FC = () => (
     {Array.from({ length: 3 }).map((_, i) => (
       <Card key={i} className="shadow-sm">
         <CardHeader>
-          <div className="flex justify-between items-start">
+          <div className="flex justify_between items-start">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-4 w-20" />
           </div>
@@ -365,18 +365,14 @@ const MyTripsPage = () => {
           <Card className="p-8 text-center">
             <h3 className="text-xl font-semibold mb-2">{t('noTripsYet')}</h3>
             <p className="text-muted-foreground mb-4">{t('travelersEarnMoney')}</p>
-            <Link to="/add-trip">
-              <Button>{t('addTrip')}</Button>
-            </Link>
-            {user && (
-              <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg text-left">
-                <p className="text-sm text-muted-foreground font-semibold">
-                  Debug Info:
-                </p>
-                <p className="text-xs break-all">User ID: {user.id}</p>
-                <p className="text-xs">Session: {user ? 'Active' : 'None'}</p>
-              </div>
-            )}
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              <Link to="/add-trip">
+                <Button>{t('addTrip')}</Button>
+              </Link>
+              <Link to="/my-requests">
+                <Button variant="outline">{t('myRequests')}</Button>
+              </Link>
+            </div>
           </Card>
         )}
       </div>
