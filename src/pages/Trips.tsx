@@ -118,10 +118,16 @@ const Trips = () => {
           )
         `, { count: 'exact' });
 
+      // احسب تاريخ الغد (اليوم + 1) بحيث لا تظهر رحلات اليوم (أي أقل من 24 ساعة تقريبًا)
+      const now = new Date();
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const tomorrowDateStr = format(tomorrow, 'yyyy-MM-dd');
+
       query = query
         .eq('is_approved', true)
         .eq('is_deleted_by_user', false)
-        .gte('trip_date', format(new Date(), 'yyyy-MM-dd'));
+        // لا نظهر الرحلات التي تاريخها اليوم، نبدأ من الغد فصاعدًا
+        .gte('trip_date', tomorrowDateStr);
 
       if (filters.from_country) {
         query = query.eq('from_country', filters.from_country);
@@ -397,10 +403,9 @@ const Trips = () => {
         </CardContent>
       </Card>
 
-      {/* ملاحظة توضح استبعاد الرحلات ذات الطلبات النشطة */}
       {user && (
         <p className="text-xs text-muted-foreground mb-4 px-1">
-          لن تظهر الرحلات التي لديك طلب نشط عليها بالفعل.
+          لن تظهر الرحلات التي لديك طلب نشط عليها بالفعل، وكذلك الرحلات التي موعدها اليوم أو أقرب من 24 ساعة.
         </p>
       )}
       
