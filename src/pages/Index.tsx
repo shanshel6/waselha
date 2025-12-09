@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Plane, Package, DollarSign, Handshake, MapPin, ShieldCheck, MessageSquare } from 'lucide-react';
+import { Plane, Package, DollarSign, Handshake, ShieldCheck, MessageSquare } from 'lucide-react';
 import PriceCalculator from '@/components/PriceCalculator';
 
 const Index = () => {
@@ -34,17 +34,23 @@ const Index = () => {
     <div className="flex flex-col items-center bg-background">
       {/* Hero Section */}
       <section className="relative w-full h-[60vh] md:h-[70vh] flex items-center justify-center text-center text-white">
-        <div className="absolute inset-0 bg-black/50 z-10"></div>
-        <img 
-          src="https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixlib=idM3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
-          alt="Modern airport terminal" 
+        <div className="absolute inset-0 bg-black/50 z-10" />
+        <img
+          src="https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixlib=idM3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          alt="Modern airport terminal"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="relative z-20 max-w-4xl p-4">
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+          <h1
+            className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight"
+            style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}
+          >
             {t('welcome')}
           </h1>
-          <p className="text-lg md:text-xl text-neutral-200 mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}>
+          <p
+            className="text-lg md:text-xl text-neutral-200 mb-8"
+            style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}
+          >
             {t('startBuilding')}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
@@ -63,7 +69,7 @@ const Index = () => {
       </section>
 
       {/* Simple onboarding: two flows */}
-      <section className="w-full max-w-5xl px-4 -mt-8 mb-4">
+      <section className="w-full max-w-5xl px-4 mt-8 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Travelers card */}
           <div className="bg-card border rounded-2xl shadow-sm p-4 md:p-5 flex flex-col h-full">
@@ -75,7 +81,7 @@ const Index = () => {
               إذا كنت مسافرًا ولديك وزن فارغ في حقيبتك، يمكنك نشر رحلتك وكسب المال مقابل حمل طرود آمنة ومحددة.
             </p>
             <ul className="text-sm text-foreground space-y-1 list-disc pr-4">
-              <li>انشر رحلتك من صفحة "إضافة رحلة".</li>
+              <li>انشر رحلتك من صفحة &quot;إضافة رحلة&quot;.</li>
               <li>استقبل طلبات من المرسلين الذين يطابقون مسار رحلتك.</li>
               <li>تأكد من محتوى الطرد عبر الصور والفحص قبل السفر.</li>
               <li>سلّم الطرد عند الوصول واستلم المبلغ المتفق عليه.</li>
@@ -103,10 +109,10 @@ const Index = () => {
               إذا أردت إرسال طرد إلى دولة أخرى أو مدينة أخرى، يمكنك إما اختيار رحلة مناسبة أو إنشاء طلب شحن عام.
             </p>
             <ul className="text-sm text-foreground space-y-1 list-disc pr-4">
-              <li>ابحث عن رحلة من صفحة "الرحلات" واختر مسافرًا مناسبًا.</li>
-              <li>أو أنشئ "طلب شحن عام" من صفحة "طلب شحن جديد".</li>
+              <li>ابحث عن رحلة من صفحة &quot;الرحلات&quot; واختر مسافرًا مناسبًا.</li>
+              <li>أو أنشئ &quot;طلب شحن عام&quot; من صفحة &quot;طلب شحن جديد&quot;.</li>
               <li>تواصل مع المسافر داخل التطبيق لتحديد مكان ووقت التسليم.</li>
-              <li>تابع حالة الطرد خطوة بخطوة من صفحة "طلباتي".</li>
+              <li>تابع حالة الطرد خطوة بخطوة من صفحة &quot;طلباتي&quot;.</li>
             </ul>
             <div className="mt-4 flex flex-wrap gap-2 justify-between items-center">
               <div className="flex gap-2">
