@@ -33,23 +33,23 @@ serve(async (req) => {
       );
     }
 
-    // Admin client (service role) – for auth + reading profiles
+    // Admin client (service role) – فقط للتحقق من التوكن وقراءة البروفايل وعدّ البلاغات
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Public client (anon key) – will perform the INSERT under RLS as the end‑user
+    // Public client (anon key) – هذا الذي سيُدخل السطر في reports تحت RLS
     const publicClient = createClient(supabaseUrl, anonKey, {
       global: {
         headers: {
-          // Very important: forward the same JWT so RLS sees the same user
+          // نمرّر نفس التوكن حتى يعمل auth.uid() داخل RLS
           Authorization: req.headers.get("Authorization") ?? "",
         },
       },
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 1) Auth using admin client (to validate token & get user id)
+    // 1) التحقق من الـ Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -59,6 +59,8 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
+
+    // 2) الحصول على المستخدم من التوكن باستخدام adminClient
     const { data: userData, error: userError } = await adminClient.auth.getUser(token);
 
     if (userError || !userData.user) {
@@ -71,7 +73,7 @@ serve(async (req) => {
     const reporterId = userData.user.id;
     const reporterEmail = userData.user.email ?? "";
 
-    // 2) Payload validation
+    // 3) قراءة البودي والتحقق منه
     const body = (await req.json()) as ReportPayload;
     if (!body.request_id || !body.description) {
       return new Response(
@@ -80,7 +82,7 @@ serve(async (req) => {
       );
     }
 
-    // 3) Max 3 reports per (request_id, reporter_id) – using adminClient (bypasses RLS for counting)
+    // 4) حدّ أعلى: 3 بلاغات لنفس الطلب من نفس المستخدم – باستخدام adminClient (بدون RLS)
     const { count: existingCount, error: countError } = await adminClient
       .from("reports")
       .select("id", { count: "exact", head: true })
@@ -102,7 +104,7 @@ serve(async (req) => {
       );
     }
 
-    // 4) Profile data via admin client
+    // 5) قراءة بيانات البروفايل (الاسم/الهاتف) بواسطة adminClient
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("first_name, last_name, phone")
@@ -116,7 +118,7 @@ serve(async (req) => {
     const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "بدون اسم";
     const phone = profile?.phone ?? "غير مذكور";
 
-    // 5) Insert report row via PUBLIC client so RLS applies normally
+    // 6) إدخال البلاغ في جدول reports باستخدام publicClient حتى تمر عبر RLS
     const { error: insertError } = await publicClient
       .from("reports")
       .insert({
@@ -137,7 +139,7 @@ serve(async (req) => {
       );
     }
 
-    // 6) Optional email to owner (still via adminClient)
+    // 7) إرسال إيميل اختياري لصاحب المنصة (نفس المنطق السابق)
     const emailTo = "shanshel6@gmail.com";
     const subject = `Waslaha - بلاغ عن طلب رقم ${body.request_id}`;
     const textBody = `
