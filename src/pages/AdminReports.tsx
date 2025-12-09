@@ -8,7 +8,7 @@ import { useAdminCheck } from '@/hooks/use-admin-check';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ShieldAlert, User, Phone, Mail, Calendar, Package } from 'lucide-react';
+import { Loader2, ShieldAlert, User, Phone, Mail, Calendar, Package, ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ReportRow {
@@ -19,6 +19,7 @@ interface ReportRow {
   reporter_phone: string | null;
   reporter_email: string | null;
   description: string;
+  problem_photo_url: string | null;
   created_at: string;
 }
 
@@ -83,7 +84,7 @@ const AdminReports: React.FC = () => {
         <CardHeader>
           <CardTitle>بلاغات المستخدمين عن الطلبات</CardTitle>
           <CardDescription className="text-sm">
-            هنا تظهر جميع البلاغات التي أرسلها المستخدمون بعد اكتمال الطلب، مع بيانات الاتصال الخاصة بهم.
+            هنا تظهر جميع البلاغات التي أرسلها المستخدمون بعد اكتمال الطلب، مع بيانات الاتصال وصورة المشكلة إن وُجدت.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -124,10 +125,30 @@ const AdminReports: React.FC = () => {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   <div className="p-3 rounded-md bg-muted text-sm whitespace-pre-line leading-relaxed">
                     {r.description}
                   </div>
+                  {r.problem_photo_url && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" />
+                        صورة المشكلة:
+                      </p>
+                      <a
+                        href={r.problem_photo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block"
+                      >
+                        <img
+                          src={r.problem_photo_url}
+                          alt="Problem report"
+                          className="h-32 w-auto rounded border object-contain bg-muted"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))

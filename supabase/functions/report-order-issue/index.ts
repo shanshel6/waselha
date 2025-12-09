@@ -10,6 +10,7 @@ const corsHeaders = {
 interface ReportPayload {
   request_id: string;
   description: string;
+  problem_photo_url?: string | null;
 }
 
 serve(async (req) => {
@@ -66,7 +67,7 @@ serve(async (req) => {
       );
     }
 
-    // 3) Limit to max 3 reports per (request_id, reporter_id)
+    // 3) Max 3 reports per (request_id, reporter_id)
     const { count: existingCount, error: countError } = await adminClient
       .from("reports")
       .select("id", { count: "exact", head: true })
@@ -102,7 +103,7 @@ serve(async (req) => {
     const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "بدون اسم";
     const phone = profile?.phone ?? "غير مذكور";
 
-    // 5) Insert into reports table
+    // 5) Insert into reports table (with optional photo URL)
     const { error: insertError } = await adminClient
       .from("reports")
       .insert({
@@ -112,6 +113,7 @@ serve(async (req) => {
         reporter_phone: phone,
         reporter_email: reporterEmail,
         description: body.description,
+        problem_photo_url: body.problem_photo_url ?? null,
       });
 
     if (insertError) {
@@ -122,7 +124,7 @@ serve(async (req) => {
       );
     }
 
-    // 6) Optional email to owner (best-effort)
+    // 6) Optional email to owner (unchanged logic)
     const emailTo = "shanshel6@gmail.com";
     const subject = `Waslaha - بلاغ عن طلب رقم ${body.request_id}`;
     const textBody = `
@@ -139,6 +141,9 @@ serve(async (req) => {
 
 نص المشكلة:
 ${body.description}
+
+رابط صورة المشكلة (إن وُجد):
+${body.problem_photo_url ?? "لا توجد صورة مرفقة"}
 
 --
 تم أيضاً حفظ هذا البلاغ في جدول التقارير بلوحة الإدارة.

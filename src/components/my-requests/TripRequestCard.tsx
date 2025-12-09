@@ -27,6 +27,7 @@ import {
   DollarSign,
   Wallet,
   AlertTriangle,
+  ImageIcon,
 } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
@@ -35,10 +36,18 @@ import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 import VerifiedBadge from '@/components/VerifiedBadge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import { Input } from '@/components/ui/input';
 
 interface Profile {
   id: string;
@@ -102,6 +111,8 @@ interface TripRequestCardProps {
   onOpenPaymentDialog: (request: RequestWithPayment) => void;
   t: (key: string, options?: any) => string;
 }
+
+const REPORT_BUCKET = 'report-photos';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -188,10 +199,12 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const canUpdateToCompleted =
     req.status === 'accepted' && currentTrackingStatus === 'delivered';
 
-  // === New: completed order reporting ===
+  // === Reporting state ===
   const isCompleted = currentTrackingStatus === 'completed';
   const [reportOpen, setReportOpen] = useState(false);
   const [reportText, setReportText] = useState('');
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [reportPreviewUrl, setReportPreviewUrl] = useState<string | null>(null);
   const [sendingReport, setSendingReport] = useState(false);
 
   const renderPaymentBadge = () => {
@@ -232,6 +245,67 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const handleCancelAccepted = () => onCancelAcceptedRequest(req);
   const handleUploadPhotos = () => onUploadSenderPhotos(req);
 
+  const handleReportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showError(t('invalidFileType'));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showError(t('fileTooLarge'));
+      return;
+    }
+
+    if (reportPreviewUrl) {
+      URL.revokeObjectURL(reportPreviewUrl);
+    }
+
+    const url = URL.createObjectURL(file);
+    setReportPreviewUrl(url);
+    setReportFile(file);
+  };
+
+  const ensureReportBucket = async () => {
+    const { data, error } = await supabase.functions.invoke('create-report-photos-bucket');
+    if (error) {
+      console.error('Error ensuring report-photos bucket:', error);
+      throw new Error(error.message || 'Failed to prepare storage for report photos.');
+    }
+    if (!data?.success) {
+      console.error('create-report-photos-bucket returned non-success payload:', data);
+      throw new Error('Failed to prepare storage for report photos.');
+    }
+  };
+
+  const uploadReportPhoto = async (): Promise<string | null> => {
+    if (!reportFile) return null;
+
+    await ensureReportBucket();
+
+    const ext = reportFile.name.split('.').pop() || 'jpg';
+    const path = `${req.id}/${Date.now()}-problem.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(REPORT_BUCKET)
+      .upload(path, reportFile, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Report photo upload error:', uploadError);
+      throw new Error(uploadError.message || 'Failed to upload report photo.');
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(REPORT_BUCKET)
+      .getPublicUrl(path);
+
+    return publicUrlData.publicUrl;
+  };
+
   const submitReport = async () => {
     if (!reportText.trim()) {
       showError(t('requiredField'));
@@ -240,20 +314,40 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
     setSendingReport(true);
     try {
+      const photoUrl = await uploadReportPhoto().catch((e) => {
+        // إذا فشل الرفع، نظهر الخطأ ونوقف
+        showError(e?.message || 'تعذر رفع صورة البلاغ.');
+        throw e;
+      });
+
       const { error } = await supabase.functions.invoke('report-order-issue', {
-        body: { request_id: req.id, description: reportText.trim() },
+        body: {
+          request_id: req.id,
+          description: reportText.trim(),
+          problem_photo_url: photoUrl,
+        },
       });
 
       if (error) {
         console.error('report-order-issue error:', error);
-        throw new Error(error.message || 'Failed to send report');
+        if (error.message?.includes('Max reports reached')) {
+          showError('لا يمكنك إرسال أكثر من ٣ بلاغات لنفس الطلب.');
+        } else {
+          showError(error.message || 'تعذر إرسال البلاغ، حاول مرة أخرى.');
+        }
+        return;
       }
 
       showSuccess('تم إرسال البلاغ، سنراجع مشكلتك قريباً.');
       setReportOpen(false);
       setReportText('');
-    } catch (e: any) {
-      showError(e?.message || 'تعذر إرسال البلاغ، حاول مرة أخرى.');
+      if (reportPreviewUrl) {
+        URL.revokeObjectURL(reportPreviewUrl);
+      }
+      setReportPreviewUrl(null);
+      setReportFile(null);
+    } catch (e) {
+      // الأخطاء تم التعامل معها أعلاه
     } finally {
       setSendingReport(false);
     }
@@ -312,14 +406,13 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
         {expanded && (
           <CardContent className="p-4 pt-0 space-y-4">
-            {/* Tracking status */}
             {req.status !== 'pending' && (
               <div className="pt-2">
                 <RequestTracking currentStatus={currentTrackingStatus} isRejected={isRejected} />
               </div>
             )}
 
-            {/* إذا اكتمل الطلب، نظهر رسالة فقط ولا نعرض أزراراً أخرى */}
+            {/* إذا اكتمل الطلب، نعرض تنبيه + زر البلاغ */}
             {isCompleted && (
               <>
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md flex items-center gap-2 text-sm">
@@ -353,7 +446,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                   </div>
                 </div>
 
-                {/* Pending changes */}
                 {hasPendingChanges && (
                   <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md space-y-2">
                     <p className="font-semibold text-sm">{t('proposedChanges')}:</p>
@@ -410,9 +502,8 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                   )}
                 </div>
 
-                {/* Action buttons */}
+                {/* Action buttons (غير مكتمل) */}
                 <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
-                  {/* Chat button */}
                   <Button
                     size="sm"
                     variant="outline"
@@ -423,7 +514,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                     {t('viewChat')}
                   </Button>
 
-                  {/* Right side actions */}
                   <div className="flex flex-wrap gap-2 justify-end">
                     {showPayButton && (
                       <Button
@@ -495,7 +585,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
         )}
       </Card>
 
-      {/* Report problem dialog for completed orders */}
+      {/* Report problem dialog for completed orders (with photo upload) */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -504,16 +594,38 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
               الإبلاغ عن مشكلة في الطلب
             </DialogTitle>
             <DialogDescription>
-              صف المشكلة التي واجهتها مع هذا الطلب بالتفصيل، وسيتواصل معك فريق الدعم إذا لزم الأمر.
+              صف المشكلة التي واجهتها مع هذا الطلب بالتفصيل، ويمكنك أيضاً إرفاق صورة توضّح المشكلة (مثلاً صورة الطرد عند الاستلام).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Textarea
-              rows={6}
-              placeholder="اكتب وصفاً كاملاً للمشكلة، مثلاً: لم يصل الطرد، أو حدث خلاف مع المسافر، أو غير ذلك..."
-              value={reportText}
-              onChange={(e) => setReportText(e.target.value)}
-            />
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-xs font-medium">وصف المشكلة</p>
+              <Textarea
+                rows={5}
+                placeholder="اكتب وصفاً كاملاً للمشكلة، مثلاً: لم يصل الطرد، أو حدث خلاف مع المسافر، أو حالة الطرد سيئة عند الاستلام..."
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium flex items-center gap-1">
+                <ImageIcon className="h-3 w-3" />
+                صورة توضح المشكلة (اختياري)
+              </p>
+              <Input type="file" accept="image/*" onChange={handleReportFileChange} />
+              {reportPreviewUrl && (
+                <div className="mt-2">
+                  <img
+                    src={reportPreviewUrl}
+                    alt="Problem preview"
+                    className="w-full max-h-48 object-contain rounded border"
+                  />
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                يدعم صور JPG/PNG حتى 10MB. هذه الصورة ستظهر فقط للمسؤول في لوحة التقارير.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportOpen(false)}>
