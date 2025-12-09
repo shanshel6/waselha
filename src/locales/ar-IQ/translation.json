@@ -276,5 +276,6 @@
   "paymentPendingReviewTraveler": "قام المرسل بإرسال إثبات الدفع وهو قيد المراجعة. يرجى الانتظار حتى يتم التأكيد قبل متابعة الفحص.",
   "paymentRejectedMessage": "تم رفض إثبات الدفع السابق. يرجى إعادة إرسال إثبات دفع صحيح قبل تحميل الصور.",
   "paymentRejectedTravelerMessage": "تم رفض إثبات الدفع من المرسل. يرجى طلب تحديث إثبات الدفع قبل المتابعة.",
-  "paymentRequired": "الدفع مطلوب"
+  "paymentRequired": "الدفع مطلوب",
+  "uploadItemPhotos": "ارفع صور الأغراض"
 }
