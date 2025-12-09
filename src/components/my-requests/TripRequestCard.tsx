@@ -167,7 +167,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
     req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
 
   // Determine if sender is still allowed to upload item photos:
-  // only between payment_done and before traveler_inspection_complete.
+  // فقط بين payment_done و قبل traveler_inspection_complete، ولم يرفع صوراً سابقاً.
   const paymentDoneStage = TRACKING_STAGES.find((s) => s.key === 'payment_done');
   const travelerInspectionStage = TRACKING_STAGES.find(
     (s) => s.key === 'traveler_inspection_complete'
@@ -180,7 +180,8 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
     !!travelerInspectionStage &&
     !!currentStage &&
     currentStage.order >= paymentDoneStage.order &&
-    currentStage.order < travelerInspectionStage.order;
+    currentStage.order < travelerInspectionStage.order &&
+    (!req.sender_item_photos || req.sender_item_photos.length === 0);
 
   const renderPaymentBadge = () => {
     switch (paymentStatus) {
@@ -378,7 +379,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 </Button>
               )}
 
-              {/* Upload item photos: only between payment_done and before traveler_inspection_complete */}
+              {/* Upload item photos: only قبل فحص المسافر، وفقط إذا لم تُرفع صور سابقاً */}
               {canShowSenderUploadButton && (
                 <Button
                   size="sm"
@@ -387,9 +388,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                   disabled={trackingUpdateMutation.isPending}
                 >
                   <Camera className="mr-2 h-4 w-4" />
-                  {req.sender_item_photos && req.sender_item_photos.length > 0
-                    ? t('updateItemPhotos')
-                    : t('uploadItemPhotos')}
+                  {t('uploadItemPhotos')}
                 </Button>
               )}
 
