@@ -166,11 +166,21 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const showPayButton =
     req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
 
-  // Only allow sender photo upload once tracking >= payment_done
+  // Determine if sender is still allowed to upload item photos:
+  // only between payment_done and before traveler_inspection_complete.
   const paymentDoneStage = TRACKING_STAGES.find((s) => s.key === 'payment_done');
+  const travelerInspectionStage = TRACKING_STAGES.find(
+    (s) => s.key === 'traveler_inspection_complete'
+  );
   const currentStage = TRACKING_STAGES.find((s) => s.key === currentTrackingStatus);
-  const isPaymentStepReached =
-    !!paymentDoneStage && !!currentStage && currentStage.order >= paymentDoneStage.order;
+
+  const canShowSenderUploadButton =
+    req.status === 'accepted' &&
+    !!paymentDoneStage &&
+    !!travelerInspectionStage &&
+    !!currentStage &&
+    currentStage.order >= paymentDoneStage.order &&
+    currentStage.order < travelerInspectionStage.order;
 
   const renderPaymentBadge = () => {
     switch (paymentStatus) {
@@ -368,8 +378,8 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 </Button>
               )}
 
-              {/* Upload item photos: ONLY after payment step is reached */}
-              {req.status === 'accepted' && isPaymentStepReached && (
+              {/* Upload item photos: only between payment_done and before traveler_inspection_complete */}
+              {canShowSenderUploadButton && (
                 <Button
                   size="sm"
                   variant="secondary"
