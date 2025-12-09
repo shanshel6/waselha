@@ -134,30 +134,17 @@ const TripDetails = () => {
     };
   }, [weight, trip]);
 
-  const handleRequestSubmit = async () => {
-    if (!user) {
-      showError(t('mustBeLoggedIn'));
-      navigate('/login');
-      return;
-    }
-    
-    // Enforce verification check
-    if (verificationInfo?.status !== 'approved') {
-      showError(t('verificationRequiredTitle'));
-      navigate('/verification');
-      return;
-    }
-
-    const isValid = await form.trigger();
-    if (isValid) {
-      setIsForbiddenItemsDialogOpen(true);
-    }
-  };
-
   const onConfirmSubmit = form.handleSubmit(async (values) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
       navigate('/login');
+      return;
+    }
+
+    // Re-check verification just before final submission (should be caught earlier, but safety first)
+    if (verificationInfo?.status !== 'approved') {
+      showError(t('verificationRequiredTitle'));
+      navigate('/verification');
       return;
     }
 
@@ -180,6 +167,26 @@ const TripDetails = () => {
       navigate('/my-requests');
     }
   });
+
+  const handleRequestSubmit = async () => {
+    if (!user) {
+      showError(t('mustBeLoggedIn'));
+      navigate('/login');
+      return;
+    }
+    
+    // Enforce verification check
+    if (verificationInfo?.status !== 'approved') {
+      showError(t('verificationRequiredTitle'));
+      navigate('/verification');
+      return;
+    }
+
+    const isValid = await form.trigger();
+    if (isValid) {
+      setIsForbiddenItemsDialogOpen(true);
+    }
+  };
 
   if (isLoading || isVerificationLoading)
     return (
