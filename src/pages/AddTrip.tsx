@@ -62,7 +62,7 @@ const AddTrip = () => {
     },
   });
 
-  const { from_country, to_country, free_kg, trip_date } = form.watch();
+  const { from_country, to_country, free_kg } = form.watch();
 
   // ضمان أن إحدى الدول هي العراق
   React.useEffect(() => {
@@ -314,6 +314,7 @@ const AddTrip = () => {
                           onValueChange={(val) => field.onChange(val[0])}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          {/* 1kg على اليسار، 50kg على اليمين */}
                           <span>1 kg</span>
                           <span>50 kg</span>
                         </div>
@@ -385,7 +386,7 @@ const AddTrip = () => {
                 </button>
               </p>
 
-              {/* Estimated profit */}
+              {/* Estimated profit (USD only) */}
               {estimatedProfit && !estimatedProfit.error && (
                 <Card className="mt-4 border-primary/30 bg-primary/5">
                   <CardHeader className="pb-2">
@@ -396,8 +397,7 @@ const AddTrip = () => {
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
                     <p>
-                      {estimatedProfit.totalPriceUSD.toFixed(2)} USD (
-                      {estimatedProfit.totalPriceIQD.toLocaleString('en-US')} IQD)
+                      {estimatedProfit.totalPriceUSD.toFixed(2)} USD
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t('basedOnWeightAndDestination')}
