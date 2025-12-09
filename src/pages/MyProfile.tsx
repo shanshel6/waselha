@@ -12,6 +12,7 @@ import EditContactDialog from '@/components/EditContactDialog';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
+import UploadAvatar from '@/components/UploadAvatar';
 
 const MyProfile = () => {
   const { t } = useTranslation();
@@ -69,7 +70,6 @@ const MyProfile = () => {
   };
 
   const status = verificationInfo?.status || 'none';
-  // إذا كانت الحالة pending، نعطّل الزر والرابط تماماً
   const verifyButtonDisabled = status === 'pending';
   const verifyButtonLabel =
     status === 'pending'
@@ -83,24 +83,29 @@ const MyProfile = () => {
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myProfile')}</h1>
       
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <User className="h-8 w-8 text-primary" />
-            <span className="flex items-center gap-2">
-              {profile?.first_name} {profile?.last_name}
-              {profile && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 text-muted-foreground hover:text-primary"
-                  onClick={() => setIsNameDialogOpen(true)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              )}
-            </span>
+        <CardHeader className="space-y-4">
+          {/* Avatar + upload */}
+          <UploadAvatar profile={profile || null} />
+
+          <div className="flex items-center gap-3">
+            <CardTitle className="flex items-center gap-3">
+              <User className="h-8 w-8 text-primary" />
+              <span className="flex items-center gap-2">
+                {profile?.first_name} {profile?.last_name}
+                {profile && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-muted-foreground hover:text-primary"
+                    onClick={() => setIsNameDialogOpen(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
+              </span>
+            </CardTitle>
             {renderVerificationBadge()}
-          </CardTitle>
+          </div>
           <CardDescription>
             {t('profileDetails')}
           </CardDescription>
@@ -114,7 +119,6 @@ const MyProfile = () => {
                   {t('verifyYourself')}
                 </span>
               </div>
-              {/* إذا كانت الحالة pending، نضيف pointer-events-none على الـ Link حتى لا يكون قابلاً للنقر */}
               <Link
                 to="/verification"
                 className={verifyButtonDisabled ? 'pointer-events-none opacity-80' : ''}

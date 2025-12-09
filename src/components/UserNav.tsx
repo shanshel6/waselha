@@ -59,10 +59,18 @@ const UserNav = () => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            {/* Placeholder for AvatarImage if we implement image upload later */}
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getInitials()}
-            </AvatarFallback>
+            {profile?.avatar_url ? (
+              // eslint-disable-next-line jsx-a11y/img-redundant-alt
+              <img
+                src={profile.avatar_url}
+                alt="User avatar"
+                className="h-full w-full object-cover rounded-full"
+              />
+            ) : (
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {getInitials()}
+              </AvatarFallback>
+            )}
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
