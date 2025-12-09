@@ -13,6 +13,7 @@ import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface Profile {
   id: string;
@@ -108,29 +109,29 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
   const { data: chatStatus } = useChatReadStatus(req.id);
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
-  const reqWithProfiles = req;
-  const senderFirstName = reqWithProfiles.sender_profile?.first_name || '';
-  const senderLastName = reqWithProfiles.sender_profile?.last_name || '';
+  const senderFirstName = req.sender_profile?.first_name || '';
+  const senderLastName = req.sender_profile?.last_name || '';
   const senderName = `${senderFirstName} ${senderLastName}`.trim() || t('user');
-  const fromCountry = reqWithProfiles.trips?.from_country || 'N/A';
-  const toCountry = reqWithProfiles.trips?.to_country || 'N/A';
-  const tripDate = reqWithProfiles.trips?.trip_date;
-  const isRejected = reqWithProfiles.status === 'rejected';
-  const currentTrackingStatus = reqWithProfiles.tracking_status;
-  const hasPendingChanges = !!reqWithProfiles.proposed_changes;
-  const isGeneralOrderMatch = !!reqWithProfiles.general_order_id;
-  
+  const fromCountry = req.trips?.from_country || 'N/A';
+  const toCountry = req.trips?.to_country || 'N/A';
+  const tripDate = req.trips?.trip_date;
+  const isRejected = req.status === 'rejected';
+  const currentTrackingStatus = req.tracking_status;
+  const hasPendingChanges = !!req.proposed_changes;
+  const isGeneralOrderMatch = !!req.general_order_id;
+  const senderIsVerified = false; // profiles table has is_verified, but sender_profile in this component does not include it by schema; keep false unless extended
+
   let travelerAction: { status: RequestTrackingStatus, tKey: string, icon: React.ElementType } | null = null;
   let secondaryAction: { tKey: string, onClick: () => void, icon: React.ElementType } | null = null;
 
-  if (reqWithProfiles.status === 'accepted') {
-    const hasInspectionPhotos = reqWithProfiles.traveler_inspection_photos && reqWithProfiles.traveler_inspection_photos.length > 0;
+  if (req.status === 'accepted') {
+    const hasInspectionPhotos = req.traveler_inspection_photos && req.traveler_inspection_photos.length > 0;
 
     if (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') {
       if (currentTrackingStatus === 'sender_photos_uploaded') {
         secondaryAction = { 
           tKey: hasInspectionPhotos ? 'updateInspectionPhotos' : 'uploadInspectionPhotos', 
-          onClick: () => onUploadInspectionPhotos && onUploadInspectionPhotos(reqWithProfiles), 
+          onClick: () => onUploadInspectionPhotos && onUploadInspectionPhotos(req), 
           icon: Camera 
         };
       }
@@ -148,11 +149,15 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
       <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {getStatusIcon(reqWithProfiles.status)}
+            {getStatusIcon(req.status)}
             <div>
-              <CardTitle className="text-base font-semibold">
-                {t('requestFrom')} {senderName}
-                {isGeneralOrderMatch && <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">({t('generalOrderTitle')})</span>}
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <span>
+                  {t('requestFrom')} {senderName}
+                </span>
+                {/* If you later extend sender_profile with is_verified, replace senderIsVerified with that flag */}
+                {senderIsVerified && <VerifiedBadge className="mt-[1px]" />}
+                {isGeneralOrderMatch && <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">({t('generalOrderTitle')})</span>}
               </CardTitle>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Plane className="h-3 w-3" />
@@ -164,8 +169,8 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={getStatusVariant(reqWithProfiles.status)} className="text-xs">
-              {hasPendingChanges ? t('pendingChanges') : t(reqWithProfiles.status)}
+            <Badge variant={getStatusVariant(req.status)} className="text-xs">
+              {hasPendingChanges ? t('pendingChanges') : t(req.status)}
             </Badge>
             {hasNewMessage && (
               <Badge variant="destructive" className="text-xs h-5 px-2">
@@ -179,7 +184,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
       {expanded && (
         <CardContent className="p-4 pt-0 space-y-3">
-          {reqWithProfiles.status !== 'pending' && (
+          {req.status !== 'pending' && (
             <div className="pt-2">
               <RequestTracking 
                 currentStatus={currentTrackingStatus} 
@@ -191,11 +196,11 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Weight className="h-4 w-4 text-muted-foreground" />
-              <span>{reqWithProfiles.weight_kg} kg</span>
+              <span>{req.weight_kg} kg</span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate">{reqWithProfiles.destination_city}</span>
+              <span className="truncate">{req.destination_city}</span>
             </div>
           </div>
 
@@ -212,15 +217,15 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md space-y-2">
               <p className="font-semibold text-sm">{t('proposedChanges')}:</p>
               <p className="text-xs text-muted-foreground">
-                {t('packageWeightKg')}: {reqWithProfiles.proposed_changes?.weight_kg} kg
+                {t('packageWeightKg')}: {req.proposed_changes?.weight_kg} kg
               </p>
               <p className="text-xs text-muted-foreground">
-                {t('packageContents')}: {reqWithProfiles.proposed_changes?.description}
+                {t('packageContents')}: {req.proposed_changes?.description}
               </p>
               <div className="flex gap-2 pt-2">
                 <Button 
                   size="sm" 
-                  onClick={() => onReviewChanges({ request: reqWithProfiles, accept: true })}
+                  onClick={() => onReviewChanges({ request: req, accept: true })}
                   disabled={reviewChangesMutation.isPending}
                   className="bg-green-600 hover:bg-green-700"
                 >
@@ -229,7 +234,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
                 <Button 
                   size="sm" 
                   variant="destructive" 
-                  onClick={() => onReviewChanges({ request: reqWithProfiles, accept: false })}
+                  onClick={() => onReviewChanges({ request: req, accept: false })}
                   disabled={reviewChangesMutation.isPending}
                 >
                   {t('rejectChanges')}
@@ -253,17 +258,17 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
               <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
                 <div>
                   <p className="font-medium">{t('packageContents')}:</p>
-                  <p className="text-muted-foreground">{reqWithProfiles.description}</p>
+                  <p className="text-muted-foreground">{req.description}</p>
                 </div>
                 <div>
                   <p className="font-medium">{t('receiverDetails')}:</p>
-                  <p className="text-muted-foreground">{reqWithProfiles.receiver_details}</p>
+                  <p className="text-muted-foreground">{req.receiver_details}</p>
                 </div>
-                {reqWithProfiles.sender_item_photos && reqWithProfiles.sender_item_photos.length > 0 && (
+                {req.sender_item_photos && req.sender_item_photos.length > 0 && (
                   <div className="pt-2 border-t">
                     <p className="font-medium">{t('senderItemPhotos')}:</p>
                     <div className="flex gap-2 overflow-x-auto pt-1">
-                      {reqWithProfiles.sender_item_photos.map((url, index) => (
+                      {req.sender_item_photos.map((url, index) => (
                         <a key={index} href={url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
                           <img src={url} alt={`Item ${index}`} className="h-12 w-12 object-cover rounded-md" />
                         </a>
@@ -275,11 +280,11 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             )}
           </div>
 
-          {reqWithProfiles.status === 'pending' && (
+          {req.status === 'pending' && (
             <div className="flex gap-2 pt-2">
               <Button 
                 size="sm" 
-                onClick={() => onUpdateRequest(reqWithProfiles, 'accepted')}
+                onClick={() => onUpdateRequest(req, 'accepted')}
                 disabled={updateRequestMutation.isPending}
                 className="flex-1"
               >
@@ -288,7 +293,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
               <Button 
                 size="sm" 
                 variant="destructive" 
-                onClick={() => onUpdateRequest(reqWithProfiles, 'rejected')}
+                onClick={() => onUpdateRequest(req, 'rejected')}
                 disabled={updateRequestMutation.isPending}
                 className="flex-1"
               >
@@ -297,9 +302,9 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           )}
 
-          {reqWithProfiles.status === 'accepted' && (
+          {req.status === 'accepted' && (
             <div className="flex flex-wrap gap-2 pt-2">
-              <Link to={`/chat/${reqWithProfiles.id}`}>
+              <Link to={`/chat/${req.id}`}>
                 <Button size="sm" variant="outline" className={cn(hasNewMessage && "border-red-500 text-red-500")}>
                   <MessageSquare className="mr-2 h-4 w-4" />
                   {t('viewChat')}
@@ -321,7 +326,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
               {travelerAction && (
                 <Button 
                   size="sm" 
-                  onClick={() => onTrackingUpdate(reqWithProfiles, travelerAction!.status)}
+                  onClick={() => onTrackingUpdate(req, travelerAction!.status)}
                   disabled={trackingUpdateMutation.isPending}
                 >
                   <travelerAction.icon className="mr-2 h-4 w-4" />
@@ -332,7 +337,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
               <Button 
                 size="sm" 
                 variant="destructive" 
-                onClick={() => onCancelAcceptedRequest(reqWithProfiles)}
+                onClick={() => onCancelAcceptedRequest(req)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t('cancelRequest')}

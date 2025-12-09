@@ -13,8 +13,9 @@ import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
-interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
+interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; /* is_verified?: boolean */ }
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
 interface Request { 
   id: string; 
@@ -93,6 +94,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
   const travelerName = req.traveler_profile?.first_name || t('traveler');
+  const travelerIsVerified = false; // extend traveler_profile with is_verified later if needed
   const fromCountry = req.trips?.from_country || 'N/A';
   const toCountry = req.trips?.to_country || 'N/A';
   const tripDate = req.trips?.trip_date;
@@ -131,7 +133,10 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
           <p className="flex items-center gap-2">
             <User className="h-4 w-4 text-primary" />
             <span className="font-semibold">{t('traveler')}:</span>
-            {otherPartyName}
+            <span className="flex items-center gap-1">
+              {otherPartyName}
+              {/* traveler verification badge could go here once data is available */}
+            </span>
           </p>
           <p className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-primary" />
@@ -216,9 +221,12 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
           <div className="flex items-center gap-3">
             {getStatusIcon(req.status)}
             <div>
-              <CardTitle className="text-base font-semibold">
-                {t('requestTo')} {travelerName}
-                {isGeneralOrderMatch && <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">({t('generalOrderTitle')})</span>}
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <span>
+                  {t('requestTo')} {travelerName}
+                </span>
+                {travelerIsVerified && <VerifiedBadge className="mt-[1px]" />}
+                {isGeneralOrderMatch && <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">({t('generalOrderTitle')})</span>}
               </CardTitle>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <Plane className="h-3 w-3" />

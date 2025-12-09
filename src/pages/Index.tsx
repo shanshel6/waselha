@@ -1,11 +1,17 @@
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Plane, Package, DollarSign, Handshake, ShieldCheck, MessageSquare } from 'lucide-react';
+import { Plane, Package, DollarSign, Handshake, ShieldCheck, MessageSquare, ShieldAlert } from 'lucide-react';
 import PriceCalculator from '@/components/PriceCalculator';
+import { useSession } from '@/integrations/supabase/SessionContextProvider';
+import { useVerificationStatus } from '@/hooks/use-verification-status';
 
 const Index = () => {
   const { t } = useTranslation();
+  const { user } = useSession();
+  const { data: verificationInfo } = useVerificationStatus();
+  const isLoggedIn = !!user;
+  const isVerified = verificationInfo?.status === 'approved';
 
   const howItWorksSteps = [
     {
@@ -53,7 +59,7 @@ const Index = () => {
           >
             اربط بين المسافرين والمرسلين لشحن الطرود بطريقة أسهل وأرخص من شركات الشحن التقليدية.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-4">
             <Link to="/add-trip">
               <Button size="lg" className="w-full text-lg py-6">
                 <Plane className="mr-2 h-5 w-5" /> {t('imATraveler')}
@@ -65,6 +71,22 @@ const Index = () => {
               </Button>
             </Link>
           </div>
+
+          {isLoggedIn && !isVerified && (
+            <div className="max-w-2xl mx-auto mt-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 rounded-lg bg-yellow-50/90 text-yellow-900 px-3 py-2 text-xs sm:text-sm shadow-sm">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4" />
+                  <span>قم بتوثيق حسابك لزيادة ثقة المستخدمين بك، خاصة عند إرسال أو استلام الطرود.</span>
+                </div>
+                <Link to="/verification">
+                  <Button size="xs" variant="outline" className="border-yellow-500 text-yellow-900 hover:bg-yellow-100">
+                    {t('verifyNow')}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -141,7 +163,7 @@ const Index = () => {
         <h2 className="text-4xl font-bold text-center mb-12">{t('howItWorks')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {howItWorksSteps.map((step, index) => (
-            <div key={index} className="flex flex-col items-center text-center p-4">
+            <div key={index} className="flex flex-col items-center text_center p-4">
               <div className="bg-primary/10 rounded-full p-4 mb-4">
                 {step.icon}
               </div>

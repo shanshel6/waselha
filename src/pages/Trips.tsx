@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 const searchSchema = z.object({
   from_country: z.string().optional(),
@@ -242,6 +243,7 @@ const Trips = () => {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <User className="h-4 w-4" />
                       <span>{trip.profiles?.first_name || 'N/A'}</span>
+                      {trip.profiles?.is_verified && <VerifiedBadge />}
                     </div>
                     <div className="border-t pt-4 flex items-center gap-2">
                       <Package className="h-5 w-5 text-primary/80" />
@@ -271,7 +273,6 @@ const Trips = () => {
       );
     }
 
-    // Stronger empty state with clear next steps
     return (
       <Card className="text-center p-8 md:p-12">
         <h3 className="text-xl font-semibold">{t('noTripsFound')}</h3>
@@ -315,7 +316,7 @@ const Trips = () => {
             <p className="font-semibold">نصيحة سريعة</p>
             <p className="text-muted-foreground mt-1">
               تصفّح الرحلات من هنا، ثم افتح تفاصيل الرحلة واضغط &quot;{t('viewTripAndRequest')}&quot; لإرسال طلب إلى المسافر.
-              لن تظهر لك الرحلات التي لديك عليها طلب نشط بالفعل.
+              لن تظهر لك الرحلات التي لديك طلب نشط بالفعل.
             </p>
           </div>
           <button
