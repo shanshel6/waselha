@@ -16,7 +16,7 @@ import { RequestTrackingStatus } from '@/lib/tracking-stages';
 interface SenderPhotoUploadModalProps {
   request: any;
   isOpen: boolean;
-  onOpenChange: (open: (open: boolean) => void) => void;
+  onOpenChange: (open: boolean) => void;
 }
 
 const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({ 
@@ -46,18 +46,18 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
 
       // Hard gate: payment must be fully confirmed before photos
       if (paymentStatus !== 'paid') {
-        throw new Error(t('senderCannotUploadBeforePayment') ?? 'You must complete payment before uploading item photos.');
+        throw new Error(
+          t('senderCannotUploadBeforePayment') ??
+          'You must complete payment before uploading item photos.'
+        );
       }
-      
-      const updateData: { sender_item_photos: string[], tracking_status?: RequestTrackingStatus } = {
-        sender_item_photos: photos
+
+      // Directly move tracking to traveler_inspection_complete
+      const updateData: { sender_item_photos: string[]; tracking_status: RequestTrackingStatus } = {
+        sender_item_photos: photos,
+        tracking_status: 'traveler_inspection_complete',
       };
-      
-      // Only update tracking status if it's currently 'item_accepted' (i.e., first time uploading photos after acceptance)
-      if (request.tracking_status === 'item_accepted') {
-        updateData.tracking_status = 'sender_photos_uploaded';
-      }
-      
+
       const { error } = await supabase
         .from('requests')
         .update(updateData)
@@ -68,8 +68,9 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
     },
     onSuccess: () => {
       showSuccess(t('photosUploadedSuccess'));
-      queryClient.invalidateQueries({ queryKey: ['sentTripRequests', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['receivedRequests', user?.id] }); // Invalidate received requests too
+      // Invalidate both tabs so status & button visibility refresh
+      queryClient.invalidateQueries({ queryKey: ['sentRequests', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests', user?.id] });
       onOpenChange(false);
     },
     onError: (err: any) => {
@@ -79,7 +80,10 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
 
   const handleUpload = () => {
     if (paymentStatus !== 'paid') {
-      showError(t('senderCannotUploadBeforePayment') ?? 'You must complete payment before uploading item photos.');
+      showError(
+        t('senderCannotUploadBeforePayment') ??
+        'You must complete payment before uploading item photos.'
+      );
       return;
     }
 
@@ -99,7 +103,8 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
           <Wallet className="h-4 w-4" />
           <AlertTitle>{t('pendingVerification')}</AlertTitle>
           <AlertDescription>
-            {t('paymentPendingReview') ?? 'Your payment proof is under review. You will be able to upload photos once payment is approved by admin.'}
+            {t('paymentPendingReview') ??
+              'Your payment proof is under review. You will be able to upload photos once payment is approved by admin.'}
           </AlertDescription>
         </Alert>
       );
@@ -111,7 +116,8 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
           <Wallet className="h-4 w-4" />
           <AlertTitle>{t('verificationRejected')}</AlertTitle>
           <AlertDescription>
-            {t('paymentRejectedMessage') ?? 'Your previous payment proof was rejected. Please resend a valid payment proof before uploading photos.'}
+            {t('paymentRejectedMessage') ??
+              'Your previous payment proof was rejected. Please resend a valid payment proof before uploading photos.'}
           </AlertDescription>
         </Alert>
       );
@@ -123,7 +129,8 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
         <Wallet className="h-4 w-4" />
         <AlertTitle>{t('paymentRequired') ?? 'Payment required'}</AlertTitle>
         <AlertDescription>
-          {t('senderCannotUploadBeforePayment') ?? 'You must complete the payment for this shipment before uploading item photos.'}
+          {t('senderCannotUploadBeforePayment') ??
+            'You must complete the payment for this shipment before uploading item photos.'}
         </AlertDescription>
       </Alert>
     );
