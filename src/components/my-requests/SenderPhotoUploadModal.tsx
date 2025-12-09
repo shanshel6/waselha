@@ -52,10 +52,10 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
         );
       }
 
-      // Directly move tracking to traveler_inspection_complete
+      // Sender step: فقط "تم تحميل صور الطرد من المرسل"
       const updateData: { sender_item_photos: string[]; tracking_status: RequestTrackingStatus } = {
         sender_item_photos: photos,
-        tracking_status: 'traveler_inspection_complete',
+        tracking_status: 'sender_photos_uploaded',
       };
 
       const { error } = await supabase
