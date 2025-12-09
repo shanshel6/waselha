@@ -80,9 +80,8 @@ const PAYMENT_BUCKET = 'payment-proofs';
 
 /**
  * حوار يسمح للمرسل برفع لقطة شاشة لإثبات الدفع.
- * الآن يدعم طريقتين بالعربية:
- * - "سوبر كي" (qi card سابقاً) مع إظهار QR ورقم الهاتف.
- * - "زين كاش" للدفع عبر زين كاش.
+ * - "سوبر كي" (qi card) مع إظهار QR ورقم هاتف.
+ * - "زين كاش" مع إظهار QR ورقم حساب.
  */
 const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
   request,
@@ -202,7 +201,9 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
   };
 
   const isSuperK = method === 'qicard';
-  const phoneNumber = '+9647779786420';
+  const isZainCash = method === 'zaincash';
+  const superKPhone = '07779786420';
+  const zainAccount = '3103469155';
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -286,7 +287,29 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
                 </div>
                 <p className="text-xs mt-2">
                   رقم الهاتف للدفع:{" "}
-                  <span className="font-mono font-semibold">{phoneNumber}</span>
+                  <span className="font-mono font-semibold">{superKPhone}</span>
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ZainCash QR + account */}
+          {isZainCash && (
+            <Card className="border-sky-300 bg-sky-50 dark:bg-sky-900/20">
+              <CardContent className="p-3 space-y-2 text-center">
+                <p className="text-xs sm:text-sm font-semibold mb-1">
+                  امسح هذا الـ QR في تطبيق زين كاش أو حوّل إلى رقم الحساب التالي:
+                </p>
+                <div className="flex justify-center">
+                  <img
+                    src="/zaincash-qr.jpg"
+                    alt="ZainCash payment QR"
+                    className="w-40 h-auto rounded-md border bg-white"
+                  />
+                </div>
+                <p className="text-xs mt-2">
+                  رقم حساب زين كاش:{" "}
+                  <span className="font-mono font-semibold">{zainAccount}</span>
                 </p>
               </CardContent>
             </Card>
