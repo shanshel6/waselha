@@ -20,7 +20,7 @@ import {
   XCircle,
   Clock,
   Camera,
-  Trash2, // <-- added
+  Trash2,
 } from 'lucide-react';
 import { calculateShippingCost } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
@@ -69,6 +69,7 @@ interface Request {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
+  payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
 }
 
 interface RequestWithProfiles extends Request {
@@ -160,9 +161,13 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
     window.location.href = `/chat/${req.id}`;
   };
 
+  // زر فحص المسافر:
+  // يظهر فقط عندما يكون الطلب مقبولاً
+  // و tracking_status == 'sender_photos_uploaded' (تم تحميل صور الطرد من المرسل)
+  // ويكون هناك handler متوفر.
   const canShowInspectionButton =
     req.status === 'accepted' &&
-    (currentTrackingStatus === 'item_accepted' || currentTrackingStatus === 'sender_photos_uploaded') &&
+    currentTrackingStatus === 'sender_photos_uploaded' &&
     !!onUploadInspectionPhotos;
 
   const canUpdateTrackingToOnTheWay =
@@ -272,7 +277,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-between text-xs"
+              className="w-full justify_between text-xs"
               onClick={() => setDetailsExpanded(!detailsExpanded)}
             >
               <span>{t('viewDetails')}</span>
@@ -322,7 +327,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
             {/* Right side actions */}
             <div className="flex flex-wrap gap-2 justify-end">
-              {/* Inspection photos, tracking, cancellation */}
               {req.status === 'pending' && (
                 <>
                   <Button
@@ -348,6 +352,9 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
               {req.status === 'accepted' && (
                 <>
+                  {/* زر تحميل صور فحص المسافر:
+                      - يظهر فقط بعد "تم تحميل صور الطرد من المرسل"
+                      - يختفي بعد إكمال الفحص لأن الحالة تتغيّر إلى traveler_inspection_complete */}
                   {canShowInspectionButton && (
                     <Button
                       size="sm"
