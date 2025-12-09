@@ -100,8 +100,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
 
   const expectedAmountIQD = price.error ? 0 : price.totalPriceIQD;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+  const handleFileSelected = (f: File | null) => {
     if (!f) return;
 
     if (!f.type.startsWith('image/')) {
@@ -120,6 +119,11 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
     const url = URL.createObjectURL(f);
     setLocalPreviewUrl(url);
     setFile(f);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    if (f) handleFileSelected(f);
   };
 
   const ensurePaymentBucket = async () => {
@@ -202,18 +206,16 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      {/* نجعل المحتوى بأقصى ارتفاع 90% من الشاشة وقابل للتمرير داخلياً */}
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-lg">
             {t('placeOrder')} – الدفع اليدوي
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            اختر وسيلة الدفع المناسبة (سوبر كي أو زين كاش)، ادفع من التطبيق، ثم قم برفع لقطة شاشة لإثبات الدفع.
+            اختر وسيلة الدفع المناسبة، ادفع من التطبيق، ثم قم برفع لقطة شاشة واضحة لإثبات الدفع.
           </DialogDescription>
         </DialogHeader>
 
-        {/* جسم قابل للتمرير على الموبايل */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
           {/* amount */}
           <Card className="bg-primary/5 border-primary/30">
@@ -268,7 +270,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
             </p>
           </div>
 
-          {/* Super K QR + phone */}
+          {/* Super K */}
           {isSuperK && (
             <Card className="border-amber-300 bg-amber-50 dark:bg-amber-900/20">
               <CardContent className="p-3 space-y-2 text-center">
@@ -290,7 +292,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
             </Card>
           )}
 
-          {/* ZainCash QR + account */}
+          {/* ZainCash */}
           {isZainCash && (
             <Card className="border-sky-300 bg-sky-50 dark:bg-sky-900/20">
               <CardContent className="p-3 space-y-2 text-center">
@@ -312,23 +314,58 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
             </Card>
           )}
 
-          {/* proof file */}
+          {/* Big clickable upload area */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-sm">
               <ImageIcon className="h-4 w-4" />
               لقطة شاشة لإثبات الدفع
               <span className="text-destructive">*</span>
             </Label>
-            <Input type="file" accept="image/*" onChange={handleFileChange} />
-            {localPreviewUrl && (
-              <div className="mt-2">
-                <img
-                  src={localPreviewUrl}
-                  alt="Payment proof preview"
-                  className="w-full max-h-40 object-contain rounded border"
-                />
-              </div>
-            )}
+
+            <div
+              className="mt-1 border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/70 hover:bg-primary/5 transition-colors"
+              onClick={() => {
+                const input = document.getElementById('payment-proof-input') as HTMLInputElement | null;
+                input?.click();
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const f = e.dataTransfer.files?.[0] || null;
+                if (f) handleFileSelected(f);
+              }}
+            >
+              <Input
+                id="payment-proof-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileInputChange}
+              />
+              {!localPreviewUrl && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <ImageIcon className="h-5 w-5" />
+                    <span>انقر هنا أو اسحب لقطة الشاشة إلى هذه المنطقة</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    يدعم صور JPG / PNG حتى 10MB
+                  </p>
+                </>
+              )}
+              {localPreviewUrl && (
+                <div className="w-full space-y-2">
+                  <img
+                    src={localPreviewUrl}
+                    alt="Payment proof preview"
+                    className="w-full max-h-40 object-contain rounded border bg-background"
+                  />
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    تم اختيار الصورة. يمكنك تغييرها بالنقر هنا مرة أخرى.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* reference */}
@@ -343,7 +380,6 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
           </div>
         </div>
 
-        {/* أزرار ثابتة في أسفل الحوار، تبقى ظاهرة على الموبايل */}
         <DialogFooter className="mt-2 pt-2 border-t">
           <Button
             type="button"
