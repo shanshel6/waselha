@@ -9,7 +9,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Camera, Package } from 'lucide-react';
+import { Camera, Package, Wallet } from 'lucide-react';
 import PhotoUpload from '@/components/PhotoUpload';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 
@@ -37,9 +37,17 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
     }
   }, [request]);
 
+  const paymentStatus: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null =
+    request?.payment_status ?? 'unpaid';
+
   const uploadPhotosMutation = useMutation({
     mutationFn: async (photos: string[]) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
+
+      // Hard gate: payment must be fully confirmed before photos
+      if (paymentStatus !== 'paid') {
+        throw new Error(t('senderCannotUploadBeforePayment') ?? 'You must complete payment before uploading item photos.');
+      }
       
       const updateData: { sender_item_photos: string[], tracking_status?: RequestTrackingStatus } = {
         sender_item_photos: photos
@@ -70,12 +78,61 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
   });
 
   const handleUpload = () => {
+    if (paymentStatus !== 'paid') {
+      showError(t('senderCannotUploadBeforePayment') ?? 'You must complete payment before uploading item photos.');
+      return;
+    }
+
     if (itemPhotos.length < 2) {
       showError(t('atLeastTwoPhotos'));
       return;
     }
     uploadPhotosMutation.mutate(itemPhotos);
   };
+
+  const renderPaymentAlert = () => {
+    if (paymentStatus === 'paid') return null;
+
+    if (paymentStatus === 'pending_review') {
+      return (
+        <Alert className="mb-2">
+          <Wallet className="h-4 w-4" />
+          <AlertTitle>{t('pendingVerification')}</AlertTitle>
+          <AlertDescription>
+            {t('paymentPendingReview') ?? 'Your payment proof is under review. You will be able to upload photos once payment is approved by admin.'}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (paymentStatus === 'rejected') {
+      return (
+        <Alert variant="destructive" className="mb-2">
+          <Wallet className="h-4 w-4" />
+          <AlertTitle>{t('verificationRejected')}</AlertTitle>
+          <AlertDescription>
+            {t('paymentRejectedMessage') ?? 'Your previous payment proof was rejected. Please resend a valid payment proof before uploading photos.'}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    // unpaid
+    return (
+      <Alert variant="destructive" className="mb-2">
+        <Wallet className="h-4 w-4" />
+        <AlertTitle>{t('paymentRequired') ?? 'Payment required'}</AlertTitle>
+        <AlertDescription>
+          {t('senderCannotUploadBeforePayment') ?? 'You must complete the payment for this shipment before uploading item photos.'}
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
+  const isUploadDisabled = 
+    paymentStatus !== 'paid' || 
+    uploadPhotosMutation.isPending || 
+    itemPhotos.length < 2;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -90,6 +147,8 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
+        {renderPaymentAlert()}
+
         <Alert variant="default" className="bg-blue-50/50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300">
           <Package className="h-4 w-4" />
           <AlertTitle>{t('packageDetails')}</AlertTitle>
@@ -98,7 +157,7 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
           </AlertDescription>
         </Alert>
 
-        <div className="space-y-4">
+        <div className="space-y-4 mt-2">
           <PhotoUpload
             onPhotosChange={setItemPhotos}
             maxPhotos={4}
@@ -110,7 +169,7 @@ const SenderPhotoUploadModal: React.FC<SenderPhotoUploadModalProps> = ({
           <DialogFooter>
             <Button 
               onClick={handleUpload}
-              disabled={uploadPhotosMutation.isPending || itemPhotos.length < 2}
+              disabled={isUploadDisabled}
               className="w-full"
             >
               {uploadPhotosMutation.isPending ? t('loading') : t('submitChanges')}

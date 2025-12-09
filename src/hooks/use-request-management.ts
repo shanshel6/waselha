@@ -42,7 +42,6 @@ interface Request {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
-  // حقول الدفع (نتعامل معها هنا على أنها موجودة في الـ request)
   payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
   payment_method?: 'zaincash' | 'qicard' | 'other' | null;
   payment_amount_iqd?: number | null;
@@ -82,7 +81,7 @@ export const useRequestManagement = () => {
   const [requestForInspection, setRequestForInspection] = useState<Request | null>(null);
   const [requestForSenderPhotos, setRequestForSenderPhotos] = useState<Request | null>(null);
   const [requestForTrackingUpdate, setRequestForTrackingUpdate] = useState<{ request: Request; newStatus: RequestTrackingStatus } | null>(null);
-  // جديد: طلب لإرسال إثبات الدفع
+  // Payment dialog (sender-side)
   const [requestForPayment, setRequestForPayment] = useState<Request | null>(null);
 
   // --- Mutations ---
@@ -276,7 +275,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // جديد: إرسال إثبات الدفع (من المرسل)، يبقى التأكيد عند الأدمن
+  // Sender: submit payment proof (already in place)
   const submitPaymentProofMutation = useMutation({
     mutationFn: async (args: {
       request: Request;
@@ -307,6 +306,31 @@ export const useRequestManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       showSuccess('تم إرسال إثبات الدفع، بانتظار مراجعة المسؤول.');
       setRequestForPayment(null);
+    },
+    onError: (err: any) => showError(err.message),
+  });
+
+  // Admin: confirm / reject payment (for future admin UI)
+  const adminUpdatePaymentStatusMutation = useMutation({
+    mutationFn: async (args: { requestId: string; status: 'paid' | 'rejected' }) => {
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          payment_status: args.status,
+          payment_reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', args.requestId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { status }) => {
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      showSuccess(
+        status === 'paid'
+          ? 'تم تأكيد الدفع بنجاح.'
+          : 'تم رفض إثبات الدفع.'
+      );
     },
     onError: (err: any) => showError(err.message),
   });
@@ -359,7 +383,6 @@ export const useRequestManagement = () => {
     }
   };
 
-  // جديد: فتح حوار الدفع من الطلب المرسل
   const handleOpenPaymentDialog = (request: Request) => {
     setRequestForPayment(request);
   };
@@ -428,6 +451,7 @@ export const useRequestManagement = () => {
     reviewChangesMutation,
     trackingUpdateMutation,
     submitPaymentProofMutation,
+    adminUpdatePaymentStatusMutation,
 
     // Handlers
     handleUpdateRequest,

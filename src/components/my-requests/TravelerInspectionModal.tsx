@@ -8,7 +8,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Wallet } from 'lucide-react';
 import PhotoUpload from '@/components/PhotoUpload';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 
@@ -36,9 +36,17 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
     }
   }, [request]);
 
+  const paymentStatus: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null =
+    request?.payment_status ?? 'unpaid';
+
   const handleCompleteInspection = async () => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
+      return;
+    }
+
+    if (paymentStatus !== 'paid') {
+      showError(t('travelerCannotInspectBeforePayment') ?? 'You cannot complete inspection until payment has been confirmed.');
       return;
     }
 
@@ -76,6 +84,48 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
     }
   };
 
+  const renderPaymentAlert = () => {
+    if (paymentStatus === 'paid') return null;
+
+    if (paymentStatus === 'pending_review') {
+      return (
+        <Alert className="mb-2">
+          <Wallet className="h-4 w-4" />
+          <AlertTitle>{t('pendingVerification')}</AlertTitle>
+          <AlertDescription>
+            {t('paymentPendingReviewTraveler') ?? 'Sender payment is under review. Please wait until it is approved before completing inspection.'}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (paymentStatus === 'rejected') {
+      return (
+        <Alert variant="destructive" className="mb-2">
+          <Wallet className="h-4 w-4" />
+          <AlertTitle>{t('verificationRejected')}</AlertTitle>
+          <AlertDescription>
+            {t('paymentRejectedTravelerMessage') ?? 'Payment proof was rejected. Please ask the sender to resolve payment before proceeding.'}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    // unpaid
+    return (
+      <Alert variant="destructive" className="mb-2">
+        <Wallet className="h-4 w-4" />
+        <AlertTitle>{t('paymentRequired') ?? 'Payment required'}</AlertTitle>
+        <AlertDescription>
+          {t('travelerCannotInspectBeforePayment') ?? 'You cannot complete inspection until the sender has paid and payment is confirmed.'}
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
+  const isActionDisabled =
+    paymentStatus !== 'paid' || isSubmitting || inspectionPhotos.length < 1;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -89,6 +139,8 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
+        {renderPaymentAlert()}
+
         <Alert variant="default" className="bg-yellow-50/50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-300">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>{t('important')}</AlertTitle>
@@ -97,7 +149,7 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
           </AlertDescription>
         </Alert>
 
-        <div className="space-y-4">
+        <div className="space-y-4 mt-2">
           <PhotoUpload
             onPhotosChange={setInspectionPhotos}
             maxPhotos={3}
@@ -108,7 +160,7 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
           
           <Button 
             onClick={handleCompleteInspection}
-            disabled={isSubmitting || inspectionPhotos.length < 1}
+            disabled={isActionDisabled}
             className="w-full"
           >
             {isSubmitting ? (
