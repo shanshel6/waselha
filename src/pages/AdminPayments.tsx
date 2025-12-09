@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ShieldAlert, DollarSign, Plane, User, ImageIcon, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { format } from 'date-fns';
@@ -59,7 +60,6 @@ const AdminPayments: React.FC = () => {
     queryKey: ['adminPaymentRequests'],
     enabled: isAdmin,
     queryFn: async () => {
-      // 1) Load all requests with pending payment review
       const { data, error: reqError } = await supabase
         .from('requests')
         .select(
@@ -82,13 +82,12 @@ const AdminPayments: React.FC = () => {
           )
         `
         )
-        .eq('payment_status', 'pending_review')
+        .not('payment_status', 'is', null)
         .order('created_at', { ascending: true });
 
       if (reqError) throw new Error(reqError.message);
 
       const rows = (data || []) as RequestRow[];
-
       if (!rows.length) return [];
 
       const senderIds = Array.from(new Set(rows.map((r) => r.sender_id)));
@@ -143,130 +142,177 @@ const AdminPayments: React.FC = () => {
     );
   }
 
-  const pending = requests || [];
+  const all = requests || [];
+  const pending = all.filter((r) => r.payment_status === 'pending_review');
+  const archive = all.filter((r) => r.payment_status === 'paid' || r.payment_status === 'rejected');
 
   const handleReview = (id: string, status: 'paid' | 'rejected') => {
     adminUpdatePaymentStatusMutation.mutate({ requestId: id, status });
+  };
+
+  const renderCard = (req: EnrichedRequest, withActions: boolean) => {
+    const senderName =
+      `${req.sender_profile?.first_name || ''} ${req.sender_profile?.last_name || ''}`.trim() ||
+      t('user');
+    const from = req.trips?.from_country || 'N/A';
+    const to = req.trips?.to_country || 'N/A';
+    const date = req.trips?.trip_date;
+
+    const statusBadge = (() => {
+      switch (req.payment_status) {
+        case 'paid':
+          return <Badge className="bg-green-500 hover:bg-green-500/90 text-white text-xs">مدفوع</Badge>;
+        case 'rejected':
+          return <Badge variant="destructive" className="text-xs">مرفوض</Badge>;
+        case 'pending_review':
+        default:
+          return <Badge variant="secondary" className="text-xs">قيد المراجعة</Badge>;
+      }
+    })();
+
+    return (
+      <Card key={req.id} className="shadow-sm">
+        <CardHeader className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{senderName}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Plane className="h-3 w-3" />
+                <CountryFlag country={from} showName={false} />
+                <span className="text-xs">←</span>
+                <CountryFlag country={to} showName={false} />
+                {date && (
+                  <>
+                    <span className="mx-1">•</span>
+                    <Calendar className="h-3 w-3" />
+                    <span>{format(new Date(date), 'PPP')}</span>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant="secondary" className="text-xs">
+                {req.payment_method || 'غير محدد'}
+              </Badge>
+              {statusBadge}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1">
+              <DollarSign className="h-3 w-3 text-primary" />
+              <span>
+                {req.payment_amount_iqd
+                  ? `${req.payment_amount_iqd.toLocaleString('ar-IQ')} IQD`
+                  : 'المبلغ غير محدد'}
+              </span>
+            </div>
+            {req.payment_reference && (
+              <div className="text-xs text-muted-foreground">
+                مرجع الدفع: {req.payment_reference}
+              </div>
+            )}
+          </div>
+
+          {req.payment_proof_url && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <ImageIcon className="h-3 w-3" />
+                لقطة شاشة لإثبات الدفع:
+              </p>
+              <a
+                href={req.payment_proof_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block"
+              >
+                <img
+                  src={req.payment_proof_url}
+                  alt="Payment proof"
+                  className="h-32 w-auto rounded border object-contain bg-muted"
+                />
+              </a>
+            </div>
+          )}
+
+          {withActions && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => handleReview(req.id, 'paid')}
+                disabled={adminUpdatePaymentStatusMutation.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                تأكيد الدفع
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleReview(req.id, 'rejected')}
+                disabled={adminUpdatePaymentStatusMutation.isPending}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                رفض إثبات الدفع
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">مراجعة دفعات الطلبات</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
-            الطلبات التي تنتظر تحقق الدفع
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <p>{t('loading')}</p>
-          ) : pending.length === 0 ? (
-            <p className="text-muted-foreground">لا توجد دفعات قيد المراجعة حالياً.</p>
-          ) : (
-            pending.map((req) => {
-              const senderName =
-                `${req.sender_profile?.first_name || ''} ${req.sender_profile?.last_name || ''}`.trim() ||
-                t('user');
-              const from = req.trips?.from_country || 'N/A';
-              const to = req.trips?.to_country || 'N/A';
-              const date = req.trips?.trip_date;
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="max-w-md grid grid-cols-2 mb-4">
+          <TabsTrigger value="pending">قيد المراجعة</TabsTrigger>
+          <TabsTrigger value="archive">الأرشيف</TabsTrigger>
+        </TabsList>
 
-              return (
-                <Card key={req.id} className="shadow-sm">
-                  <CardHeader className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-semibold">{senderName}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Plane className="h-3 w-3" />
-                          <CountryFlag country={from} showName={false} />
-                          <span className="text-xs">←</span>
-                          <CountryFlag country={to} showName={false} />
-                          {date && (
-                            <>
-                              <span className="mx-1">•</span>
-                              <Calendar className="h-3 w-3" />
-                              <span>{format(new Date(date), 'PPP')}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {req.payment_method || 'غير محدد'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3 text-primary" />
-                        <span>
-                          {req.payment_amount_iqd
-                            ? `${req.payment_amount_iqd.toLocaleString('ar-IQ')} IQD`
-                            : 'المبلغ غير محدد'}
-                        </span>
-                      </div>
-                      {req.payment_reference && (
-                        <div className="text-xs text-muted-foreground">
-                          مرجع الدفع: {req.payment_reference}
-                        </div>
-                      )}
-                    </div>
+        <TabsContent value="pending">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-primary" />
+                الطلبات التي تنتظر تحقق الدفع
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <p>{t('loading')}</p>
+              ) : pending.length === 0 ? (
+                <p className="text-muted-foreground">لا توجد دفعات قيد المراجعة حالياً.</p>
+              ) : (
+                pending.map((req) => renderCard(req, true))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                    {req.payment_proof_url && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                          <ImageIcon className="h-3 w-3" />
-                          لقطة شاشة لإثبات الدفع:
-                        </p>
-                        <a
-                          href={req.payment_proof_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-block"
-                        >
-                          <img
-                            src={req.payment_proof_url}
-                            alt="Payment proof"
-                            className="h-32 w-auto rounded border object-contain bg-muted"
-                          />
-                        </a>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => handleReview(req.id, 'paid')}
-                        disabled={adminUpdatePaymentStatusMutation.isPending}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        تأكيد الدفع
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleReview(req.id, 'rejected')}
-                        disabled={adminUpdatePaymentStatusMutation.isPending}
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        رفض إثبات الدفع
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="archive">
+          <Card>
+            <CardHeader>
+              <CardTitle>دفعات مكتملة / مرفوضة</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <p>{t('loading')}</p>
+              ) : archive.length === 0 ? (
+                <p className="text-muted-foreground">لا يوجد سجل دفعات مؤرشف بعد.</p>
+              ) : (
+                archive.map((req) => renderCard(req, false))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

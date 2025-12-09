@@ -19,7 +19,8 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
 import { DollarSign, ImageIcon, Smartphone } from 'lucide-react';
-import { showError } from '@/utils/toast';
+import { showError, showSuccess } from '@/utils/toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Trip {
   id: string;
@@ -54,7 +55,6 @@ export interface RequestWithPayment {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
-  // حقول الدفع المتوقعة في الـ request على مستوى الواجهة
   payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
   payment_method?: 'zaincash' | 'qicard' | 'other' | null;
   payment_amount_iqd?: number | null;
@@ -76,11 +76,12 @@ interface PaymentProofDialogProps {
   isSubmitting: boolean;
 }
 
+const PAYMENT_BUCKET = 'payment-proofs';
+
 /**
- * حوار بسيط يسمح للمرسل برفع لقطة شاشة لإثبات الدفع
- * واختيار طريقة الدفع، وإدخال رقم الإيصال. الرفع هنا
- * سيتم كـ object URL (مثل باقي أجزاء المشروع التي لا تستخدم
- * التخزين بعد)، وعلى مستوى الباك إند يمكن استبدال هذا بسوبابيز ستورج.
+ * حوار يسمح للمرسل برفع لقطة شاشة لإثبات الدفع.
+ * يتم رفع الصورة إلى Supabase Storage في bucket حقيقي،
+ * ويُرسل الرابط العام إلى دالة الإدارة للمراجعة.
  */
 const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
   request,
@@ -91,8 +92,10 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const [method, setMethod] = useState<'zaincash' | 'qicard'>('zaincash');
-  const [proofUrl, setProofUrl] = useState<string>('');
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>('');
+  const [file, setFile] = useState<File | null>(null);
   const [reference, setReference] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   const price = calculateShippingCost(
     request.trips.from_country,
@@ -103,42 +106,103 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
   const expectedAmountIQD = price.error ? 0 : price.totalPriceIQD;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const f = e.target.files?.[0];
+    if (!f) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!f.type.startsWith('image/')) {
       showError(t('invalidFileType'));
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (f.size > 10 * 1024 * 1024) {
       showError(t('fileTooLarge'));
       return;
     }
-    const url = URL.createObjectURL(file);
-    setProofUrl(url);
+
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+
+    const url = URL.createObjectURL(f);
+    setLocalPreviewUrl(url);
+    setFile(f);
   };
 
-  const handleSubmit = () => {
-    if (!proofUrl) {
+  const ensurePaymentBucket = async () => {
+    const { data, error } = await supabase.functions.invoke('create-payment-proofs-bucket');
+    if (error) {
+      console.error('Error ensuring payment-proofs bucket:', error);
+      throw new Error(error.message || 'Failed to prepare storage for payment proofs.');
+    }
+    if (!data?.success) {
+      console.error('create-payment-proofs-bucket returned non-success payload:', data);
+      throw new Error('Failed to prepare storage for payment proofs.');
+    }
+  };
+
+  const uploadProofAndGetUrl = async (f: File, requestId: string) => {
+    await ensurePaymentBucket();
+
+    const ext = f.name.split('.').pop() || 'jpg';
+    const path = `${requestId}/${Date.now()}-proof.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PAYMENT_BUCKET)
+      .upload(path, f, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Payment proof upload error:', uploadError);
+      throw new Error(uploadError.message || 'Failed to upload payment proof.');
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(PAYMENT_BUCKET)
+      .getPublicUrl(path);
+
+    return publicUrlData.publicUrl;
+  };
+
+  const handleSubmit = async () => {
+    if (!file) {
       showError(t('uploadRequired'));
       return;
     }
-    if (expectedAmountIQD <= 0) {
+    if (expectedAmountIQD <= 0 || price.error) {
       showError(t('orderSubmittedError'));
       return;
     }
 
-    onSubmit({
-      request,
-      payment_method: method,
-      payment_proof_url: proofUrl,
-      payment_reference: reference,
-      payment_amount_iqd: expectedAmountIQD,
-    });
+    setUploading(true);
+    try {
+      const publicUrl = await uploadProofAndGetUrl(file, request.id);
+
+      onSubmit({
+        request,
+        payment_method: method,
+        payment_proof_url: publicUrl,
+        payment_reference: reference,
+        payment_amount_iqd: expectedAmountIQD,
+      });
+      showSuccess(t('resetPasswordEmailSent') ?? 'تم رفع إثبات الدفع بنجاح، بانتظار مراجعة المسؤول.');
+    } catch (e: any) {
+      console.error('Error in payment proof flow:', e);
+      showError(e?.message || 'Failed to submit payment proof');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleClose = (open: boolean) => {
+    if (!open && localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+    onOpenChange(open);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-lg">
@@ -150,7 +214,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* المبلغ المتوقع */}
+          {/* amount */}
           <Card className="bg-primary/5 border-primary/30">
             <CardContent className="p-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -159,9 +223,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
                   <p className="font-semibold">المبلغ المستحق تقريباً</p>
                   {!price.error ? (
                     <>
-                      <p>
-                        {price.totalPriceUSD.toFixed(2)} USD
-                      </p>
+                      <p>{price.totalPriceUSD.toFixed(2)} USD</p>
                       <p className="text-xs text-muted-foreground">
                         ≈ {expectedAmountIQD.toLocaleString('ar-IQ')} IQD
                       </p>
@@ -176,7 +238,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
             </CardContent>
           </Card>
 
-          {/* اختيار طريقة الدفع */}
+          {/* method */}
           <div className="space-y-2">
             <Label className="text-sm flex items-center gap-2">
               <Smartphone className="h-4 w-4" />
@@ -200,36 +262,31 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
                 </Label>
               </div>
             </RadioGroup>
-
             <p className="text-xs text-muted-foreground">
               بعد الدفع من خلال التطبيق، خذ لقطة شاشة لنجاح العملية ثم قم برفعها هنا.
             </p>
           </div>
 
-          {/* رفع لقطة شاشة */}
+          {/* proof file */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-sm">
               <ImageIcon className="h-4 w-4" />
               لقطة شاشة لإثبات الدفع
               <span className="text-destructive">*</span>
             </Label>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-            />
-            {proofUrl && (
+            <Input type="file" accept="image/*" onChange={handleFileChange} />
+            {localPreviewUrl && (
               <div className="mt-2">
                 <img
-                  src={proofUrl}
-                  alt="Payment proof"
+                  src={localPreviewUrl}
+                  alt="Payment proof preview"
                   className="w-full max-h-40 object-contain rounded border"
                 />
               </div>
             )}
           </div>
 
-          {/* رقم الإيصال / ملاحظات */}
+          {/* reference */}
           <div className="space-y-1">
             <Label className="text-sm">رقم الإيصال / ملاحظات (اختياري)</Label>
             <Textarea
@@ -245,16 +302,16 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleClose(false)}
           >
             {t('cancel')}
           </Button>
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || uploading}
           >
-            {isSubmitting ? t('loading') : 'إرسال إثبات الدفع'}
+            {isSubmitting || uploading ? t('loading') : 'إرسال إثبات الدفع'}
           </Button>
         </DialogFooter>
       </DialogContent>
