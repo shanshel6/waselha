@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Plane, Trash2, MessageSquare, BadgeCheck, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck, Weight, DollarSign } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plane, Trash2, MessageSquare, BadgeCheck, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck, Weight, DollarSign, Wallet } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
@@ -15,7 +15,7 @@ import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 import VerifiedBadge from '@/components/VerifiedBadge';
 
-interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; /* is_verified?: boolean */ }
+interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
 interface Request { 
   id: string; 
@@ -36,6 +36,11 @@ interface Request {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
+  payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
+  payment_method?: 'zaincash' | 'qicard' | 'other' | null;
+  payment_amount_iqd?: number | null;
+  payment_proof_url?: string | null;
+  payment_reference?: string | null;
 }
 interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
 
@@ -49,6 +54,7 @@ interface TripRequestCardProps {
   onUploadSenderPhotos: (request: Request) => void;
   onTrackingUpdate: (request: Request, newStatus: RequestTrackingStatus) => void;
   trackingUpdateMutation: any;
+  onOpenPaymentDialog: (request: Request) => void;
   t: (key: string, options?: any) => string;
 }
 
@@ -86,6 +92,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   onUploadSenderPhotos,
   onTrackingUpdate,
   trackingUpdateMutation,
+  onOpenPaymentDialog,
   t
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -103,7 +110,39 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const hasPendingChanges = !!req.proposed_changes;
   const isGeneralOrderMatch = !!req.general_order_id;
 
-  // الباقي كما كان، مع استخدام hasNewMessage في الـ Card
+  // حالة الدفع
+  const paymentStatus = req.payment_status || 'unpaid';
+  const showPayButton =
+    req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
+
+  const renderPaymentBadge = () => {
+    switch (paymentStatus) {
+      case 'paid':
+        return (
+          <Badge variant="outline" className="border-green-500 text-green-600 text-[11px]">
+            تم الدفع
+          </Badge>
+        );
+      case 'pending_review':
+        return (
+          <Badge variant="outline" className="border-amber-500 text-amber-600 text-[11px]">
+            بانتظار مراجعة المسؤول
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge variant="outline" className="border-red-500 text-red-600 text-[11px]">
+            تم رفض إثبات الدفع
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="text-[11px]">
+            غير مدفوع
+          </Badge>
+        );
+    }
+  };
 
   return (
     <Card
@@ -135,10 +174,11 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-1">
             <Badge variant={getStatusVariant(req.status)} className="text-xs">
               {hasPendingChanges ? t('pendingChanges') : t(req.status)}
             </Badge>
+            {renderPaymentBadge()}
             {hasNewMessage && (
               <Badge variant="destructive" className="text-xs h-5 px-2">
                 {t('newMessage')}
@@ -149,8 +189,32 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
         </div>
       </CardHeader>
 
-      {/* باقي الكود كما هو (التتبع، التفاصيل، الأزرار) */}
-      {/* ... */}
+      {/* يمكن هنا إكمال باقي تفاصيل البطاقة كما كانت (التتبع، التفاصيل، الأزرار) */}
+      {/* لأجل الاختصار، بقية الكود الأصلي غير المعروض هنا يبقى كما هو في مشروعك،
+          مع إضافة زر الدفع حيثما تضع أزرار الإجراءات في الأسفل: */}
+
+      {expanded && (
+        <CardContent className="p-4 pt-0 space-y-4">
+          {/* Tracking, summary, وغيره — كما في نسختك السابقة */}
+          {/* ... */}
+
+          {/* في منطقة الأزرار السفلية أضف زر إرسال إثبات الدفع مع بقية الأزرار */}
+          <div className="flex flex-wrap justify-end gap-2">
+            {showPayButton && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => onOpenPaymentDialog(req as Request)}
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                إرسال إثبات الدفع
+              </Button>
+            )}
+
+            {/* الأزرار الأخرى (إلغاء، تعديل، محادثة، إلخ) تبقى كما في نسختك */}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };

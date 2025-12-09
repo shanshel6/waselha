@@ -20,6 +20,7 @@ import { SentRequestsTab } from '@/components/my-requests/SentRequestsTab';
 import { EditRequestModal } from '@/components/my-requests/EditRequestModal';
 import TravelerInspectionModal from '@/components/my-requests/TravelerInspectionModal';
 import SenderPhotoUploadModal from '@/components/my-requests/SenderPhotoUploadModal';
+import PaymentProofDialog from '@/components/my-requests/PaymentProofDialog';
 import { Link } from 'react-router-dom';
 import { PlusCircle } from 'lucide-react';
 import { useUnreadChatCountByTab } from '@/hooks/use-unread-chat-count-by-tab';
@@ -56,6 +57,7 @@ const MyRequests = () => {
     requestForInspection,
     requestForSenderPhotos,
     requestForTrackingUpdate,
+    requestForPayment,
     isAcceptedRequest,
     isFirstPartyRequesting,
     isSecondPartyConfirming,
@@ -67,12 +69,14 @@ const MyRequests = () => {
     setRequestForInspection,
     setRequestForSenderPhotos,
     setRequestForTrackingUpdate,
+    setRequestForPayment,
     updateRequestMutation,
     deleteRequestMutation,
     mutualCancelMutation,
     editRequestMutation,
     reviewChangesMutation,
     trackingUpdateMutation,
+    submitPaymentProofMutation,
     handleUpdateRequest,
     handleAcceptedRequestCancel,
     handleConfirmCancellation,
@@ -81,6 +85,8 @@ const MyRequests = () => {
     handleSenderPhotoUpload,
     handleTrackingUpdate,
     handleConfirmTrackingUpdate,
+    handleOpenPaymentDialog,
+    handleSubmitPaymentProof,
   } = useRequestManagement();
 
   const isLoadingGlobal = isSessionLoading || isUnreadLoading;
@@ -156,12 +162,13 @@ const MyRequests = () => {
               onUploadSenderPhotos={handleSenderPhotoUpload}
               onTrackingUpdate={handleTrackingUpdate}
               trackingUpdateMutation={trackingUpdateMutation}
+              onOpenPaymentDialog={handleOpenPaymentDialog}
             />
           )}
         </TabsContent>
       </Tabs>
       
-      {/* Dialogs (unchanged except imports kept) */}
+      {/* Dialogs */}
       <AlertDialog open={!!itemToCancel} onOpenChange={(open) => !open && setItemToCancel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -243,6 +250,19 @@ const MyRequests = () => {
           request={requestForSenderPhotos}
           isOpen={!!requestForSenderPhotos}
           onOpenChange={() => setRequestForSenderPhotos(null)}
+        />
+      )}
+
+      {/* حوار إثبات الدفع (للمرسل فقط) */}
+      {requestForPayment && (
+        <PaymentProofDialog
+          request={requestForPayment as any}
+          isOpen={!!requestForPayment}
+          onOpenChange={(open) => {
+            if (!open) setRequestForPayment(null);
+          }}
+          onSubmit={handleSubmitPaymentProof}
+          isSubmitting={submitPaymentProofMutation.isPending}
         />
       )}
     </div>

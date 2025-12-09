@@ -42,6 +42,12 @@ interface Request {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
+  // حقول الدفع (نتعامل معها هنا على أنها موجودة في الـ request)
+  payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
+  payment_method?: 'zaincash' | 'qicard' | 'other' | null;
+  payment_amount_iqd?: number | null;
+  payment_proof_url?: string | null;
+  payment_reference?: string | null;
 }
 
 interface GeneralOrder {
@@ -76,6 +82,8 @@ export const useRequestManagement = () => {
   const [requestForInspection, setRequestForInspection] = useState<Request | null>(null);
   const [requestForSenderPhotos, setRequestForSenderPhotos] = useState<Request | null>(null);
   const [requestForTrackingUpdate, setRequestForTrackingUpdate] = useState<{ request: Request; newStatus: RequestTrackingStatus } | null>(null);
+  // جديد: طلب لإرسال إثبات الدفع
+  const [requestForPayment, setRequestForPayment] = useState<Request | null>(null);
 
   // --- Mutations ---
 
@@ -183,7 +191,7 @@ export const useRequestManagement = () => {
       queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
       showSuccess(t('requestCancelledSuccess'));
     },
-    onError: (err: any) => showError(t('requestCancelledError')),
+    onError: () => showError(t('requestCancelledError')),
   });
 
   const editRequestMutation = useMutation({
@@ -268,6 +276,41 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
+  // جديد: إرسال إثبات الدفع (من المرسل)، يبقى التأكيد عند الأدمن
+  const submitPaymentProofMutation = useMutation({
+    mutationFn: async (args: {
+      request: Request;
+      payment_method: 'zaincash' | 'qicard';
+      payment_proof_url: string;
+      payment_reference: string;
+      payment_amount_iqd: number;
+    }) => {
+      if (!user) throw new Error(t('mustBeLoggedIn'));
+
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          payment_status: 'pending_review',
+          payment_method: args.payment_method,
+          payment_proof_url: args.payment_proof_url,
+          payment_reference: args.payment_reference,
+          payment_amount_iqd: args.payment_amount_iqd,
+          payment_updated_at: new Date().toISOString(),
+        })
+        .eq('id', args.request.id)
+        .eq('sender_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      showSuccess('تم إرسال إثبات الدفع، بانتظار مراجعة المسؤول.');
+      setRequestForPayment(null);
+    },
+    onError: (err: any) => showError(err.message),
+  });
+
   // --- Handlers ---
 
   const handleUpdateRequest = (request: Request, status: 'accepted' | 'rejected') => {
@@ -315,6 +358,21 @@ export const useRequestManagement = () => {
       setRequestForTrackingUpdate(null);
     }
   };
+
+  // جديد: فتح حوار الدفع من الطلب المرسل
+  const handleOpenPaymentDialog = (request: Request) => {
+    setRequestForPayment(request);
+  };
+  
+  const handleSubmitPaymentProof = (args: {
+    request: Request;
+    payment_method: 'zaincash' | 'qicard';
+    payment_proof_url: string;
+    payment_reference: string;
+    payment_amount_iqd: number;
+  }) => {
+    submitPaymentProofMutation.mutate(args);
+  };
   
   // --- Dialog/Modal Content Helpers ---
   
@@ -346,6 +404,7 @@ export const useRequestManagement = () => {
     requestForInspection,
     requestForSenderPhotos,
     requestForTrackingUpdate,
+    requestForPayment,
     isAcceptedRequest,
     isFirstPartyRequesting,
     isSecondPartyConfirming,
@@ -359,6 +418,7 @@ export const useRequestManagement = () => {
     setRequestForInspection,
     setRequestForSenderPhotos,
     setRequestForTrackingUpdate,
+    setRequestForPayment,
 
     // Mutations
     updateRequestMutation,
@@ -367,6 +427,7 @@ export const useRequestManagement = () => {
     editRequestMutation,
     reviewChangesMutation,
     trackingUpdateMutation,
+    submitPaymentProofMutation,
 
     // Handlers
     handleUpdateRequest,
@@ -377,5 +438,7 @@ export const useRequestManagement = () => {
     handleSenderPhotoUpload,
     handleTrackingUpdate,
     handleConfirmTrackingUpdate,
+    handleOpenPaymentDialog,
+    handleSubmitPaymentProof,
   };
 };

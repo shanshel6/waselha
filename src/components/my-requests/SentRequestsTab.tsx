@@ -41,6 +41,11 @@ interface Request {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
+  payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
+  payment_method?: 'zaincash' | 'qicard' | 'other' | null;
+  payment_amount_iqd?: number | null;
+  payment_proof_url?: string | null;
+  payment_reference?: string | null;
 }
 
 interface GeneralOrder {
@@ -73,13 +78,15 @@ interface SentRequestsTabProps {
   onUploadSenderPhotos: (request: Request) => void;
   onTrackingUpdate: (request: Request, newStatus: RequestTrackingStatus) => void;
   trackingUpdateMutation: any;
+  // جديد: فتح حوار إثبات الدفع
+  onOpenPaymentDialog: (request: Request) => void;
 }
 
 const ITEMS_PER_PAGE = 10;
 
 const isGeneralOrder = (item: SentItem): item is GeneralOrder => item.type === 'general_order';
 
-export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onUploadSenderPhotos, onTrackingUpdate, trackingUpdateMutation }: SentRequestsTabProps) => {
+export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, onCancelAcceptedRequest, onEditRequest, onUploadSenderPhotos, onTrackingUpdate, trackingUpdateMutation, onOpenPaymentDialog }: SentRequestsTabProps) => {
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -117,20 +124,23 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
       }
 
       const generalOrderIdsWithRequests = new Set(
-        requests.filter(req => req.general_order_id).map(req => req.general_order_id)
+        requests.filter((req: any) => req.general_order_id).map((req: any) => req.general_order_id)
       );
 
-      const filteredGeneralOrders: GeneralOrder[] = orders.filter(order => 
+      const filteredGeneralOrders: GeneralOrder[] = (orders || []).filter((order: any) => 
         order.status === 'new' || !generalOrderIdsWithRequests.has(order.id)
-      ).map(order => ({
+      ).map((order: any) => ({
         ...order,
         type: 'general_order' as const
       }));
 
-      let combinedItems: SentItem[] = [...filteredGeneralOrders, ...requests.map(req => ({
-        ...req,
-        type: 'trip_request' as const
-      }))];
+      let combinedItems: SentItem[] = [
+        ...filteredGeneralOrders,
+        ...(requests || []).map((req: any) => ({
+          ...req,
+          type: 'trip_request' as const
+        }))
+      ];
       
       combinedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
@@ -138,8 +148,8 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
       const paginatedItems = combinedItems.slice(offset, offset + ITEMS_PER_PAGE);
 
       const travelerIds = paginatedItems
-        .filter((item): item is Request => !isGeneralOrder(item) && !!item.trips?.user_id)
-        .map(req => (req as Request).trips.user_id)
+        .filter((item): item is Request => !isGeneralOrder(item) && !!(item as Request).trips?.user_id)
+        .map((req: any) => req.trips.user_id)
         .filter((id, index, self) => self.indexOf(id) === index);
 
       let travelerProfiles: Profile[] = [];
@@ -161,7 +171,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         return acc;
       }, {} as Record<string, Profile>);
 
-      const finalItems = paginatedItems.map(item => {
+      const finalItems = paginatedItems.map((item) => {
         if (!isGeneralOrder(item)) {
           const req = item as Request;
           return {
@@ -264,12 +274,12 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     <div className="space-y-3">
       {allSentItems && allSentItems.length > 0 ? (
         <>
-          {allSentItems.map(item => {
+          {allSentItems.map((item) => {
             if (isGeneralOrder(item)) {
               return (
                 <GeneralOrderCard
                   key={item.id}
-                  order={item}
+                  order={item as GeneralOrder}
                   onCancelRequest={onCancelRequest}
                   deleteRequestMutation={deleteRequestMutation}
                   t={t}
@@ -285,7 +295,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
 
               return (
                 <TripRequestCard
-                  key={item.id}
+                  key={tripReq.id}
                   req={tripReq}
                   priceCalculation={priceCalculation}
                   onCancelRequest={onCancelRequest}
@@ -295,6 +305,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
                   onUploadSenderPhotos={onUploadSenderPhotos}
                   onTrackingUpdate={onTrackingUpdate}
                   trackingUpdateMutation={trackingUpdateMutation}
+                  onOpenPaymentDialog={onOpenPaymentDialog}
                   t={t}
                 />
               );
