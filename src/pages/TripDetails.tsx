@@ -39,12 +39,14 @@ import {
   Calendar,
   Info,
   Loader2,
+  ShieldAlert,
 } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface TripData {
   id: string;
@@ -134,6 +136,11 @@ const TripDetails = () => {
     };
   }, [weight, trip]);
 
+  const isVerified = verificationInfo?.status === 'approved';
+  const isPendingVerification = verificationInfo?.status === 'pending';
+  const isRejectedVerification = verificationInfo?.status === 'rejected';
+  const isUnverified = !isVerified && !isPendingVerification;
+
   const onConfirmSubmit = form.handleSubmit(async (values) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
@@ -141,8 +148,8 @@ const TripDetails = () => {
       return;
     }
 
-    // Re-check verification just before final submission (should be caught earlier, but safety first)
-    if (verificationInfo?.status !== 'approved') {
+    // Final check for verification
+    if (!isVerified) {
       showError(t('verificationRequiredTitle'));
       navigate('/verification');
       return;
@@ -176,7 +183,7 @@ const TripDetails = () => {
     }
     
     // Enforce verification check
-    if (verificationInfo?.status !== 'approved') {
+    if (!isVerified) {
       showError(t('verificationRequiredTitle'));
       navigate('/verification');
       return;
@@ -283,6 +290,44 @@ const TripDetails = () => {
               <CardDescription>{t('fillFormToSend')}</CardDescription>
             </CardHeader>
             <CardContent>
+              {isUnverified && (
+                <Alert variant="destructive" className="mb-4">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>{t('verificationRequiredTitle')}</AlertTitle>
+                  <AlertDescription>
+                    {t('verificationRequiredDescription')}
+                    <Link to="/verification" className="block mt-2">
+                      <Button size="sm" variant="secondary" className="w-full">
+                        {t('verifyNow')}
+                      </Button>
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isPendingVerification && (
+                <Alert className="mb-4">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>{t('pendingVerification')}</AlertTitle>
+                  <AlertDescription>
+                    {t('pendingVerification')}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isRejectedVerification && (
+                <Alert variant="destructive" className="mb-4">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>{t('verificationRejected')}</AlertTitle>
+                  <AlertDescription>
+                    {t('verificationRejected')}
+                    <Link to="/verification" className="block mt-2">
+                      <Button size="sm" variant="secondary" className="w-full">
+                        {t('verifyNow')}
+                      </Button>
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <Form {...form}>
                 <form
                   onSubmit={(e) => e.preventDefault()}
@@ -306,6 +351,7 @@ const TripDetails = () => {
                               field.onChange(value[0])
                             }
                             className="mt-4"
+                            disabled={!isVerified}
                           />
                         </FormControl>
                         <FormMessage />
@@ -346,6 +392,7 @@ const TripDetails = () => {
                           <Textarea
                             placeholder={t('packageContentsPlaceholder')}
                             {...field}
+                            disabled={!isVerified}
                           />
                         </FormControl>
                         <FormMessage />
@@ -370,6 +417,7 @@ const TripDetails = () => {
                               },
                             )}
                             {...field}
+                            disabled={!isVerified}
                           />
                         </FormControl>
                         <FormMessage />
@@ -387,6 +435,7 @@ const TripDetails = () => {
                           <Textarea
                             placeholder={t('receiverDetailsPlaceholder')}
                             {...field}
+                            disabled={!isVerified}
                           />
                         </FormControl>
                         <FormMessage />
@@ -398,6 +447,7 @@ const TripDetails = () => {
                     type="button"
                     onClick={handleRequestSubmit}
                     className="w-full"
+                    disabled={!isVerified}
                   >
                     {t('sendRequest')}
                   </Button>
