@@ -1,3 +1,4 @@
+0.">
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -127,7 +128,9 @@ const Trips = () => {
         .eq('is_approved', true)
         .eq('is_deleted_by_user', false)
         // لا نظهر الرحلات التي تاريخها اليوم، نبدأ من الغد فصاعدًا
-        .gte('trip_date', tomorrowDateStr);
+        .gte('trip_date', tomorrowDateStr)
+        // الشرط الجديد: لا نظهر الرحلات التي أصبح وزنها المتاح 0 أو أقل
+        .gt('free_kg', 0);
 
       if (filters.from_country) {
         query = query.eq('from_country', filters.from_country);
@@ -405,7 +408,7 @@ const Trips = () => {
 
       {user && (
         <p className="text-xs text-muted-foreground mb-4 px-1">
-          لن تظهر الرحلات التي لديك طلب نشط عليها بالفعل، وكذلك الرحلات التي موعدها اليوم أو أقرب من 24 ساعة.
+          لن تظهر الرحلات التي لديك طلب نشط عليها بالفعل، وكذلك الرحلات التي موعدها اليوم أو أقرب من 24 ساعة، أو التي نفذ منها الوزن المتاح.
         </p>
       )}
       
