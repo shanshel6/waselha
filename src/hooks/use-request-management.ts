@@ -43,7 +43,6 @@ export interface ManagedRequest {
   type: 'trip_request';
   payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
   payment_method?: 'zaincash' | 'qicard' | 'other' | null;
-  payment_amount_iqd?: number | null;
   payment_proof_url?: string | null;
   payment_reference?: string | null;
 }
@@ -72,7 +71,6 @@ export const useRequestManagement = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
 
-  // State for dialogs / modals
   const [itemToCancel, setItemToCancel] = useState<SentItem | (ManagedRequest & { type: 'accepted_trip_request' }) | null>(null);
   const [requestToEdit, setRequestToEdit] = useState<ManagedRequest | null>(null);
   const [requestForInspection, setRequestForInspection] = useState<ManagedRequest | null>(null);
@@ -80,9 +78,7 @@ export const useRequestManagement = () => {
   const [requestForTrackingUpdate, setRequestForTrackingUpdate] = useState<{ request: ManagedRequest; newStatus: RequestTrackingStatus } | null>(null);
   const [requestForPayment, setRequestForPayment] = useState<ManagedRequest | null>(null);
 
-  // --- Mutations ---
-
-  // Accept / reject request (traveler side)
+  // Accept / reject
   const updateRequestMutation = useMutation({
     mutationFn: async ({ request, status }: { request: ManagedRequest; status: 'accepted' | 'rejected' }) => {
       if (status === 'accepted') {
@@ -123,7 +119,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Mutual cancellation for accepted requests
+  // Mutual cancellation
   const mutualCancelMutation = useMutation({
     mutationFn: async (request: ManagedRequest) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
@@ -162,7 +158,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Delete request or general order (sender side)
+  // Delete request / general order
   const deleteRequestMutation = useMutation({
     mutationFn: async (item: SentItem) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
@@ -199,7 +195,7 @@ export const useRequestManagement = () => {
     onError: () => showError(t('requestCancelledError')),
   });
 
-  // Sender edits request (creates proposed_changes)
+  // Sender edits request
   const editRequestMutation = useMutation({
     mutationFn: async ({ requestId, values }: { requestId: string; values: { weight_kg: number; description: string } }) => {
       const { error } = await supabase
@@ -244,7 +240,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Tracking updates (traveler / sender)
+  // Tracking updates
   const trackingUpdateMutation = useMutation({
     mutationFn: async ({ request, newStatus }: { request: ManagedRequest; newStatus: RequestTrackingStatus }) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
@@ -286,14 +282,14 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Sender submits payment proof
+  // Sender submits payment proof – NO payment_amount_iqd column
   const submitPaymentProofMutation = useMutation({
     mutationFn: async (args: {
       request: ManagedRequest;
       payment_method: 'zaincash' | 'qicard';
       payment_proof_url: string;
       payment_reference: string;
-      payment_amount_iqd: number;
+      payment_amount_iqd: number; // kept for UI, but not written to DB
     }) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
 
@@ -304,8 +300,6 @@ export const useRequestManagement = () => {
           payment_method: args.payment_method,
           payment_proof_url: args.payment_proof_url,
           payment_reference: args.payment_reference,
-          payment_amount_iqd: args.payment_amount_iqd,
-          payment_updated_at: new Date().toISOString(),
         })
         .eq('id', args.request.id)
         .eq('sender_id', user.id);
@@ -321,15 +315,13 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Admin confirms / rejects payment (not yet used in UI)
+  // Admin confirms / rejects payment – still moves tracking to payment_done
   const adminUpdatePaymentStatusMutation = useMutation({
     mutationFn: async (args: { requestId: string; status: 'paid' | 'rejected' }) => {
       const updates: any = {
         payment_status: args.status,
-        payment_reviewed_at: new Date().toISOString(),
       };
 
-      // Move tracking to payment_done when payment is confirmed
       if (args.status === 'paid') {
         updates.tracking_status = 'payment_done' as RequestTrackingStatus;
       }
@@ -353,7 +345,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // --- Handlers used by MyRequests & tabs ---
+  // Handlers
 
   const handleUpdateRequest = (request: ManagedRequest, status: 'accepted' | 'rejected') => {
     updateRequestMutation.mutate({ request, status });
@@ -415,7 +407,7 @@ export const useRequestManagement = () => {
     submitPaymentProofMutation.mutate(args);
   };
 
-  // --- Helpers for dialogs ---
+  // Dialog helpers
 
   const isAcceptedRequest =
     !!itemToCancel && (itemToCancel as any).type === 'accepted_trip_request';
@@ -448,7 +440,6 @@ export const useRequestManagement = () => {
   }
 
   return {
-    // state
     itemToCancel,
     requestToEdit,
     requestForInspection,
@@ -462,7 +453,6 @@ export const useRequestManagement = () => {
     dialogTitleKey,
     dialogDescriptionKey,
 
-    // setters
     setItemToCancel,
     setRequestToEdit,
     setRequestForInspection,
@@ -470,7 +460,6 @@ export const useRequestManagement = () => {
     setRequestForTrackingUpdate,
     setRequestForPayment,
 
-    // mutations
     updateRequestMutation,
     deleteRequestMutation,
     mutualCancelMutation,
@@ -480,7 +469,6 @@ export const useRequestManagement = () => {
     submitPaymentProofMutation,
     adminUpdatePaymentStatusMutation,
 
-    // handlers
     handleUpdateRequest,
     handleAcceptedRequestCancel,
     handleConfirmCancellation,
