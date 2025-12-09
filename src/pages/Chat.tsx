@@ -43,6 +43,7 @@ interface Trip {
 
 interface RequestRow {
   id: string;
+  sender_id: string;
   description: string;
   weight_kg: number;
   destination_city: string;
@@ -65,6 +66,12 @@ interface ChatRow {
   request_id: string;
 }
 
+interface ProfileRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
 const Chat: React.FC = () => {
   const { t } = useTranslation();
   const { requestId } = useParams();
@@ -77,7 +84,7 @@ const Chat: React.FC = () => {
     defaultValues: { content: '' },
   });
 
-  // Request + trip data
+  // 1) طلب + رحلة
   const {
     data: requestData,
     isLoading: isRequestLoading,
@@ -93,6 +100,7 @@ const Chat: React.FC = () => {
         .select(
           `
           id,
+          sender_id,
           description,
           weight_kg,
           destination_city,
@@ -110,7 +118,7 @@ const Chat: React.FC = () => {
     },
   });
 
-  // Chat row for this request
+  // 2) صف الدردشة لهذا الطلب
   const { data: chatRow } = useQuery<ChatRow | null, Error>({
     queryKey: ['chatRow', requestId],
     enabled: !!requestId,
@@ -128,7 +136,30 @@ const Chat: React.FC = () => {
     },
   });
 
-  // Messages for this chat
+  // 3) الطرف الآخر: إذا كنت المرسل، الآخر هو المسافر؛ وإذا كنت المسافر، الآخر هو المرسل
+  const otherUserId = useMemo(() => {
+    if (!user || !requestData?.trips) return null;
+    const isSender = user.id === requestData.sender_id;
+    return isSender ? requestData.trips.user_id : requestData.sender_id;
+  }, [user, requestData]);
+
+  const { data: otherProfile } = useQuery<ProfileRow | null, Error>({
+    queryKey: ['chatOtherProfile', otherUserId],
+    enabled: !!otherUserId,
+    queryFn: async () => {
+      if (!otherUserId) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .eq('id', otherUserId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as ProfileRow | null;
+    },
+  });
+
+  // 4) الرسائل
   const { data: messages } = useQuery<MessageRow[], Error>({
     queryKey: ['chatMessages', chatRow?.id],
     enabled: !!chatRow?.id,
@@ -172,14 +203,14 @@ const Chat: React.FC = () => {
     void markAsRead();
   }, [chatRow?.id, user?.id, queryClient]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom on messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [messages]);
 
-  // Realtime subscription
+  // Realtime subscription for new messages
   useEffect(() => {
     if (!chatRow?.id) return;
 
@@ -213,8 +244,6 @@ const Chat: React.FC = () => {
     },
     onSuccess: () => {
       form.reset({ content: '' });
-      // Force immediate refetch so the new message appears without manual refresh;
-      // realtime will keep it in sync afterwards
       if (chatRow?.id) {
         queryClient.invalidateQueries({ queryKey: ['chatMessages', chatRow.id] });
       }
@@ -230,10 +259,15 @@ const Chat: React.FC = () => {
     sendMessageMutation.mutate(values.content.trim());
   };
 
+  // اسم الطرف الآخر من البروفايل (أو fallback)
   const otherPartyName = useMemo(() => {
-    // Currently we don't load profile names here; use a generic label
+    if (otherProfile) {
+      const full =
+        `${otherProfile.first_name || ''} ${otherProfile.last_name || ''}`.trim();
+      if (full) return full;
+    }
     return t('user');
-  }, [t]);
+  }, [otherProfile, t]);
 
   const priceCalculation = useMemo(() => {
     if (!requestData?.trips) return null;
