@@ -6,7 +6,27 @@ import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Plane, Trash2, MessageSquare, BadgeCheck, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck, Weight, DollarSign, Wallet } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Plane,
+  Trash2,
+  MessageSquare,
+  BadgeCheck,
+  CalendarDays,
+  MapPin,
+  User,
+  Phone,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Pencil,
+  Camera,
+  PackageCheck,
+  Weight,
+  DollarSign,
+  Wallet,
+} from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
@@ -15,24 +35,40 @@ import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 import VerifiedBadge from '@/components/VerifiedBadge';
 
-interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
-interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
-interface Request { 
-  id: string; 
-  trip_id: string; 
-  sender_id: string; 
-  description: string; 
-  weight_kg: number; 
-  destination_city: string; 
-  receiver_details: string; 
-  handover_location: string | null; 
-  status: 'pending' | 'accepted' | 'rejected'; 
-  created_at: string; 
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+}
+interface Trip {
+  id: string;
+  user_id: string;
+  from_country: string;
+  to_country: string;
+  trip_date: string;
+  free_kg: number;
+  charge_per_kg: number | null;
+  traveler_location: string | null;
+  notes: string | null;
+  created_at: string;
+}
+interface Request {
+  id: string;
+  trip_id: string;
+  sender_id: string;
+  description: string;
+  weight_kg: number;
+  destination_city: string;
+  receiver_details: string;
+  handover_location: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
   updated_at: string | null;
-  trips: Trip; 
-  cancellation_requested_by: string | null; 
-  proposed_changes: { weight_kg: number; description: string } | null; 
-  sender_item_photos: string[] | null; 
+  trips: Trip;
+  cancellation_requested_by: string | null;
+  proposed_changes: { weight_kg: number; description: string } | null;
+  sender_item_photos: string[] | null;
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
@@ -42,7 +78,10 @@ interface Request {
   payment_proof_url?: string | null;
   payment_reference?: string | null;
 }
-interface RequestWithProfiles extends Request { sender_profile: Profile | null; traveler_profile: Profile | null; }
+interface RequestWithProfiles extends Request {
+  sender_profile: Profile | null;
+  traveler_profile: Profile | null;
+}
 
 interface TripRequestCardProps {
   req: RequestWithProfiles;
@@ -60,25 +99,34 @@ interface TripRequestCardProps {
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'accepted': return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
-    default: return <Clock className="h-4 w-4 text-yellow-500" />;
+    case 'accepted':
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
+    case 'rejected':
+      return <XCircle className="h-4 w-4 text-red-500" />;
+    default:
+      return <Clock className="h-4 w-4 text-yellow-500" />;
   }
 };
 
 const getStatusVariant = (status: string) => {
   switch (status) {
-    case 'accepted': return 'default';
-    case 'rejected': return 'destructive';
-    default: return 'secondary';
+    case 'accepted':
+      return 'default';
+    case 'rejected':
+      return 'destructive';
+    default:
+      return 'secondary';
   }
 };
 
 const getStatusCardClass = (status: string) => {
   switch (status) {
-    case 'accepted': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
-    case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
-    default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
+    case 'accepted':
+      return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
+    case 'rejected':
+      return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+    default:
+      return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
   }
 };
 
@@ -93,15 +141,17 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   onTrackingUpdate,
   trackingUpdateMutation,
   onOpenPaymentDialog,
-  t
+  t,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const { data: chatStatus } = useChatReadStatus(req.id);
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
-  const travelerName = req.traveler_profile?.first_name || t('traveler');
-  const travelerIsVerified = false;
+  const travelerName =
+    `${req.traveler_profile?.first_name || ''} ${req.traveler_profile?.last_name || ''}`.trim() ||
+    t('traveler');
+  const travelerIsVerified = !!req.traveler_profile?.id && false; // يمكنك ربطها بحقل is_verified لاحقاً
   const fromCountry = req.trips?.from_country || 'N/A';
   const toCountry = req.trips?.to_country || 'N/A';
   const tripDate = req.trips?.trip_date;
@@ -144,15 +194,28 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
     }
   };
 
+  const handleOpenChat = () => {
+    window.location.href = `/chat/${req.id}`;
+  };
+
+  const handleEdit = () => onEditRequest(req);
+  const handleCancel = () => onCancelRequest(req);
+  const handleCancelAccepted = () => onCancelAcceptedRequest(req);
+  const handleUploadPhotos = () => onUploadSenderPhotos(req);
+
+  const canUpdateToCompleted =
+    req.status === 'accepted' && currentTrackingStatus === 'delivered';
+
   return (
     <Card
       className={cn(
         getStatusCardClass(req.status),
-        isGeneralOrderMatch && "border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20",
-        hasNewMessage && "border-primary shadow-md"
+        isGeneralOrderMatch &&
+          'border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20',
+        hasNewMessage && 'border-primary shadow-md'
       )}
     >
-      <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+      <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {getStatusIcon(req.status)}
@@ -162,7 +225,11 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                   {t('requestTo')} {travelerName}
                 </span>
                 {travelerIsVerified && <VerifiedBadge className="mt-[1px]" />}
-                {isGeneralOrderMatch && <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">({t('generalOrderTitle')})</span>}
+                {isGeneralOrderMatch && (
+                  <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">
+                    ({t('generalOrderTitle')})
+                  </span>
+                )}
                 {hasNewMessage && <span className="text-primary text-xs">•</span>}
               </CardTitle>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -189,29 +256,169 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
         </div>
       </CardHeader>
 
-      {/* يمكن هنا إكمال باقي تفاصيل البطاقة كما كانت (التتبع، التفاصيل، الأزرار) */}
-      {/* لأجل الاختصار، بقية الكود الأصلي غير المعروض هنا يبقى كما هو في مشروعك،
-          مع إضافة زر الدفع حيثما تضع أزرار الإجراءات في الأسفل: */}
-
       {expanded && (
         <CardContent className="p-4 pt-0 space-y-4">
-          {/* Tracking, summary, وغيره — كما في نسختك السابقة */}
-          {/* ... */}
+          {/* Tracking status */}
+          {req.status !== 'pending' && (
+            <div className="pt-2">
+              <RequestTracking currentStatus={currentTrackingStatus} isRejected={isRejected} />
+            </div>
+          )}
 
-          {/* في منطقة الأزرار السفلية أضف زر إرسال إثبات الدفع مع بقية الأزرار */}
-          <div className="flex flex-wrap justify-end gap-2">
-            {showPayButton && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => onOpenPaymentDialog(req as Request)}
-              >
-                <Wallet className="mr-2 h-4 w-4" />
-                إرسال إثبات الدفع
-              </Button>
+          {/* Quick overview */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <Weight className="h-4 w-4 text-muted-foreground" />
+              <span>{req.weight_kg} kg</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="truncate">{req.destination_city}</span>
+            </div>
+          </div>
+
+          {/* Pending changes */}
+          {hasPendingChanges && (
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md space-y-2">
+              <p className="font-semibold text-sm">{t('proposedChanges')}:</p>
+              <p className="text-xs text-muted-foreground">
+                {t('packageWeightKg')}: {req.proposed_changes?.weight_kg} kg
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('packageContents')}: {req.proposed_changes?.description}
+              </p>
+            </div>
+          )}
+
+          {/* Details toggle */}
+          <div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-between text-xs"
+              onClick={() => setDetailsExpanded((v) => !v)}
+            >
+              <span>{t('viewDetails')}</span>
+              {detailsExpanded ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </Button>
+
+            {detailsExpanded && (
+              <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span>{travelerName}</span>
+                </div>
+                {req.traveler_profile?.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{req.traveler_profile.phone}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span>{format(new Date(req.created_at), 'PPP')}</span>
+                </div>
+                <div>
+                  <p className="font-medium text-xs mt-2">{t('packageContents')}:</p>
+                  <p className="text-xs text-muted-foreground">{req.description}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-xs mt-2">{t('receiverDetails')}:</p>
+                  <p className="text-xs text-muted-foreground">{req.receiver_details}</p>
+                </div>
+              </div>
             )}
+          </div>
 
-            {/* الأزرار الأخرى (إلغاء، تعديل، محادثة، إلخ) تبقى كما في نسختك */}
+          {/* Action buttons */}
+          <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
+            {/* Chat button */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleOpenChat}
+              className={cn(hasNewMessage && 'border-red-500 text-red-500')}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              {t('viewChat')}
+            </Button>
+
+            {/* Right side actions */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {/* Payment proof */}
+              {showPayButton && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onOpenPaymentDialog(req as Request)}
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  إرسال إثبات الدفع
+                </Button>
+              )}
+
+              {/* Upload item photos (sender) */}
+              {req.status === 'accepted' && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleUploadPhotos}
+                  disabled={trackingUpdateMutation.isPending}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  {req.sender_item_photos && req.sender_item_photos.length > 0
+                    ? t('updateItemPhotos')
+                    : t('uploadItemPhotos')}
+                </Button>
+              )}
+
+              {/* Complete tracking (mark as completed) */}
+              {canUpdateToCompleted && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => onTrackingUpdate(req, 'completed')}
+                  disabled={trackingUpdateMutation.isPending}
+                >
+                  <PackageCheck className="mr-2 h-4 w-4" />
+                  {t('markAsCompleted')}
+                </Button>
+              )}
+
+              {/* Edit pending request */}
+              {req.status === 'pending' && !hasPendingChanges && (
+                <Button size="sm" variant="secondary" onClick={handleEdit}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t('editRequest')}
+                </Button>
+              )}
+
+              {/* Cancel / Delete */}
+              {req.status === 'accepted' ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleCancelAccepted}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t('requestCancellation')}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleCancel}
+                  disabled={deleteRequestMutation.isPending}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t('cancelRequest')}
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       )}
