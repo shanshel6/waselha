@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,9 +9,22 @@ import { useTranslation } from 'react-i18next';
 import { MadeWithDyad } from '@/components/made-with-dyad';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSession } from '@/integrations/supabase/SessionContextProvider';
 
 function Login() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user } = useSession();
+
+  // إذا كان المستخدم مسجّلاً بالفعل، لا معنى لصفحة تسجيل الدخول → نعيده للصفحة الرئيسية
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // عنوان إعادة التوجيه بعد نجاح تسجيل الدخول (بريد/مزوّد اجتماعي)
+  const redirectTo = `${window.location.origin}/`;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background dark:bg-gray-900">
@@ -23,6 +38,7 @@ function Login() {
             providers={['google', 'facebook']}
             view="sign_in"
             showLinks={false}
+            redirectTo={redirectTo}
             appearance={{
               theme: ThemeSupa,
               variables: {
