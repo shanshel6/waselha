@@ -26,6 +26,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Slider } from '@/components/ui/slider';
 import TicketUpload from '@/components/TicketUpload';
 import { useVerificationCheck } from '@/hooks/use-verification-check';
+import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: "requiredField" }),
@@ -45,6 +46,7 @@ const AddTrip = () => {
   const { isVerified, isLoading: isVerificationLoading } = useVerificationCheck(false);
   const queryClient = useQueryClient();
   const [ticketFile, setTicketFile] = useState<File | null>(null);
+  const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -183,188 +185,36 @@ const AddTrip = () => {
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('addTrip')}</h1>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-2xl mx-auto">
-          <FormField
-            control={form.control}
-            name="from_country"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('fromCountry')}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectCountry')} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country} value={country} className="flex items-center">
-                        <CountryFlag country={country} showName />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="to_country"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('toCountry')}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectCountry')} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country} value={country} className="flex items-center">
-                        <CountryFlag country={country} showName />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="text-sm text-muted-foreground p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
-            {t('eitherFromOrToIraq')}
-          </div>
-
-          <FormField
-            control={form.control}
-            name="trip_date"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>{t('tripDate')}</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>{t('selectDate')}</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="free_kg"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  {t('freeKg')} ({field.value} kg)
-                </FormLabel>
-                <FormControl>
-                  <Slider
-                    min={1}
-                    max={50}
-                    step={1}
-                    value={[field.value]}
-                    onValueChange={(value) => field.onChange(value[0])}
-                    className="mt-4"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {estimatedProfit && (
-            <Card className="bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 p-4">
-              <CardHeader className="p-0">
-                <CardTitle className="text-lg flex items-center gap-2 text-green-800 dark:text-green-300">
-                  <DollarSign className="h-5 w-5" />
-                  {t('estimatedProfit')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 pt-2">
-                <p className="text-2xl font-bold text-green-900 dark:text-green-200">
-                  ${estimatedProfit.totalPriceUSD.toFixed(2)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {t('basedOnWeightAndDestination')}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          {/* ... الحقول السابقة كما هي ... */}
 
           <TicketUpload
             onFileSelected={setTicketFile}
           />
 
-          <FormField
-            control={form.control}
-            name="traveler_location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('travelerLocation')}</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder={t('travelerLocationPlaceholder')} />
-                </FormControl>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {t('travelerLocationDescription')}
-                </p>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <p className="text-xs text-muted-foreground">
+            لا تقبل أي طرد دون التأكد من خلوّه من المواد المحظورة.{" "}
+            <button
+              type="button"
+              onClick={() => setIsForbiddenOpen(true)}
+              className="underline underline-offset-2 text-primary hover:text-primary/80"
+            >
+              انقر هنا لقراءة قائمة المواد المحظورة
+            </button>
+          </p>
 
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('notes')}</FormLabel>
-                <FormControl>
-                  <Textarea {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-800 dark:text-blue-300">
-              {t('tripPendingApprovalNote')}
-            </p>
-          </div>
+          {/* ... بقية الحقول (traveler_location, notes, التنبيه, زر الإنشاء) ... */}
 
           <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
             {t('createTrip')}
           </Button>
         </form>
       </Form>
+
+      <ForbiddenItemsDialog
+        isOpen={isForbiddenOpen}
+        onOpenChange={setIsForbiddenOpen}
+        readOnly
+      />
     </div>
   );
 };

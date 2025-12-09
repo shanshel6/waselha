@@ -19,11 +19,21 @@ import IconRenderer from './IconRenderer';
 interface ForbiddenItemsDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm?: () => void;
+  readOnly?: boolean;
 }
 
-const ForbiddenItemsDialog: React.FC<ForbiddenItemsDialogProps> = ({ isOpen, onOpenChange, onConfirm }) => {
+const ForbiddenItemsDialog: React.FC<ForbiddenItemsDialogProps> = ({ isOpen, onOpenChange, onConfirm, readOnly = false }) => {
   const { t } = useTranslation();
+
+  const handleConfirm = () => {
+    if (readOnly) {
+      onOpenChange(false);
+      return;
+    }
+    if (onConfirm) onConfirm();
+    onOpenChange(false);
+  };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
@@ -50,10 +60,14 @@ const ForbiddenItemsDialog: React.FC<ForbiddenItemsDialogProps> = ({ isOpen, onO
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>
-            {t('agreeAndContinue')}
-          </AlertDialogAction>
+          <AlertDialogCancel>
+            {t('close')}
+          </AlertDialogCancel>
+          {!readOnly && (
+            <AlertDialogAction onClick={handleConfirm}>
+              {t('agreeAndContinue')}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

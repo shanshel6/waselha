@@ -331,7 +331,7 @@ const Trips = () => {
         </div>
       )}
       
-      <Card className="mb-8">
+      <Card className="mb-2">
         <CardContent className="p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
@@ -396,6 +396,13 @@ const Trips = () => {
           </Form>
         </CardContent>
       </Card>
+
+      {/* ملاحظة توضح استبعاد الرحلات ذات الطلبات النشطة */}
+      {user && (
+        <p className="text-xs text-muted-foreground mb-4 px-1">
+          لن تظهر الرحلات التي لديك طلب نشط عليها بالفعل.
+        </p>
+      )}
       
       {renderContent()}
       
