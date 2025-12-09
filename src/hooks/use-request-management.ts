@@ -41,11 +41,13 @@ export interface ManagedRequest {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
-  // Optional client-only payment flags (no DB columns expected)
   payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
   payment_method?: 'zaincash' | 'qicard' | 'other' | null;
   payment_proof_url?: string | null;
   payment_reference?: string | null;
+  payment_amount_iqd?: number | null;
+  payment_updated_at?: string | null;
+  payment_reviewed_at?: string | null;
 }
 
 export interface ManagedGeneralOrder {
@@ -159,7 +161,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Delete request / general order
+  // Delete
   const deleteRequestMutation = useMutation({
     mutationFn: async (item: SentItem) => {
       if (!user) throw new Error(t('mustBeLoggedIn'));
@@ -196,7 +198,7 @@ export const useRequestManagement = () => {
     onError: () => showError(t('requestCancelledError')),
   });
 
-  // Sender edits request (proposed_changes)
+  // Sender edits
   const editRequestMutation = useMutation({
     mutationFn: async ({ requestId, values }: { requestId: string; values: { weight_kg: number; description: string } }) => {
       const { error } = await supabase
@@ -215,7 +217,7 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Traveler reviews proposed_changes
+  // Traveler reviews changes
   const reviewChangesMutation = useMutation({
     mutationFn: async ({ request, accept }: { request: ManagedRequest; accept: boolean }) => {
       const updateData = accept
@@ -283,34 +285,68 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Sender submits payment proof – now purely client-side; we DON'T write payment_* columns
+  // Sender submits payment proof
   const submitPaymentProofMutation = useMutation({
-    mutationFn: async (_args: {
+    mutationFn: async (args: {
       request: ManagedRequest;
       payment_method: 'zaincash' | 'qicard';
       payment_proof_url: string;
       payment_reference: string;
       payment_amount_iqd: number;
     }) => {
-      // No DB writes because payment_* columns are not in schema.
-      // Keeping this mutation to keep the UI flow, but it's effectively a no-op on the backend.
-      return;
+      if (!user) throw new Error(t('mustBeLoggedIn'));
+
+      const { error } = await supabase
+        .from('requests')
+        .update({
+          payment_status: 'pending_review',
+          payment_method: args.payment_method,
+          payment_proof_url: args.payment_proof_url,
+          payment_reference: args.payment_reference,
+          payment_amount_iqd: args.payment_amount_iqd,
+          payment_updated_at: new Date().toISOString(),
+        })
+        .eq('id', args.request.id)
+        .eq('sender_id', user.id);
+
+      if (error) throw error;
     },
     onSuccess: () => {
-      showSuccess('تم إرسال إثبات الدفع (محلياً). لا توجد أعمدة دفع في قاعدة البيانات حالياً.');
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      showSuccess('تم إرسال إثبات الدفع، بانتظار مراجعة المسؤول.');
       setRequestForPayment(null);
     },
     onError: (err: any) => showError(err.message),
   });
 
-  // Admin payment status (also no DB writes because payment_* columns don't exist)
+  // Admin confirms / rejects payment (for future admin dashboard)
   const adminUpdatePaymentStatusMutation = useMutation({
-    mutationFn: async (_args: { requestId: string; status: 'paid' | 'rejected' }) => {
-      // No DB updates; in a future schema migration you can add columns and implement this.
-      return;
+    mutationFn: async (args: { requestId: string; status: 'paid' | 'rejected' }) => {
+      const updates: any = {
+        payment_status: args.status,
+        payment_reviewed_at: new Date().toISOString(),
+      };
+
+      if (args.status === 'paid') {
+        updates.tracking_status = 'payment_done' as RequestTrackingStatus;
+      }
+
+      const { error } = await supabase
+        .from('requests')
+        .update(updates)
+        .eq('id', args.requestId);
+
+      if (error) throw error;
     },
-    onSuccess: () => {
-      showSuccess('تم تحديث حالة الدفع (محلياً فقط).');
+    onSuccess: (_, { status }) => {
+      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
+      showSuccess(
+        status === 'paid'
+          ? 'تم تأكيد الدفع بنجاح.'
+          : 'تم رفض إثبات الدفع.'
+      );
     },
     onError: (err: any) => showError(err.message),
   });

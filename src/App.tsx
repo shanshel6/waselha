@@ -31,6 +31,7 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
 import ResetPassword from "./pages/ResetPassword";
+import AdminPayments from "./pages/AdminPayments";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const MainLayout = () => (
         <Route path="/chat/:requestId" element={<Chat />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/verifications" element={<AdminVerificationDashboard />} />
+        <Route path="/admin/payments" element={<AdminPayments />} />
         <Route path="/place-order" element={<PlaceOrder />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
