@@ -26,6 +26,7 @@ import {
   Weight,
   DollarSign,
   Wallet,
+  AlertTriangle,
 } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
@@ -34,6 +35,10 @@ import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { showError, showSuccess } from '@/utils/toast';
 
 interface Profile {
   id: string;
@@ -161,13 +166,10 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const hasPendingChanges = !!req.proposed_changes;
   const isGeneralOrderMatch = !!req.general_order_id;
 
-  // Payment state
   const paymentStatus = req.payment_status || 'unpaid';
   const showPayButton =
     req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
 
-  // Determine if sender is still allowed to upload item photos:
-  // فقط بين payment_done و قبل traveler_inspection_complete، ولم يرفع صوراً سابقاً.
   const paymentDoneStage = TRACKING_STAGES.find((s) => s.key === 'payment_done');
   const travelerInspectionStage = TRACKING_STAGES.find(
     (s) => s.key === 'traveler_inspection_complete'
@@ -182,6 +184,15 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
     currentStage.order >= paymentDoneStage.order &&
     currentStage.order < travelerInspectionStage.order &&
     (!req.sender_item_photos || req.sender_item_photos.length === 0);
+
+  const canUpdateToCompleted =
+    req.status === 'accepted' && currentTrackingStatus === 'delivered';
+
+  // === New: completed order reporting ===
+  const isCompleted = currentTrackingStatus === 'completed';
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [sendingReport, setSendingReport] = useState(false);
 
   const renderPaymentBadge = () => {
     switch (paymentStatus) {
@@ -221,224 +232,300 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const handleCancelAccepted = () => onCancelAcceptedRequest(req);
   const handleUploadPhotos = () => onUploadSenderPhotos(req);
 
-  const canUpdateToCompleted =
-    req.status === 'accepted' && currentTrackingStatus === 'delivered';
+  const submitReport = async () => {
+    if (!reportText.trim()) {
+      showError(t('requiredField'));
+      return;
+    }
+
+    setSendingReport(true);
+    try {
+      const { error } = await supabase.functions.invoke('report-order-issue', {
+        body: { request_id: req.id, description: reportText.trim() },
+      });
+
+      if (error) {
+        console.error('report-order-issue error:', error);
+        throw new Error(error.message || 'Failed to send report');
+      }
+
+      showSuccess('تم إرسال البلاغ، سنراجع مشكلتك قريباً.');
+      setReportOpen(false);
+      setReportText('');
+    } catch (e: any) {
+      showError(e?.message || 'تعذر إرسال البلاغ، حاول مرة أخرى.');
+    } finally {
+      setSendingReport(false);
+    }
+  };
 
   return (
-    <Card
-      className={cn(
-        getStatusCardClass(req.status),
-        isGeneralOrderMatch &&
-          'border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20',
-        hasNewMessage && 'border-primary shadow-md'
-      )}
-    >
-      <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {getStatusIcon(req.status)}
-            <div>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <span>
-                  {t('requestTo')} {travelerName}
-                </span>
-                {travelerIsVerified && <VerifiedBadge className="mt-[1px]" />}
-                {isGeneralOrderMatch && (
-                  <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">
-                    ({t('generalOrderTitle')})
+    <>
+      <Card
+        className={cn(
+          getStatusCardClass(req.status),
+          isGeneralOrderMatch &&
+            'border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20',
+          hasNewMessage && 'border-primary shadow-md'
+        )}
+      >
+        <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {getStatusIcon(req.status)}
+              <div>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <span>
+                    {t('requestTo')} {travelerName}
                   </span>
-                )}
-                {hasNewMessage && <span className="text-primary text-xs">•</span>}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Plane className="h-3 w-3" />
-                <CountryFlag country={fromCountry} showName={false} />
-                <span className="text-xs">←</span>
-                <CountryFlag country={toCountry} showName={false} />
-                {tripDate && ` • ${format(new Date(tripDate), 'MMM d')}`}
-              </p>
+                  {travelerIsVerified && <VerifiedBadge className="mt-[1px]" />}
+                  {isGeneralOrderMatch && (
+                    <span className="text-xs text-blue-600 dark:text-blue-400 ml-1">
+                      ({t('generalOrderTitle')})
+                    </span>
+                  )}
+                  {hasNewMessage && <span className="text-primary text-xs">•</span>}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Plane className="h-3 w-3" />
+                  <CountryFlag country={fromCountry} showName={false} />
+                  <span className="text-xs">←</span>
+                  <CountryFlag country={toCountry} showName={false} />
+                  {tripDate && ` • ${format(new Date(tripDate), 'MMM d')}`}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <Badge variant={getStatusVariant(req.status)} className="text-xs">
-              {hasPendingChanges ? t('pendingChanges') : t(req.status)}
-            </Badge>
-            {renderPaymentBadge()}
-            {hasNewMessage && (
-              <Badge variant="destructive" className="text-xs h-5 px-2">
-                {t('newMessage')}
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant={getStatusVariant(req.status)} className="text-xs">
+                {hasPendingChanges ? t('pendingChanges') : t(req.status)}
               </Badge>
-            )}
-            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </div>
-        </div>
-      </CardHeader>
-
-      {expanded && (
-        <CardContent className="p-4 pt-0 space-y-4">
-          {/* Tracking status */}
-          {req.status !== 'pending' && (
-            <div className="pt-2">
-              <RequestTracking currentStatus={currentTrackingStatus} isRejected={isRejected} />
-            </div>
-          )}
-
-          {/* Quick overview */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Weight className="h-4 w-4 text-muted-foreground" />
-              <span>{req.weight_kg} kg</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate">{req.destination_city}</span>
-            </div>
-          </div>
-
-          {/* Pending changes */}
-          {hasPendingChanges && (
-            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md space-y-2">
-              <p className="font-semibold text-sm">{t('proposedChanges')}:</p>
-              <p className="text-xs text-muted-foreground">
-                {t('packageWeightKg')}: {req.proposed_changes?.weight_kg} kg
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t('packageContents')}: {req.proposed_changes?.description}
-              </p>
-            </div>
-          )}
-
-          {/* Details toggle */}
-          <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-between text-xs"
-              onClick={() => setDetailsExpanded((v) => !v)}
-            >
-              <span>{t('viewDetails')}</span>
-              {detailsExpanded ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
+              {renderPaymentBadge()}
+              {hasNewMessage && (
+                <Badge variant="destructive" className="text-xs h-5 px-2">
+                  {t('newMessage')}
+                </Badge>
               )}
-            </Button>
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </div>
+          </div>
+        </CardHeader>
 
-            {detailsExpanded && (
-              <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span>{travelerName}</span>
-                </div>
-                {req.traveler_profile?.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{req.traveler_profile.phone}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <span>{format(new Date(req.created_at), 'PPP')}</span>
-                </div>
-                <div>
-                  <p className="font-medium text-xs mt-2">{t('packageContents')}:</p>
-                  <p className="text-xs text-muted-foreground">{req.description}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-xs mt-2">{t('receiverDetails')}:</p>
-                  <p className="text-xs text-muted-foreground">{req.receiver_details}</p>
-                </div>
+        {expanded && (
+          <CardContent className="p-4 pt-0 space-y-4">
+            {/* Tracking status */}
+            {req.status !== 'pending' && (
+              <div className="pt-2">
+                <RequestTracking currentStatus={currentTrackingStatus} isRejected={isRejected} />
               </div>
             )}
-          </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
-            {/* Chat button */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleOpenChat}
-              className={cn(hasNewMessage && 'border-red-500 text-red-500')}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              {t('viewChat')}
+            {/* إذا اكتمل الطلب، نظهر رسالة فقط ولا نعرض أزراراً أخرى */}
+            {isCompleted && (
+              <>
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  <span>تم إكمال الطلب بنجاح.</span>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setReportOpen(true)}
+                  >
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    الإبلاغ عن مشكلة
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {!isCompleted && (
+              <>
+                {/* Quick overview */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Weight className="h-4 w-4 text-muted-foreground" />
+                    <span>{req.weight_kg} kg</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate">{req.destination_city}</span>
+                  </div>
+                </div>
+
+                {/* Pending changes */}
+                {hasPendingChanges && (
+                  <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md space-y-2">
+                    <p className="font-semibold text-sm">{t('proposedChanges')}:</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('packageWeightKg')}: {req.proposed_changes?.weight_kg} kg
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('packageContents')}: {req.proposed_changes?.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Details toggle */}
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-between text-xs"
+                    onClick={() => setDetailsExpanded((v) => !v)}
+                  >
+                    <span>{t('viewDetails')}</span>
+                    {detailsExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </Button>
+
+                  {detailsExpanded && (
+                    <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span>{travelerName}</span>
+                      </div>
+                      {req.traveler_profile?.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span>{req.traveler_profile.phone}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                        <span>{format(new Date(req.created_at), 'PPP')}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-xs mt-2">{t('packageContents')}:</p>
+                        <p className="text-xs text-muted-foreground">{req.description}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-xs mt-2">{t('receiverDetails')}:</p>
+                        <p className="text-xs text-muted-foreground">{req.receiver_details}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
+                  {/* Chat button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleOpenChat}
+                    className={cn(hasNewMessage && 'border-red-500 text-red-500')}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    {t('viewChat')}
+                  </Button>
+
+                  {/* Right side actions */}
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    {showPayButton && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onOpenPaymentDialog(req)}
+                      >
+                        <Wallet className="mr-2 h-4 w-4" />
+                        إرسال إثبات الدفع
+                      </Button>
+                    )}
+
+                    {canShowSenderUploadButton && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleUploadPhotos}
+                        disabled={trackingUpdateMutation.isPending}
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        {t('uploadItemPhotos')}
+                      </Button>
+                    )}
+
+                    {canUpdateToCompleted && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => onTrackingUpdate(req, 'completed')}
+                        disabled={trackingUpdateMutation.isPending}
+                      >
+                        <PackageCheck className="mr-2 h-4 w-4" />
+                        {t('markAsCompleted')}
+                      </Button>
+                    )}
+
+                    {req.status === 'pending' && !hasPendingChanges && (
+                      <Button size="sm" variant="secondary" onClick={handleEdit}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {t('editRequest')}
+                      </Button>
+                    )}
+
+                    {req.status === 'accepted' ? (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleCancelAccepted}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t('requestCancellation')}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleCancel}
+                        disabled={deleteRequestMutation.isPending}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t('cancelRequest')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Report problem dialog for completed orders */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              الإبلاغ عن مشكلة في الطلب
+            </DialogTitle>
+            <DialogDescription>
+              صف المشكلة التي واجهتها مع هذا الطلب بالتفصيل، وسيتواصل معك فريق الدعم إذا لزم الأمر.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Textarea
+              rows={6}
+              placeholder="اكتب وصفاً كاملاً للمشكلة، مثلاً: لم يصل الطرد، أو حدث خلاف مع المسافر، أو غير ذلك..."
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportOpen(false)}>
+              {t('cancel')}
             </Button>
-
-            {/* Right side actions */}
-            <div className="flex flex-wrap gap-2 justify-end">
-              {/* Payment proof */}
-              {showPayButton && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => onOpenPaymentDialog(req)}
-                >
-                  <Wallet className="mr-2 h-4 w-4" />
-                  إرسال إثبات الدفع
-                </Button>
-              )}
-
-              {/* Upload item photos: only قبل فحص المسافر، وفقط إذا لم تُرفع صور سابقاً */}
-              {canShowSenderUploadButton && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={handleUploadPhotos}
-                  disabled={trackingUpdateMutation.isPending}
-                >
-                  <Camera className="mr-2 h-4 w-4" />
-                  {t('uploadItemPhotos')}
-                </Button>
-              )}
-
-              {/* Mark as completed (after delivered) */}
-              {canUpdateToCompleted && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => onTrackingUpdate(req, 'completed')}
-                  disabled={trackingUpdateMutation.isPending}
-                >
-                  <PackageCheck className="mr-2 h-4 w-4" />
-                  {t('markAsCompleted')}
-                </Button>
-              )}
-
-              {/* Edit pending request */}
-              {req.status === 'pending' && !hasPendingChanges && (
-                <Button size="sm" variant="secondary" onClick={handleEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  {t('editRequest')}
-                </Button>
-              )}
-
-              {/* Cancel / delete */}
-              {req.status === 'accepted' ? (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={handleCancelAccepted}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t('requestCancellation')}
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={handleCancel}
-                  disabled={deleteRequestMutation.isPending}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t('cancelRequest')}
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      )}
-    </Card>
+            <Button onClick={submitReport} disabled={sendingReport}>
+              {sendingReport ? t('loading') : 'إرسال البلاغ'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
