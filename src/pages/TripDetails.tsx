@@ -44,6 +44,7 @@ import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { useVerificationStatus } from '@/hooks/use-verification-status';
 
 interface TripData {
   id: string;
@@ -68,6 +69,7 @@ const TripDetails = () => {
   const { user } = useSession();
   const [isForbiddenItemsDialogOpen, setIsForbiddenItemsDialogOpen] =
     useState(false);
+  const { data: verificationInfo, isLoading: isVerificationLoading } = useVerificationStatus();
 
   const { data: trip, isLoading, error } = useQuery<TripData, Error>({
     queryKey: ['trip', tripId],
@@ -151,6 +153,13 @@ const TripDetails = () => {
       return;
     }
 
+    // منع إرسال طلب (order) للمسافر إذا لم يكن الحساب موثّقاً
+    if (verificationInfo?.status !== 'approved') {
+      showError(t('verificationRequiredTitle'));
+      navigate('/verification');
+      return;
+    }
+
     const { error } = await supabase.from('requests').insert({
       trip_id: trip.id,
       sender_id: user.id,
@@ -166,7 +175,7 @@ const TripDetails = () => {
     }
   });
 
-  if (isLoading)
+  if (isLoading || isVerificationLoading)
     return (
       <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -224,7 +233,7 @@ const TripDetails = () => {
             )}
             {trip.notes && (
               <div className="pt-2">
-                <h3 className="font-semibold flex items-center gap-2 mb-2">
+                <h3 className="font-semibold flex items_center gap-2 mb-2">
                   <Info className="h-5 w-5 text-gray-500" />
                   {t('notesFromTraveler')}
                 </h3>
