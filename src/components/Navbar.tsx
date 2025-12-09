@@ -57,25 +57,31 @@ const Navbar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="relative container mx-auto flex h-16 items-center justify-between px-3 sm:px-4">
-        {/* يسار: روابط الديسكتوب */}
-        <div className="hidden md:flex items-center gap-4">
-          {publicNavItems.map((item) => (
-            <Link key={item.path} to={item.path}>
-              <span
-                className={cn(
-                  'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
-                  isActive(item.path)
-                    ? 'text-primary bg-primary/10'
-                    : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
-                )}
-              >
-                {item.name}
-              </span>
-            </Link>
-          ))}
+        {/* يسار: الإشعارات + المستخدم + روابط الديسكتوب */}
+        <div className="flex items-center gap-3">
+          {/* Notifications + User avatar على اليسار دائماً */}
+          <div className="flex items-center gap-2">
+            {session && <Notifications />}
+            <div className="hidden md:inline-flex">
+              {session ? (
+                <UserNav />
+              ) : (
+                <Link to="/login">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full px-4 py-2 text-sm"
+                  >
+                    {t('login')}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
 
-          {session &&
-            authenticatedNavItems.map((item) => (
+          {/* روابط الديسكتوب بجانب الأفاتار على الشاشات الكبيرة */}
+          <div className="hidden md:flex items-center gap-3">
+            {publicNavItems.map((item) => (
               <Link key={item.path} to={item.path}>
                 <span
                   className={cn(
@@ -89,6 +95,23 @@ const Navbar: React.FC = () => {
                 </span>
               </Link>
             ))}
+
+            {session &&
+              authenticatedNavItems.map((item) => (
+                <Link key={item.path} to={item.path}>
+                  <span
+                    className={cn(
+                      'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
+                      isActive(item.path)
+                        ? 'text-primary bg-primary/10'
+                        : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                    )}
+                  >
+                    {item.name}
+                  </span>
+                </Link>
+              ))}
+          </div>
         </div>
 
         {/* الوسط: الشعار ثابت في منتصف الـ container */}
@@ -101,78 +124,56 @@ const Navbar: React.FC = () => {
           </Link>
         </div>
 
-        {/* يمين: المستخدم / الموبايل */}
-        <div className="flex items-center gap-2 ml-auto">
-          {/* Desktop user section */}
-          <div className="hidden md:flex items-center gap-3">
-            {session && <Notifications />}
-            {session ? (
-              <UserNav />
-            ) : (
-              <Link to="/login">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full px-4 py-2 text-sm"
-                >
-                  {t('login')}
-                </Button>
-              </Link>
-            )}
-          </div>
-
-          {/* Mobile: إشعارات + قائمة جانبية */}
-          <div className="md:hidden flex items-center gap-1">
-            {session && <Notifications />}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full border border-border/60 bg-background/80"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
+        {/* يمين: للموبايل فقط (أيقونة القائمة)، نتركه فارغ على الديسكتوب */}
+        <div className="flex items-center gap-2 ml-auto md:hidden">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full border border-border/60 bg-background/80"
               >
-                <div className="mt-4 mb-6 flex items-center justify-between">
-                  <Brand />
-                </div>
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
+            >
+              <div className="mt-4 mb-6 flex items-center justify-between">
+                <Brand />
+              </div>
 
-                <div className="flex flex-col space-y-2">
-                  {mobileNavItems.map((item) => (
-                    <Link key={item.path} to={item.path}>
-                      <div
-                        className={cn(
-                          'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                          isActive(item.path)
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        )}
-                      >
-                        <span>{item.name}</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+              <div className="flex flex-col space-y-2">
+                {mobileNavItems.map((item) => (
+                  <Link key={item.path} to={item.path}>
+                    <div
+                      className={cn(
+                        'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                        isActive(item.path)
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}
+                    >
+                      <span>{item.name}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
 
-                <div className="mt-6 border-t pt-4">
-                  {session ? (
-                    <UserNav />
-                  ) : (
-                    <Link to="/login">
-                      <Button className="w-full rounded-full py-2">
-                        {t('login')}
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+              <div className="mt-6 border-t pt-4">
+                {session ? (
+                  <UserNav />
+                ) : (
+                  <Link to="/login">
+                    <Button className="w-full rounded-full py-2">
+                      {t('login')}
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>
