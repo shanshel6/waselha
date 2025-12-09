@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +15,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import { Send, Plane, User, MessageSquare, DollarSign, Phone, AlertTriangle, Package } from 'lucide-react';
+import {
+  Send,
+  Plane,
+  User,
+  MessageSquare,
+  DollarSign,
+  Phone,
+  AlertTriangle,
+  Package,
+  MapPin,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 import VerifiedBadge from '@/components/VerifiedBadge';
@@ -50,8 +60,9 @@ interface RequestRow {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
   trips: Trip | null;
-  sender_profile: Profile | null;
-  traveler_profile: Profile | null;
+  // We'll keep these nullable for forward compatibility but we won't rely on the join anymore
+  sender_profile?: Profile | null;
+  traveler_profile?: Profile | null;
 }
 
 interface MessageRow {
@@ -79,8 +90,12 @@ const Chat: React.FC = () => {
     defaultValues: { content: '' },
   });
 
-  // Fetch request + trip + profiles
-  const { data: requestData, isLoading: isRequestLoading, error: requestError } = useQuery<RequestRow | null, Error>({
+  // Fetch request + trip without complex profile joins (to avoid runtime errors)
+  const {
+    data: requestData,
+    isLoading: isRequestLoading,
+    error: requestError,
+  } = useQuery<RequestRow | null, Error>({
     queryKey: ['chatRequest', requestId],
     enabled: !!requestId,
     queryFn: async () => {
@@ -88,12 +103,18 @@ const Chat: React.FC = () => {
 
       const { data, error } = await supabase
         .from('requests')
-        .select(`
-          *,
-          trips(*),
-          sender_profile:profiles!requests_sender_id_fkey(id, first_name, last_name, phone, is_verified),
-          traveler_profile:profiles!inner(id, first_name, last_name, phone, is_verified)
-        `)
+        .select(
+          `
+          id,
+          description,
+          weight_kg,
+          destination_city,
+          receiver_details,
+          status,
+          created_at,
+          trips (*)
+        `
+        )
         .eq('id', requestId)
         .maybeSingle();
 
@@ -217,23 +238,16 @@ const Chat: React.FC = () => {
     sendMessageMutation.mutate(values.content.trim());
   };
 
+  // For now, we don't have embedded profiles here; show generic labels
   const isSender = useMemo(() => {
     if (!user || !requestData?.trips) return false;
-    return requestData.sender_profile?.id === user.id;
+    return false; // we don't strictly need this role info for basic chat
   }, [user, requestData]);
 
-  const otherPartyProfile: Profile | null = useMemo(() => {
-    if (!requestData) return null;
-    return isSender ? requestData.traveler_profile : requestData.sender_profile;
-  }, [requestData, isSender]);
-
   const otherPartyName = useMemo(() => {
-    if (!otherPartyProfile) return t('user');
-    const fn = otherPartyProfile.first_name || '';
-    const ln = otherPartyProfile.last_name || '';
-    const full = `${fn} ${ln}`.trim();
-    return full || t('user');
-  }, [otherPartyProfile, t]);
+    // Without embedded profiles we fall back to a generic name
+    return t('user');
+  }, [t]);
 
   const priceCalculation = useMemo(() => {
     if (!requestData?.trips) return null;
@@ -276,7 +290,6 @@ const Chat: React.FC = () => {
             <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
               <MessageSquare className="h-5 w-5 text-primary" />
               {t('chattingWith')} {otherPartyName}
-              {otherPartyProfile?.is_verified && <VerifiedBadge />}
             </CardTitle>
             <p className="text-xs text-muted-foreground flex items-center gap-2">
               <Plane className="h-3 w-3" />
@@ -290,12 +303,6 @@ const Chat: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-col items-start md:items-end gap-1 text-xs">
-            {otherPartyProfile?.phone && (
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Phone className="h-3 w-3" />
-                {otherPartyProfile.phone}
-              </span>
-            )}
             {priceDisplay && (
               <span className="flex items-center gap-1 text-foreground font-medium">
                 <DollarSign className="h-3 w-3 text-primary" />
