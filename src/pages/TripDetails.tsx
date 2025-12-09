@@ -135,6 +135,19 @@ const TripDetails = () => {
   }, [weight, trip]);
 
   const handleRequestSubmit = async () => {
+    if (!user) {
+      showError(t('mustBeLoggedIn'));
+      navigate('/login');
+      return;
+    }
+    
+    // Enforce verification check
+    if (verificationInfo?.status !== 'approved') {
+      showError(t('verificationRequiredTitle'));
+      navigate('/verification');
+      return;
+    }
+
     const isValid = await form.trigger();
     if (isValid) {
       setIsForbiddenItemsDialogOpen(true);
@@ -150,13 +163,6 @@ const TripDetails = () => {
 
     if (!trip) {
       showError(t('tripNotFound'));
-      return;
-    }
-
-    // منع إرسال طلب (order) للمسافر إذا لم يكن الحساب موثّقاً
-    if (verificationInfo?.status !== 'approved') {
-      showError(t('verificationRequiredTitle'));
-      navigate('/verification');
       return;
     }
 

@@ -119,7 +119,7 @@ const PlaceOrder = () => {
       return;
     }
 
-    // منع إنشاء طلب شحن عام بدون توثيق
+    // Enforce verification check
     if (verificationInfo?.status !== 'approved') {
       showError(t('verificationRequiredTitle'));
       navigate('/verification');

@@ -50,7 +50,7 @@ const AddTrip = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
-  const { isVerified, isLoading: isVerificationLoadingLegacy } = useVerificationCheck(false);
+  const { isVerified: isVerifiedLegacy, isLoading: isVerificationLoadingLegacy } = useVerificationCheck(false);
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [ticketFile, setTicketFile] = useState<File | null>(null);
@@ -128,11 +128,9 @@ const AddTrip = () => {
       return;
     }
 
-    // نستخدم حالة التحقق الفعلية: إما من useVerificationCheck أو useVerificationStatus
-    const verifiedByLegacyHook = isVerified;
-    const verifiedByStatusHook = verificationInfo?.status === 'approved';
+    const isVerified = verificationInfo?.status === 'approved';
 
-    if (!verifiedByLegacyHook && !verifiedByStatusHook) {
+    if (!isVerified) {
       showError(t('verificationRequiredTitle'));
       navigate('/verification');
       return;
