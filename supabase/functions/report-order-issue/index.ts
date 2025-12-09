@@ -21,8 +21,9 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
       return new Response(
         JSON.stringify({ error: "Supabase environment not configured" }),
         {
@@ -32,11 +33,23 @@ serve(async (req) => {
       );
     }
 
+    // Admin client (service role) – for auth + reading profiles
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 1) Auth
+    // Public client (anon key) – will perform the INSERT under RLS as the end‑user
+    const publicClient = createClient(supabaseUrl, anonKey, {
+      global: {
+        headers: {
+          // Very important: forward the same JWT so RLS sees the same user
+          Authorization: req.headers.get("Authorization") ?? "",
+        },
+      },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // 1) Auth using admin client (to validate token & get user id)
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -58,7 +71,7 @@ serve(async (req) => {
     const reporterId = userData.user.id;
     const reporterEmail = userData.user.email ?? "";
 
-    // 2) Payload
+    // 2) Payload validation
     const body = (await req.json()) as ReportPayload;
     if (!body.request_id || !body.description) {
       return new Response(
@@ -67,7 +80,7 @@ serve(async (req) => {
       );
     }
 
-    // 3) Max 3 reports per (request_id, reporter_id)
+    // 3) Max 3 reports per (request_id, reporter_id) – using adminClient (bypasses RLS for counting)
     const { count: existingCount, error: countError } = await adminClient
       .from("reports")
       .select("id", { count: "exact", head: true })
@@ -89,7 +102,7 @@ serve(async (req) => {
       );
     }
 
-    // 4) Profile for name & phone
+    // 4) Profile data via admin client
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("first_name, last_name, phone")
@@ -103,8 +116,8 @@ serve(async (req) => {
     const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "بدون اسم";
     const phone = profile?.phone ?? "غير مذكور";
 
-    // 5) Insert into reports table (with optional photo URL)
-    const { error: insertError } = await adminClient
+    // 5) Insert report row via PUBLIC client so RLS applies normally
+    const { error: insertError } = await publicClient
       .from("reports")
       .insert({
         request_id: body.request_id,
@@ -117,14 +130,14 @@ serve(async (req) => {
       });
 
     if (insertError) {
-      console.error("Failed to insert report:", insertError);
+      console.error("Failed to insert report under RLS:", insertError);
       return new Response(
         JSON.stringify({ error: "Failed to store report" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 6) Optional email to owner (unchanged logic)
+    // 6) Optional email to owner (still via adminClient)
     const emailTo = "shanshel6@gmail.com";
     const subject = `Waslaha - بلاغ عن طلب رقم ${body.request_id}`;
     const textBody = `
