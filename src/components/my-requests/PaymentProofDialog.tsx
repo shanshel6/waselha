@@ -80,8 +80,9 @@ const PAYMENT_BUCKET = 'payment-proofs';
 
 /**
  * حوار يسمح للمرسل برفع لقطة شاشة لإثبات الدفع.
- * يتم رفع الصورة إلى Supabase Storage في bucket حقيقي،
- * ويُرسل الرابط العام إلى دالة الإدارة للمراجعة.
+ * الآن يدعم طريقتين بالعربية:
+ * - "سوبر كي" (qi card سابقاً) مع إظهار QR ورقم الهاتف.
+ * - "زين كاش" للدفع عبر زين كاش.
  */
 const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
   request,
@@ -200,6 +201,9 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
     onOpenChange(open);
   };
 
+  const isSuperK = method === 'qicard';
+  const phoneNumber = '+9647779786420';
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
@@ -208,7 +212,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
             {t('placeOrder')} – الدفع اليدوي
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            استخدم زين كاش أو كي كارد للدفع، ثم أرسل لنا لقطة شاشة للإيصال ليقوم المسؤول بتأكيد الدفع.
+            اختر وسيلة الدفع المناسبة (سوبر كي أو زين كاش)، ادفع من التطبيق، ثم قم برفع لقطة شاشة لإثبات الدفع.
           </DialogDescription>
         </DialogHeader>
 
@@ -249,15 +253,15 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
               className="flex gap-3"
             >
               <div className="flex items-center space-x-2 space-x-reverse">
-                <RadioGroupItem value="zaincash" id="zaincash" />
-                <Label htmlFor="zaincash" className="text-sm cursor-pointer">
-                  ZainCash
+                <RadioGroupItem value="qicard" id="qicard" />
+                <Label htmlFor="qicard" className="text-sm cursor-pointer">
+                  سوبر كي
                 </Label>
               </div>
               <div className="flex items-center space-x-2 space-x-reverse">
-                <RadioGroupItem value="qicard" id="qicard" />
-                <Label htmlFor="qicard" className="text-sm cursor-pointer">
-                  Qi Card
+                <RadioGroupItem value="zaincash" id="zaincash" />
+                <Label htmlFor="zaincash" className="text-sm cursor-pointer">
+                  زين كاش
                 </Label>
               </div>
             </RadioGroup>
@@ -265,6 +269,28 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
               بعد الدفع من خلال التطبيق، خذ لقطة شاشة لنجاح العملية ثم قم برفعها هنا.
             </p>
           </div>
+
+          {/* Super K QR + phone */}
+          {isSuperK && (
+            <Card className="border-amber-300 bg-amber-50 dark:bg-amber-900/20">
+              <CardContent className="p-3 space-y-2 text-center">
+                <p className="text-xs sm:text-sm font-semibold mb-1">
+                  امسح هذا الـ QR في تطبيق سوبر كي للدفع إلى نفس الحساب:
+                </p>
+                <div className="flex justify-center">
+                  <img
+                    src="/superk-qr.jpg"
+                    alt="Super K payment QR"
+                    className="w-40 h-auto rounded-md border bg-white"
+                  />
+                </div>
+                <p className="text-xs mt-2">
+                  رقم الهاتف للدفع:{" "}
+                  <span className="font-mono font-semibold">{phoneNumber}</span>
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* proof file */}
           <div className="space-y-2">
@@ -292,7 +318,7 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
               rows={2}
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder="مثال: رقم العملية من تطبيق زين كاش أو كي كارد"
+              placeholder="مثال: رقم العملية من تطبيق سوبر كي أو زين كاش"
             />
           </div>
         </div>
