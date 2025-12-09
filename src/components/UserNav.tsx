@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Settings, Plane } from 'lucide-react';
+import { LogOut, User, Settings, Plane, MessageCircle } from 'lucide-react';
 
 const UserNav = () => {
   const { t } = useTranslation();
@@ -93,6 +93,12 @@ const UserNav = () => {
             <Link to="/my-profile" className="flex items-center cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               <span>{t('settings')}</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/contact" className="flex items-center cursor-pointer">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              <span>تواصل معنا</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
