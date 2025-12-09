@@ -41,6 +41,7 @@ export interface ManagedRequest {
   tracking_status: RequestTrackingStatus;
   general_order_id: string | null;
   type: 'trip_request';
+  // Optional client-only payment flags (no DB columns expected)
   payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
   payment_method?: 'zaincash' | 'qicard' | 'other' | null;
   payment_proof_url?: string | null;
@@ -195,7 +196,7 @@ export const useRequestManagement = () => {
     onError: () => showError(t('requestCancelledError')),
   });
 
-  // Sender edits request
+  // Sender edits request (proposed_changes)
   const editRequestMutation = useMutation({
     mutationFn: async ({ requestId, values }: { requestId: string; values: { weight_kg: number; description: string } }) => {
       const { error } = await supabase
@@ -282,65 +283,34 @@ export const useRequestManagement = () => {
     onError: (err: any) => showError(err.message),
   });
 
-  // Sender submits payment proof – NO payment_amount_iqd column
+  // Sender submits payment proof – now purely client-side; we DON'T write payment_* columns
   const submitPaymentProofMutation = useMutation({
-    mutationFn: async (args: {
+    mutationFn: async (_args: {
       request: ManagedRequest;
       payment_method: 'zaincash' | 'qicard';
       payment_proof_url: string;
       payment_reference: string;
-      payment_amount_iqd: number; // kept for UI, but not written to DB
+      payment_amount_iqd: number;
     }) => {
-      if (!user) throw new Error(t('mustBeLoggedIn'));
-
-      const { error } = await supabase
-        .from('requests')
-        .update({
-          payment_status: 'pending_review',
-          payment_method: args.payment_method,
-          payment_proof_url: args.payment_proof_url,
-          payment_reference: args.payment_reference,
-        })
-        .eq('id', args.request.id)
-        .eq('sender_id', user.id);
-
-      if (error) throw error;
+      // No DB writes because payment_* columns are not in schema.
+      // Keeping this mutation to keep the UI flow, but it's effectively a no-op on the backend.
+      return;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
-      showSuccess('تم إرسال إثبات الدفع، بانتظار مراجعة المسؤول.');
+      showSuccess('تم إرسال إثبات الدفع (محلياً). لا توجد أعمدة دفع في قاعدة البيانات حالياً.');
       setRequestForPayment(null);
     },
     onError: (err: any) => showError(err.message),
   });
 
-  // Admin confirms / rejects payment – still moves tracking to payment_done
+  // Admin payment status (also no DB writes because payment_* columns don't exist)
   const adminUpdatePaymentStatusMutation = useMutation({
-    mutationFn: async (args: { requestId: string; status: 'paid' | 'rejected' }) => {
-      const updates: any = {
-        payment_status: args.status,
-      };
-
-      if (args.status === 'paid') {
-        updates.tracking_status = 'payment_done' as RequestTrackingStatus;
-      }
-
-      const { error } = await supabase
-        .from('requests')
-        .update(updates)
-        .eq('id', args.requestId);
-
-      if (error) throw error;
+    mutationFn: async (_args: { requestId: string; status: 'paid' | 'rejected' }) => {
+      // No DB updates; in a future schema migration you can add columns and implement this.
+      return;
     },
-    onSuccess: (_, { status }) => {
-      queryClient.invalidateQueries({ queryKey: ['sentRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['receivedRequests'] });
-      showSuccess(
-        status === 'paid'
-          ? 'تم تأكيد الدفع بنجاح.'
-          : 'تم رفض إثبات الدفع.'
-      );
+    onSuccess: () => {
+      showSuccess('تم تحديث حالة الدفع (محلياً فقط).');
     },
     onError: (err: any) => showError(err.message),
   });
