@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import { MadeWithDyad } from '@/components/made-with-dyad';
 
 const signUpSchema = z
   .object({
@@ -224,9 +223,6 @@ const SignUp = () => {
             </p>
           </CardContent>
         </Card>
-        <div className="mt-4">
-          <MadeWithDyad />
-        </div>
       </div>
     </div>
   );
