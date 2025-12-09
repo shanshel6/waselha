@@ -90,7 +90,7 @@ const Trips = () => {
 
   const offset = (currentPage - 1) * TRIPS_PER_PAGE;
 
-  const { data: queryResult, isLoading, error } = useQuery({
+  const { data: queryResult, isLoading, error, isFetching } = useQuery({
     queryKey: ['trips', filters, user?.id, currentPage],
     queryFn: async () => {
       let tripIdsToExclude: string[] = [];
@@ -146,6 +146,7 @@ const Trips = () => {
       return { trips: data, count: count || 0 };
     },
     enabled: !!filters.from_country || !!filters.to_country,
+    keepPreviousData: true,
   });
 
   const trips = queryResult?.trips || [];
@@ -211,7 +212,7 @@ const Trips = () => {
   };
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading && !isFetching) {
       return <TripsListSkeleton />;
     }
 
@@ -222,7 +223,7 @@ const Trips = () => {
     if (trips && trips.length > 0) {
       return (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-100">
             {trips.map((trip: any) => (
               <Link key={trip.id} to={`/trips/${trip.id}`} className="block h-full group">
                 <Card className="flex flex-col transition-all duration-300 h-full group-hover:shadow-xl group-hover:-translate-y-1">
@@ -268,7 +269,6 @@ const Trips = () => {
               </Link>
             ))}
           </div>
-          {renderPagination()}
         </>
       );
     }
@@ -398,6 +398,8 @@ const Trips = () => {
       </Card>
       
       {renderContent()}
+      
+      {renderPagination()}
       
       <div className="mt-12 text-center">
         <Link to="/place-order" className="text-lg font-semibold text-primary hover:text-primary/80 transition-colors underline underline-offset-4 flex items-center justify-center gap-2">

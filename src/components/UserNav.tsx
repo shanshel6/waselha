@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import { useProfile } from '@/hooks/use-profile';
 
 import {
   DropdownMenu,
@@ -19,12 +18,16 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Settings, Plane, MessageCircle } from 'lucide-react';
+import type { Profile } from '@/hooks/use-profile';
 
-const UserNav = () => {
+interface UserNavProps {
+  profile: Profile | null | undefined;
+}
+
+const UserNav = ({ profile }: UserNavProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, session } = useSession();
-  const { data: profile } = useProfile();
 
   if (!session || !user) {
     return (

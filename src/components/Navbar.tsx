@@ -10,11 +10,13 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import UserNav from './UserNav';
 import Notifications from './Notifications';
 import { cn } from '@/lib/utils';
+import { useProfile } from '@/hooks/use-profile';
 
 const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { session } = useSession();
   const location = useLocation();
+  const { data: profile } = useProfile();
 
   const publicNavItems = [
     { name: t('home'), path: '/' },
@@ -64,7 +66,7 @@ const Navbar: React.FC = () => {
             {session ? (
               <>
                 {/* الأفاتار أولاً */}
-                <UserNav />
+                <UserNav profile={profile} />
                 {/* ثم أيقونة الإشعارات */}
                 <Notifications />
               </>
@@ -122,7 +124,7 @@ const Navbar: React.FC = () => {
                 <div className="mt-2 border-t pt-4 flex flex-col gap-3">
                   {session && (
                     <div className="flex items-center gap-2">
-                      <UserNav />
+                      <UserNav profile={profile} />
                       <Notifications />
                     </div>
                   )}

@@ -20,7 +20,6 @@ import { Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
-// --- Type Definitions (Kept here as the source of truth for the tab) ---
 interface Profile { id: string; first_name: string | null; last_name: string | null; phone: string | null; }
 interface Trip { id: string; user_id: string; from_country: string; to_country: string; trip_date: string; free_kg: number; charge_per_kg: number | null; traveler_location: string | null; notes: string | null; created_at: string; }
 interface Request { 
@@ -90,7 +89,6 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
     queryFn: async () => {
       if (!user) return { items: [], count: 0 };
       
-      // 1. Fetch all trip requests sent by the user
       const { data: requests, error: requestsError } = await supabase
         .from('requests')
         .select(`
@@ -107,7 +105,6 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         throw new Error(requestsError.message);
       }
 
-      // 2. Fetch all general orders created by the user
       const { data: orders, error: ordersError } = await supabase
         .from('general_orders')
         .select('*')
@@ -119,12 +116,10 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         throw new Error(ordersError.message);
       }
 
-      // 3. Identify general orders that have a corresponding trip request
       const generalOrderIdsWithRequests = new Set(
         requests.filter(req => req.general_order_id).map(req => req.general_order_id)
       );
 
-      // 4. Filter general orders
       const filteredGeneralOrders: GeneralOrder[] = orders.filter(order => 
         order.status === 'new' || !generalOrderIdsWithRequests.has(order.id)
       ).map(order => ({
@@ -132,7 +127,6 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
         type: 'general_order' as const
       }));
 
-      // 5. Combine
       let combinedItems: SentItem[] = [...filteredGeneralOrders, ...requests.map(req => ({
         ...req,
         type: 'trip_request' as const
@@ -141,11 +135,8 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
       combinedItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       const totalCount = combinedItems.length;
-      
-      // 6. Apply client-side pagination
       const paginatedItems = combinedItems.slice(offset, offset + ITEMS_PER_PAGE);
 
-      // 7. Collect traveler IDs
       const travelerIds = paginatedItems
         .filter((item): item is Request => !isGeneralOrder(item) && !!item.trips?.user_id)
         .map(req => (req as Request).trips.user_id)
@@ -185,6 +176,7 @@ export const SentRequestsTab = ({ user, onCancelRequest, deleteRequestMutation, 
       return { items: finalItems, count: totalCount };
     },
     enabled: !!user,
+    keepPreviousData: true,
   });
   
   const allSentItems = sentItems?.items || [];

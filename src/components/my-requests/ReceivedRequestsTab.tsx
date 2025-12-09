@@ -20,7 +20,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
-// Define types for our data structure
 interface Profile {
   id: string;
   first_name: string | null;
@@ -101,7 +100,6 @@ export const ReceivedRequestsTab = ({
     queryFn: async () => {
       if (!user) return { requests: [], count: 0 };
 
-      // 1. Fetch requests and associated trips (with pagination and count)
       const { data: allRequests, error: requestsError, count } = await supabase
         .from('requests')
         .select(`
@@ -114,23 +112,18 @@ export const ReceivedRequestsTab = ({
 
       if (requestsError) throw new Error(requestsError.message);
 
-      // Filter client-side to ensure we only show requests where the current user is the trip owner (received requests)
       const travelerRequests = allRequests
         .filter(req => req.trips && req.trips.user_id === user.id);
       
       const totalCount = travelerRequests.length;
-      
-      // Apply client-side pagination to the filtered list
       const paginatedRequests = travelerRequests.slice(offset, offset + ITEMS_PER_PAGE);
 
-      // 2. Collect unique sender IDs from the paginated list
       const senderIds = paginatedRequests
         .map(req => req.sender_id)
         .filter((id, index, self) => self.indexOf(id) === index);
 
       let senderProfiles: Profile[] = [];
       if (senderIds.length > 0) {
-        // 3. Fetch sender profiles
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, first_name, last_name, phone')
@@ -148,7 +141,6 @@ export const ReceivedRequestsTab = ({
         return acc;
       }, {} as Record<string, Profile>);
 
-      // 4. Map profiles back and finalize structure
       const tripRequestsWithProfiles: RequestWithProfiles[] = paginatedRequests
         .map(req => ({
           ...req,
@@ -159,6 +151,7 @@ export const ReceivedRequestsTab = ({
       return { requests: tripRequestsWithProfiles, count: totalCount };
     },
     enabled: !!user,
+    keepPreviousData: true,
   });
   
   const receivedItems = queryResult?.requests || [];

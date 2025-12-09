@@ -50,7 +50,7 @@ const TRIPS_PER_PAGE = 9;
 const TripsSkeleton: React.FC = () => (
   <div className="space-y-4">
     {Array.from({ length: 3 }).map((_, i) => (
-      <Card key={i} className="shadow-sm">
+      <Card key={i} className="shadow_sm">
         <CardHeader>
           <div className="flex justify_between items-start">
             <Skeleton className="h-4 w-40" />
@@ -106,6 +106,7 @@ const MyTripsPage = () => {
       return { trips: data as Trip[], count: count || 0 };
     },
     enabled: !!user?.id,
+    keepPreviousData: true,
   });
 
   const trips = queryResult?.trips || [];
@@ -171,7 +172,7 @@ const MyTripsPage = () => {
   if (isLoading) {
     return (
       <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-        <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myFlights')}</h1>
+        <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text_white">{t('myFlights')}</h1>
         <div className="max-w-4xl mx-auto">
           <TripsSkeleton />
         </div>
@@ -283,7 +284,7 @@ const MyTripsPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
+    <div className="container mx-auto p-4 min-h_[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('myFlights')}</h1>
       
       <div className="max-w-4xl mx-auto">
