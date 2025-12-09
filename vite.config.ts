@@ -8,9 +8,8 @@ export default defineConfig(() => ({
     host: "::",
     port: 8080,
   },
-  // IMPORTANT: set this to your repo name if hosting under /REPO_NAME/
-  // If you're using custom domain pointing directly to GitHub Pages, you can set base: '/' instead.
-  base: "/REPO_NAME/",
+  // Since the site is served at https://waselha.online/ (root), base should be "/"
+  base: "/",
   plugins: [dyadComponentTagger(), react()],
   resolve: {
     alias: {
