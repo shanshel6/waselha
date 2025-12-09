@@ -314,31 +314,43 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
     setSendingReport(true);
     try {
-      const photoUrl = await uploadReportPhoto().catch((e) => {
-        // إذا فشل الرفع، نظهر الخطأ ونوقف
-        showError(e?.message || 'تعذر رفع صورة البلاغ.');
-        throw e;
-      });
+      // 1) رفع الصورة (إن وُجدت) والحصول على الرابط
+      const photoUrl = await uploadReportPhoto();
 
-      const { error } = await supabase.functions.invoke('report-order-issue', {
-        body: {
+      // 2) إدخال البلاغ في reports من الفرونت تحت RLS
+      const { error: insertError } = await supabase
+        .from('reports')
+        .insert({
           request_id: req.id,
           description: reportText.trim(),
-          problem_photo_url: photoUrl,
-        },
-      });
+          problem_photo_url: photoUrl ?? null,
+        });
 
-      if (error) {
-        console.error('report-order-issue error:', error);
-        if (error.message?.includes('Max reports reached')) {
-          showError('لا يمكنك إرسال أكثر من ٣ بلاغات لنفس الطلب.');
-        } else {
-          showError(error.message || 'تعذر إرسال البلاغ، حاول مرة أخرى.');
-        }
+      if (insertError) {
+        console.error('Insert report RLS error:', insertError);
+        // هذه هي الرسالة التي كنت تراها سابقاً؛ الآن لو ظهرت نعرضها للمستخدم
+        showError(insertError.message || 'تعذر حفظ البلاغ في قاعدة البيانات.');
+        setSendingReport(false);
         return;
       }
 
-      showSuccess('تم إرسال البلاغ، سنراجع مشكلتك قريباً.');
+      // 3) استدعاء Edge Function فقط لإرسال إيميل لصاحب المنصة (اختياري)
+      const { error: fnError } = await supabase.functions.invoke('report-order-issue', {
+        body: {
+          request_id: req.id,
+          description: reportText.trim(),
+          problem_photo_url: photoUrl ?? null,
+        },
+      });
+
+      if (fnError) {
+        console.error('report-order-issue function error:', fnError);
+        // لا نوقف المستخدم؛ البلاغ محفوظ في DB، فقط نخبره أن الإشعار الإداري فشل
+        showError('تم حفظ البلاغ، ولكن حدث خطأ في إرسال الإشعار للمسؤول.');
+      } else {
+        showSuccess('تم إرسال البلاغ، سنراجع مشكلتك قريباً.');
+      }
+
       setReportOpen(false);
       setReportText('');
       if (reportPreviewUrl) {
@@ -346,8 +358,9 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
       }
       setReportPreviewUrl(null);
       setReportFile(null);
-    } catch (e) {
-      // الأخطاء تم التعامل معها أعلاه
+    } catch (e: any) {
+      console.error('Error in report flow:', e);
+      showError(e?.message || 'تعذر إرسال البلاغ، حاول مرة أخرى.');
     } finally {
       setSendingReport(false);
     }
@@ -412,7 +425,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
               </div>
             )}
 
-            {/* إذا اكتمل الطلب، نعرض تنبيه + زر البلاغ */}
             {isCompleted && (
               <>
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md flex items-center gap-2 text-sm">
@@ -458,7 +470,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                   </div>
                 )}
 
-                {/* Details toggle */}
                 <div>
                   <Button
                     variant="ghost"
@@ -502,7 +513,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                   )}
                 </div>
 
-                {/* Action buttons (غير مكتمل) */}
                 <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
                   <Button
                     size="sm"
@@ -585,7 +595,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
         )}
       </Card>
 
-      {/* Report problem dialog for completed orders (with photo upload) */}
+      {/* Report problem dialog */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
