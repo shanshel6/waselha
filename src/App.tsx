@@ -32,6 +32,7 @@ import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPayments from "./pages/AdminPayments";
+import AdminReports from "./pages/AdminReports";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const MainLayout = () => (
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/verifications" element={<AdminVerificationDashboard />} />
         <Route path="/admin/payments" element={<AdminPayments />} />
+        <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/place-order" element={<PlaceOrder />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

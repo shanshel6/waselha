@@ -80,8 +80,28 @@ serve(async (req) => {
     const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "بدون اسم";
     const phone = profile?.phone ?? "غير مذكور";
 
-    // 4) بناء نص الرسالة
-    const emailTo = "shanshel6@gmail.com"; // لا يُعرَض للمستخدم في الواجهة
+    // 4) حفظ البلاغ في جدول reports
+    const { error: insertError } = await adminClient
+      .from("reports")
+      .insert({
+        request_id: body.request_id,
+        reporter_id: reporterId,
+        reporter_name: fullName,
+        reporter_phone: phone,
+        reporter_email: reporterEmail,
+        description: body.description,
+      });
+
+    if (insertError) {
+      console.error("Failed to insert report:", insertError);
+      return new Response(
+        JSON.stringify({ error: "Failed to store report" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 5) (اختياري) إرسال بريد إلى المالك
+    const emailTo = "shanshel6@gmail.com";
     const subject = `Waslaha - بلاغ عن طلب رقم ${body.request_id}`;
     const textBody = `
 تم استلام بلاغ جديد عن طلب.
@@ -99,17 +119,9 @@ serve(async (req) => {
 ${body.description}
 
 --
-هذه الرسالة أُرسلت من نظام بلاغات الطلبات في وصلها.
+تم أيضاً حفظ هذا البلاغ في جدول التقارير بلوحة الإدارة.
 `.trim();
 
-    console.log("Order issue report - will be emailed:", {
-      to: emailTo,
-      subject,
-      textBody,
-    });
-
-    // 5) إرسال البريد عبر خدمة خارجية (مثال باستخدام Resend API)
-    // ملاحظة: يجب أن تضيف secret باسم RESEND_API_KEY في Supabase (Edge Functions → Manage Secrets)
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
     if (resendApiKey) {
@@ -136,7 +148,7 @@ ${body.description}
         console.error("Error calling Resend API:", emailErr);
       }
     } else {
-      console.warn("RESEND_API_KEY is not set; email will not be sent, but report is logged.");
+      console.warn("RESEND_API_KEY is not set; email will not be sent, but report is stored.");
     }
 
     return new Response(
