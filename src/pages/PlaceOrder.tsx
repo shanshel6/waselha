@@ -10,7 +10,6 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Form,
@@ -50,7 +49,6 @@ const orderSchema = z.object({
     .coerce.number()
     .min(1, { message: 'minimumWeight' })
     .max(50, { message: 'maxWeight' }),
-  insurance_percentage: z.coerce.number().min(0).max(100).default(0),
 });
 
 const PlaceOrder = () => {
@@ -85,12 +83,10 @@ const PlaceOrder = () => {
       to_country: '',
       description: '',
       weight_kg: 1,
-      insurance_percentage: 0,
     },
   });
 
-  const { from_country, to_country, weight_kg, insurance_percentage } =
-    form.watch();
+  const { from_country, to_country, weight_kg } = form.watch();
 
   // Ensure exactly one side is Iraq (like Trips/AddTrip)
   useEffect(() => {
@@ -114,26 +110,6 @@ const PlaceOrder = () => {
     return null;
   }, [from_country, to_country, weight_kg]);
 
-  const insuranceMultiplier = useMemo(() => {
-    const percentage = insurance_percentage;
-    if (percentage === 0) return 1;
-    if (percentage === 25) return 1.5;
-    if (percentage === 50) return 2;
-    if (percentage === 75) return 2.5;
-    if (percentage === 100) return 3;
-    return 1;
-  }, [insurance_percentage]);
-
-  const finalCost = useMemo(() => {
-    if (!baseCost || baseCost.error) return null;
-    return {
-      totalPriceUSD: baseCost.totalPriceUSD * insuranceMultiplier,
-      totalPriceIQD: baseCost.totalPriceIQD * insuranceMultiplier,
-      pricePerKgUSD: baseCost.pricePerKgUSD * insuranceMultiplier,
-      error: null,
-    };
-  }, [baseCost, insuranceMultiplier]);
-
   const onSubmit = async (values: z.infer<typeof orderSchema>) => {
     if (!user) {
       showError(t('mustBeLoggedIn'));
@@ -148,9 +124,9 @@ const PlaceOrder = () => {
         to_country: values.to_country,
         description: values.description,
         weight_kg: values.weight_kg,
-        is_valuable: values.insurance_percentage > 0,
-        insurance_requested: values.insurance_percentage > 0,
-        insurance_percentage: values.insurance_percentage,
+        is_valuable: false,
+        insurance_requested: false,
+        insurance_percentage: 0,
         status: 'new',
       });
 
@@ -161,23 +137,6 @@ const PlaceOrder = () => {
     } catch (error: any) {
       console.error('Error placing order:', error);
       showError(t('orderSubmittedError'));
-    }
-  };
-
-  const getInsuranceLabel = (percentage: number) => {
-    switch (percentage) {
-      case 0:
-        return t('noInsurance') || 'بدون تأمين';
-      case 25:
-        return t('insurance25') || 'تأمين 25%';
-      case 50:
-        return t('insurance50') || 'تأمين 50%';
-      case 75:
-        return t('insurance75') || 'تأمين 75%';
-      case 100:
-        return t('insurance100') || 'تأمين 100%';
-      default:
-        return `${percentage}%`;
     }
   };
 
@@ -345,45 +304,6 @@ const PlaceOrder = () => {
                   )}
                 />
 
-                {/* التأمين */}
-                <FormField
-                  control={form.control}
-                  name="insurance_percentage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {t('insuranceCoverage') || 'نسبة التأمين (اختياري)'}:{' '}
-                        <span className="font-semibold">
-                          {getInsuranceLabel(field.value)}
-                        </span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="mt-2 space-y-1">
-                          <Slider
-                            min={0}
-                            max={100}
-                            step={25}
-                            value={[field.value]}
-                            onValueChange={(val) => field.onChange(val[0])}
-                          />
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>0%</span>
-                            <span>25%</span>
-                            <span>50%</span>
-                            <span>75%</span>
-                            <span>100%</span>
-                          </div>
-                        </div>
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        كلما زادت نسبة التأمين، زادت تكلفة الشحن لكن ترتفع
-                        نسبة التعويض في حال ضياع الطرد.
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 {/* ملخص التكلفة */}
                 <Card className="bg-primary/5 border-primary/20">
                   <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
@@ -393,28 +313,28 @@ const PlaceOrder = () => {
                         <p className="font-semibold">
                           {t('estimatedCost')}
                         </p>
-                        {(!baseCost || baseCost.error || !finalCost) && (
+                        {(!baseCost || baseCost.error) && (
                           <p className="text-xs text-destructive mt-1">
                             {baseCost?.error ||
                               t('eitherFromOrToIraq') ||
                               'اختر من/إلى بلد واحد على الأقل العراق واحرص على إدخال وزن صحيح.'}
                           </p>
                         )}
-                        {baseCost && !baseCost.error && finalCost && (
+                        {baseCost && !baseCost.error && (
                           <>
                             <p className="mt-1">
-                              {finalCost.totalPriceUSD.toFixed(2)} USD
+                              {baseCost.totalPriceUSD.toFixed(2)} USD
                             </p>
                             <p className="text-xs text-muted-foreground">
                               ≈{' '}
-                              {finalCost.totalPriceIQD.toLocaleString(
+                              {baseCost.totalPriceIQD.toLocaleString(
                                 'ar-IQ',
                               )}{' '}
                               IQD
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
                               {t('pricePerKg')}:{' '}
-                              {finalCost.pricePerKgUSD.toFixed(2)} USD/kg
+                              {baseCost.pricePerKgUSD.toFixed(2)} USD/kg
                             </p>
                           </>
                         )}
