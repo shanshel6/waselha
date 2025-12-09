@@ -48,6 +48,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useSession } from '@/integrations/supabase/SessionContextProvider';
 
 interface Profile {
   id: string;
@@ -163,6 +165,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const { data: chatStatus } = useChatReadStatus(req.id);
+  const { user } = useSession();
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
   const travelerName =
@@ -199,7 +202,14 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const canUpdateToCompleted =
     req.status === 'accepted' && currentTrackingStatus === 'delivered';
 
-  // === Reporting state ===
+  // === إلغاء مشترك: هل الطرف الآخر هو الذي طلب الإلغاء؟ ===
+  const otherPartyRequestedCancellation =
+    req.status === 'accepted' &&
+    !!req.cancellation_requested_by &&
+    user?.id &&
+    req.cancellation_requested_by !== user.id;
+
+  // === Reporting state (كما في الكود السابق) ===
   const isCompleted = currentTrackingStatus === 'completed';
   const [reportOpen, setReportOpen] = useState(false);
   const [reportText, setReportText] = useState('');
@@ -314,10 +324,8 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
     setSendingReport(true);
     try {
-      // 1) رفع الصورة (إن وُجدت) والحصول على الرابط
       const photoUrl = await uploadReportPhoto();
 
-      // 2) إدخال البلاغ في reports من الفرونت تحت RLS
       const { error: insertError } = await supabase
         .from('reports')
         .insert({
@@ -328,13 +336,11 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
       if (insertError) {
         console.error('Insert report RLS error:', insertError);
-        // هذه هي الرسالة التي كنت تراها سابقاً؛ الآن لو ظهرت نعرضها للمستخدم
         showError(insertError.message || 'تعذر حفظ البلاغ في قاعدة البيانات.');
         setSendingReport(false);
         return;
       }
 
-      // 3) استدعاء Edge Function فقط لإرسال إيميل لصاحب المنصة (اختياري)
       const { error: fnError } = await supabase.functions.invoke('report-order-issue', {
         body: {
           request_id: req.id,
@@ -345,7 +351,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
       if (fnError) {
         console.error('report-order-issue function error:', fnError);
-        // لا نوقف المستخدم؛ البلاغ محفوظ في DB، فقط نخبره أن الإشعار الإداري فشل
         showError('تم حفظ البلاغ، ولكن حدث خطأ في إرسال الإشعار للمسؤول.');
       } else {
         showSuccess('تم إرسال البلاغ، سنراجع مشكلتك قريباً.');
@@ -419,6 +424,17 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
         {expanded && (
           <CardContent className="p-4 pt-0 space-y-4">
+            {/* تنبيه أن الطرف الآخر طلب الإلغاء */}
+            {otherPartyRequestedCancellation && (
+              <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-800">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>{t('otherPartyRequestedCancellation')}</AlertTitle>
+                <AlertDescription>
+                  {t('confirmMutualCancellationDescription')}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {req.status !== 'pending' && (
               <div className="pt-2">
                 <RequestTracking currentStatus={currentTrackingStatus} isRejected={isRejected} />
@@ -446,7 +462,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
             {!isCompleted && (
               <>
-                {/* Quick overview */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <Weight className="h-4 w-4 text-muted-foreground" />
@@ -595,7 +610,6 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
         )}
       </Card>
 
-      {/* Report problem dialog */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

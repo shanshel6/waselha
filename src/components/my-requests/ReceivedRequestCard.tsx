@@ -28,6 +28,8 @@ import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useSession } from '@/integrations/supabase/SessionContextProvider';
 
 interface Profile {
   id: string;
@@ -76,7 +78,7 @@ interface RequestWithProfiles extends Request {
   sender_profile: Profile | null;
 }
 
-interface ReceivedRequestCardProps {
+interface ReceivedRequestsTabProps {
   req: RequestWithProfiles;
   priceCalculation: ReturnType<typeof calculateShippingCost> | null;
   onUpdateRequest: (request: Request, status: 'accepted' | 'rejected') => void;
@@ -123,7 +125,7 @@ const getStatusCardClass = (status: string) => {
   }
 };
 
-const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
+const ReceivedRequestCard: React.FC<ReceivedRequestsTabProps> = ({
   req,
   priceCalculation,
   onUpdateRequest,
@@ -139,6 +141,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const { data: chatStatus } = useChatReadStatus(req.id);
+  const { user } = useSession();
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
   const senderFirstName = req.sender_profile?.first_name || '';
@@ -153,6 +156,13 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
   const hasPendingChanges = !!req.proposed_changes;
   const isGeneralOrderMatch = !!req.general_order_id;
 
+  // هل الطرف الآخر (المرسل) هو من طلب الإلغاء؟
+  const otherPartyRequestedCancellation =
+    req.status === 'accepted' &&
+    !!req.cancellation_requested_by &&
+    user?.id &&
+    req.cancellation_requested_by !== user.id;
+
   const handleAccept = () => onUpdateRequest(req, 'accepted');
   const handleReject = () => onUpdateRequest(req, 'rejected');
   const handleReviewAccept = () => onReviewChanges({ request: req, accept: true });
@@ -161,7 +171,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
     window.location.href = `/chat/${req.id}`;
   };
 
-  // زر فحص المسافر:
   const canShowInspectionButton =
     req.status === 'accepted' &&
     currentTrackingStatus === 'sender_photos_uploaded' &&
@@ -182,7 +191,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
       )}
     >
       <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify_between">
           <div className="flex items-center gap-3">
             {getStatusIcon(req.status)}
             <div>
@@ -219,14 +228,23 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
 
       {expanded && (
         <CardContent className="p-4 pt-0 space-y-4">
-          {/* Tracking status (if not pending) */}
+          {/* تنبيه أن الطرف الآخر طلب الإلغاء */}
+          {otherPartyRequestedCancellation && (
+            <Alert variant="default" className="bg-amber-50 border-amber-200 text-amber-800">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{t('otherPartyRequestedCancellation')}</AlertTitle>
+              <AlertDescription>
+                {t('confirmMutualCancellationDescription')}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {req.status !== 'pending' && (
             <div className="pt-2">
               <RequestTracking currentStatus={currentTrackingStatus} isRejected={isRejected} />
             </div>
           )}
 
-          {/* Quick overview: weight + city */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Weight className="h-4 w-4 text-muted-foreground" />
@@ -238,7 +256,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           </div>
 
-          {/* Pending changes, if any */}
           {hasPendingChanges && (
             <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-md space-y-2">
               <p className="font-semibold text-sm">{t('proposedChanges')}:</p>
@@ -269,12 +286,11 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             </div>
           )}
 
-          {/* Details toggle */}
           <div>
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-between text-xs"
+              className="w-full justify_between text-xs"
               onClick={() => setDetailsExpanded(!detailsExpanded)}
             >
               <span>{t('viewDetails')}</span>
@@ -309,9 +325,7 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
             )}
           </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 justify-between items-center pt-2">
-            {/* Chat Button */}
+          <div className="flex flex-wrap gap-2 justify_between items-center pt-2">
             <Button
               size="sm"
               variant="outline"
@@ -322,7 +336,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
               {t('viewChat')}
             </Button>
 
-            {/* Right side actions */}
             <div className="flex flex-wrap gap-2 justify-end">
               {req.status === 'pending' && (
                 <>
@@ -357,7 +370,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
                       disabled={trackingUpdateMutation.isPending}
                     >
                       <Camera className="mr-1 h-4 w-4" />
-                      {/* النص المطلوب بالعربية مباشرة */}
                       ارفع صور للاغراض
                     </Button>
                   )}
@@ -386,7 +398,6 @@ const ReceivedRequestCard: React.FC<ReceivedRequestCardProps> = ({
                     </Button>
                   )}
 
-                  {/* Mutual cancellation */}
                   <Button
                     size="sm"
                     variant="destructive"
