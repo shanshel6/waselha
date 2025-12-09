@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, DollarSign, Loader2 } from 'lucide-react';
+import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
@@ -29,11 +29,14 @@ import { useVerificationCheck } from '@/hooks/use-verification-check';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 
 const formSchema = z.object({
-  from_country: z.string().min(1, { message: "requiredField" }),
-  to_country: z.string().min(1, { message: "requiredField" }),
-  trip_date: z.date({ required_error: "dateRequired" }),
-  free_kg: z.coerce.number().min(1, { message: "minimumWeight" }).max(50, { message: "maxWeight" }),
-  traveler_location: z.string().min(1, { message: "requiredField" }),
+  from_country: z.string().min(1, { message: 'requiredField' }),
+  to_country: z.string().min(1, { message: 'requiredField' }),
+  trip_date: z.date({ required_error: 'dateRequired' }),
+  free_kg: z
+    .coerce.number()
+    .min(1, { message: 'minimumWeight' })
+    .max(50, { message: 'maxWeight' }),
+  traveler_location: z.string().min(1, { message: 'requiredField' }),
   notes: z.string().optional(),
 });
 
@@ -51,23 +54,24 @@ const AddTrip = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      from_country: "Iraq",
-      to_country: "",
+      from_country: 'Iraq',
+      to_country: '',
       free_kg: 1,
-      traveler_location: "",
-      notes: "",
+      traveler_location: '',
+      notes: '',
     },
   });
 
-  const { from_country, to_country, free_kg } = form.watch();
+  const { from_country, to_country, free_kg, trip_date } = form.watch();
 
+  // ضمان أن إحدى الدول هي العراق
   React.useEffect(() => {
-    if (from_country && from_country !== "Iraq" && to_country !== "Iraq") {
-      form.setValue("to_country", "Iraq");
-    } else if (to_country && to_country !== "Iraq" && from_country !== "Iraq") {
-      form.setValue("from_country", "Iraq");
-    } else if (from_country === "Iraq" && to_country === "Iraq") {
-      form.setValue("to_country", "");
+    if (from_country && from_country !== 'Iraq' && to_country !== 'Iraq') {
+      form.setValue('to_country', 'Iraq');
+    } else if (to_country && to_country !== 'Iraq' && from_country !== 'Iraq') {
+      form.setValue('from_country', 'Iraq');
+    } else if (from_country === 'Iraq' && to_country === 'Iraq') {
+      form.setValue('to_country', '');
     }
   }, [from_country, to_country, form]);
 
@@ -108,9 +112,7 @@ const AddTrip = () => {
       throw new Error(uploadError.message || 'Failed to upload ticket file.');
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filePath);
+    const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
 
     return publicUrlData.publicUrl;
   };
@@ -141,20 +143,18 @@ const AddTrip = () => {
         charge_per_kg = estimatedProfit.pricePerKgUSD;
       }
 
-      const { error } = await supabase
-        .from('trips')
-        .insert({
-          user_id: user.id,
-          from_country: values.from_country,
-          to_country: values.to_country,
-          trip_date: format(values.trip_date, 'yyyy-MM-dd'),
-          free_kg: values.free_kg,
-          traveler_location: values.traveler_location,
-          notes: values.notes,
-          charge_per_kg: charge_per_kg,
-          ticket_file_url: ticketUrl,
-          is_approved: false,
-        });
+      const { error } = await supabase.from('trips').insert({
+        user_id: user.id,
+        from_country: values.from_country,
+        to_country: values.to_country,
+        trip_date: format(values.trip_date, 'yyyy-MM-dd'),
+        free_kg: values.free_kg,
+        traveler_location: values.traveler_location,
+        notes: values.notes,
+        charge_per_kg: charge_per_kg,
+        ticket_file_url: ticketUrl,
+        is_approved: false,
+      });
 
       if (error) {
         console.error('Error adding trip:', error);
@@ -182,33 +182,249 @@ const AddTrip = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">{t('addTrip')}</h1>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-2xl mx-auto">
-          {/* ... الحقول السابقة كما هي ... */}
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl md:text-3xl font-bold">
+            {t('addTrip')}
+          </CardTitle>
+          <CardDescription className="text-sm mt-1">
+            {t('travelersEarnMoney')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* From / To countries */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="from_country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('fromCountry')}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectCountry')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {countries.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              <div className="flex items-center gap-2">
+                                <CountryFlag country={c} />
+                                <span>{c}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="to_country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('toCountry')}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectCountry')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {countries.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              <div className="flex items-center gap-2">
+                                <CountryFlag country={c} />
+                                <span>{c}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-          <TicketUpload
-            onFileSelected={setTicketFile}
-          />
+              {/* Trip date */}
+              <FormField
+                control={form.control}
+                name="trip_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>{t('tripDate')}</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full justify-between text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, 'PPP')
+                            ) : (
+                              <span>{t('selectDate')}</span>
+                            )}
+                            <CalendarIcon className="h-4 w-4 opacity-70" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <p className="text-xs text-muted-foreground">
-            لا تقبل أي طرد دون التأكد من خلوّه من المواد المحظورة.{" "}
-            <button
-              type="button"
-              onClick={() => setIsForbiddenOpen(true)}
-              className="underline underline-offset-2 text-primary hover:text-primary/80"
-            >
-              انقر هنا لقراءة قائمة المواد المحظورة
-            </button>
-          </p>
+              {/* Free kg slider */}
+              <FormField
+                control={form.control}
+                name="free_kg"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('freeKg')} ({field.value} kg)
+                    </FormLabel>
+                    <FormControl>
+                      <div className="mt-2">
+                        <Slider
+                          min={1}
+                          max={50}
+                          step={1}
+                          value={[field.value]}
+                          onValueChange={(val) => field.onChange(val[0])}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>1 kg</span>
+                          <span>50 kg</span>
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          {/* ... بقية الحقول (traveler_location, notes, التنبيه, زر الإنشاء) ... */}
+              {/* Traveler location */}
+              <FormField
+                control={form.control}
+                name="traveler_location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {t('travelerLocation')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={t('travelerLocationPlaceholder')}
+                        {...field}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t('travelerLocationDescription')}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-            {t('createTrip')}
-          </Button>
-        </form>
-      </Form>
+              {/* Notes */}
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <StickyNote className="h-4 w-4" />
+                      {t('notes')}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={3}
+                        placeholder={t('notes')}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Ticket upload */}
+              <TicketUpload onFileSelected={setTicketFile} />
+
+              {/* Safety note + forbidden items link */}
+              <p className="text-xs text-muted-foreground">
+                لا تقبل أي طرد دون التأكد من خلوّه من المواد المحظورة.{' '}
+                <button
+                  type="button"
+                  onClick={() => setIsForbiddenOpen(true)}
+                  className="underline underline-offset-2 text-primary hover:text-primary/80"
+                >
+                  انقر هنا لقراءة قائمة المواد المحظورة
+                </button>
+              </p>
+
+              {/* Estimated profit */}
+              {estimatedProfit && !estimatedProfit.error && (
+                <Card className="mt-4 border-primary/30 bg-primary/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                      {t('estimatedProfit')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1">
+                    <p>
+                      {estimatedProfit.totalPriceUSD.toFixed(2)} USD (
+                      {estimatedProfit.totalPriceIQD.toLocaleString('en-US')} IQD)
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('basedOnWeightAndDestination')}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Info about admin review */}
+              <p className="text-xs text-muted-foreground">
+                {t('tripPendingApprovalNote')}
+              </p>
+
+              <Button
+                type="submit"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {t('createTrip')}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
 
       <ForbiddenItemsDialog
         isOpen={isForbiddenOpen}
