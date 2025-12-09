@@ -33,11 +33,12 @@ import Footer from "./components/Footer";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPayments from "./pages/AdminPayments";
 import AdminReports from "./pages/AdminReports";
+import AuthGuard from "./components/AuthGuard";
 
 const queryClient = new QueryClient();
 
 const MainLayout = () => (
-  <>
+  <AuthGuard>
     <Navbar />
     <ChatNotificationListener />
     <ChatUnreadNotificationBridge />
@@ -66,12 +67,12 @@ const MainLayout = () => (
       </Routes>
     </ProfileCheckWrapper>
     <Footer />
-  </>
+  </AuthGuard>
 );
 
 const AppContent = () => {
   const { isLoading } = useSession();
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-xl text-gray-700 dark:text-gray-300">
@@ -79,13 +80,15 @@ const AppContent = () => {
       </div>
     );
   }
-  
+
   return (
     <Routes>
+      {/* Public auth routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/complete-profile" element={<CompleteProfile />} />
+      {/* Everything else goes through MainLayout + AuthGuard */}
       <Route path="/*" element={<MainLayout />} />
     </Routes>
   );
