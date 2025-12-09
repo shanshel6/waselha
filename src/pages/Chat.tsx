@@ -21,26 +21,16 @@ import {
   User,
   MessageSquare,
   DollarSign,
-  Phone,
   AlertTriangle,
   Package,
   MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
-import VerifiedBadge from '@/components/VerifiedBadge';
 
 const messageSchema = z.object({
   content: z.string().min(1),
 });
-
-interface Profile {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  is_verified?: boolean;
-}
 
 interface Trip {
   id: string;
@@ -60,9 +50,6 @@ interface RequestRow {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
   trips: Trip | null;
-  // We'll keep these nullable for forward compatibility but we won't rely on the join anymore
-  sender_profile?: Profile | null;
-  traveler_profile?: Profile | null;
 }
 
 interface MessageRow {
@@ -90,7 +77,7 @@ const Chat: React.FC = () => {
     defaultValues: { content: '' },
   });
 
-  // Fetch request + trip without complex profile joins (to avoid runtime errors)
+  // Request + trip data
   const {
     data: requestData,
     isLoading: isRequestLoading,
@@ -123,7 +110,7 @@ const Chat: React.FC = () => {
     },
   });
 
-  // Fetch chat row for this request
+  // Chat row for this request
   const { data: chatRow } = useQuery<ChatRow | null, Error>({
     queryKey: ['chatRow', requestId],
     enabled: !!requestId,
@@ -158,7 +145,7 @@ const Chat: React.FC = () => {
     },
   });
 
-  // Mark as read (chat_read_status)
+  // Mark as read
   useEffect(() => {
     const markAsRead = async () => {
       if (!chatRow?.id || !user?.id) return;
@@ -185,14 +172,14 @@ const Chat: React.FC = () => {
     void markAsRead();
   }, [chatRow?.id, user?.id, queryClient]);
 
-  // Scroll to bottom on messages change
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [messages]);
 
-  // Subscribe to real-time messages
+  // Realtime subscription
   useEffect(() => {
     if (!chatRow?.id) return;
 
@@ -226,6 +213,11 @@ const Chat: React.FC = () => {
     },
     onSuccess: () => {
       form.reset({ content: '' });
+      // Force immediate refetch so the new message appears without manual refresh;
+      // realtime will keep it in sync afterwards
+      if (chatRow?.id) {
+        queryClient.invalidateQueries({ queryKey: ['chatMessages', chatRow.id] });
+      }
     },
     onError: (err: any) => {
       console.error(err);
@@ -238,14 +230,8 @@ const Chat: React.FC = () => {
     sendMessageMutation.mutate(values.content.trim());
   };
 
-  // For now, we don't have embedded profiles here; show generic labels
-  const isSender = useMemo(() => {
-    if (!user || !requestData?.trips) return false;
-    return false; // we don't strictly need this role info for basic chat
-  }, [user, requestData]);
-
   const otherPartyName = useMemo(() => {
-    // Without embedded profiles we fall back to a generic name
+    // Currently we don't load profile names here; use a generic label
     return t('user');
   }, [t]);
 
@@ -283,7 +269,7 @@ const Chat: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] flex flex-col gap-4">
-      {/* Header: who + route + basic info */}
+      {/* Header */}
       <Card>
         <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="space-y-1">
@@ -313,7 +299,7 @@ const Chat: React.FC = () => {
         </CardHeader>
       </Card>
 
-      {/* Main chat area */}
+      {/* Main area */}
       <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4 flex-1 min-h-[60vh]">
         {/* Messages */}
         <Card className="flex flex-col">
