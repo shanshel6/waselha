@@ -28,14 +28,17 @@ import TicketUpload from '@/components/TicketUpload';
 import { useVerificationCheck } from '@/hooks/use-verification-check';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 
+const MIN_KG = 1;
+const MAX_KG = 50;
+
 const formSchema = z.object({
   from_country: z.string().min(1, { message: 'requiredField' }),
   to_country: z.string().min(1, { message: 'requiredField' }),
   trip_date: z.date({ required_error: 'dateRequired' }),
   free_kg: z
     .coerce.number()
-    .min(1, { message: 'minimumWeight' })
-    .max(50, { message: 'maxWeight' }),
+    .min(MIN_KG, { message: 'minimumWeight' })
+    .max(MAX_KG, { message: 'maxWeight' }),
   traveler_location: z.string().min(1, { message: 'requiredField' }),
   notes: z.string().optional(),
 });
@@ -56,7 +59,7 @@ const AddTrip = () => {
     defaultValues: {
       from_country: 'Iraq',
       to_country: '',
-      free_kg: 1,
+      free_kg: MIN_KG,
       traveler_location: '',
       notes: '',
     },
@@ -64,7 +67,6 @@ const AddTrip = () => {
 
   const { from_country, to_country, free_kg } = form.watch();
 
-  // ضمان أن إحدى الدول هي العراق
   React.useEffect(() => {
     if (from_country && from_country !== 'Iraq' && to_country !== 'Iraq') {
       form.setValue('to_country', 'Iraq');
@@ -179,6 +181,15 @@ const AddTrip = () => {
       </div>
     );
   }
+
+  // Helper to map real value -> displayed slider value (right-to-left)
+  const toDisplayed = (real: number) => {
+    return MAX_KG - (real - MIN_KG);
+  };
+
+  const fromDisplayed = (displayed: number) => {
+    return MAX_KG - (displayed - MIN_KG);
+  };
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
@@ -295,34 +306,40 @@ const AddTrip = () => {
                 )}
               />
 
-              {/* Free kg slider */}
+              {/* Free kg slider (visual RTL) */}
               <FormField
                 control={form.control}
                 name="free_kg"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t('freeKg')} ({field.value} kg)
-                    </FormLabel>
-                    <FormControl>
-                      <div className="mt-2">
-                        <Slider
-                          min={1}
-                          max={50}
-                          step={1}
-                          value={[field.value]}
-                          onValueChange={(val) => field.onChange(val[0])}
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          {/* 1kg على اليسار، 50kg على اليمين */}
-                          <span>1 kg</span>
-                          <span>50 kg</span>
+                render={({ field }) => {
+                  const displayedValue = toDisplayed(field.value || MIN_KG);
+                  return (
+                    <FormItem>
+                      <FormLabel>
+                        {t('freeKg')} ({field.value} kg)
+                      </FormLabel>
+                      <FormControl>
+                        <div className="mt-2">
+                          <Slider
+                            min={MIN_KG}
+                            max={MAX_KG}
+                            step={1}
+                            value={[displayedValue]}
+                            onValueChange={(val) => {
+                              const real = fromDisplayed(val[0]);
+                              field.onChange(real);
+                            }}
+                          />
+                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                            {/* 1kg على اليسار، 50kg على اليمين في النص */}
+                            <span>1 kg</span>
+                            <span>50 kg</span>
+                          </div>
                         </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               {/* Traveler location */}
