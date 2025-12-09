@@ -28,26 +28,21 @@ function Login() {
               variables: {
                 default: {
                   colors: {
-                    // Primary Auth Button (Email/Password Login)
                     brand: 'hsl(var(--primary))',
                     brandAccent: 'hsl(var(--primary-foreground))',
                     defaultButtonBackground: 'hsl(var(--primary))',
                     defaultButtonBackgroundHover: 'hsl(var(--primary)/0.9)',
-                    
-                    // Inputs
                     inputBackground: 'hsl(var(--background))',
                     inputBorder: 'hsl(var(--border))',
                     inputBorderHover: 'hsl(var(--ring))',
                     inputBorderFocus: 'hsl(var(--ring))',
                     inputText: 'hsl(var(--foreground))',
-
-                    // Social Buttons Customization
                     socialButtonBackground: 'hsl(var(--primary))',
-                    socialButtonText: '#FFFFFF', // Using Hex for white text
+                    socialButtonText: '#FFFFFF',
                     socialButtonBorder: 'hsl(var(--primary))',
                     socialButtonBackgroundHover: 'hsl(var(--primary)/0.9)',
                     socialButtonTextHover: '#FFFFFF',
-                    socialButtonIcon: '#FFFFFF', // Using Hex for white icon
+                    socialButtonIcon: '#FFFFFF',
                   },
                 },
               },
@@ -66,8 +61,26 @@ function Login() {
               },
             }}
           />
-          <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-300">
-            {t('noAccount')} <Link to="/signup" className="font-medium text-primary hover:underline">{t('signUp')}</Link>
+
+          {/* Forgot password link to dedicated page */}
+          <p className="mt-3 text-center text-sm text-gray-600 dark:text-gray-300">
+            <Link
+              to="/reset-password"
+              className="font-medium text-primary hover:underline"
+            >
+              {t('forgotPassword')}
+            </Link>
+          </p>
+
+          {/* Sign up hint */}
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-300">
+            {t('noAccount')}{' '}
+            <Link
+              to="/signup"
+              className="font-medium text-primary hover:underline"
+            >
+              {t('signUp')}
+            </Link>
           </p>
         </CardContent>
       </Card>

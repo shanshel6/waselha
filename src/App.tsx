@@ -30,6 +30,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const AppContent = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/complete-profile" element={<CompleteProfile />} />
       <Route path="/*" element={<MainLayout />} />
     </Routes>
