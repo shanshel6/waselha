@@ -13,12 +13,33 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { calculateShippingCost } from '@/lib/pricing';
 import { arabicCountries } from '@/lib/countries-ar';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-react';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Plane,
+  Package,
+  User,
+  MapPin,
+  Calendar,
+  Info,
+  Loader2,
+} from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
@@ -45,14 +66,24 @@ const TripDetails = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const { user } = useSession();
-  const [isForbiddenItemsDialogOpen, setIsForbiddenItemsDialogOpen] = useState(false);
+  const [isForbiddenItemsDialogOpen, setIsForbiddenItemsDialogOpen] =
+    useState(false);
 
   const { data: trip, isLoading, error } = useQuery<TripData, Error>({
     queryKey: ['trip', tripId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select(` *, profiles ( first_name, last_name, is_verified ) `)
+        .select(
+          `
+          *,
+          profiles (
+            first_name,
+            last_name,
+            is_verified
+          )
+        `,
+        )
         .eq('id', tripId)
         .single();
 
@@ -67,11 +98,11 @@ const TripDetails = () => {
     return z.object({
       weight_kg: z.coerce
         .number()
-        .min(1, { message: t("positiveNumber") })
-        .max(maxWeight, { message: t("maxWeightDynamic", { max: maxWeight }) }),
-      description: z.string().min(10, { message: t("descriptionTooShort") }),
-      destination_city: z.string().min(2, { message: t("requiredField") }),
-      receiver_details: z.string().min(10, { message: t("requiredField") }),
+        .min(1, { message: t('positiveNumber') })
+        .max(maxWeight, { message: t('maxWeightDynamic', { max: maxWeight }) }),
+      description: z.string().min(10, { message: t('descriptionTooShort') }),
+      destination_city: z.string().min(2, { message: t('requiredField') }),
+      receiver_details: z.string().min(10, { message: t('requiredField') }),
     });
   }, [trip, t]);
 
@@ -79,9 +110,9 @@ const TripDetails = () => {
     resolver: zodResolver(requestSchema),
     defaultValues: {
       weight_kg: 1,
-      description: "",
-      destination_city: "",
-      receiver_details: "",
+      description: '',
+      destination_city: '',
+      receiver_details: '',
     },
   });
 
@@ -89,7 +120,11 @@ const TripDetails = () => {
 
   const priceCalculation = useMemo(() => {
     if (!trip) return null;
-    return calculateShippingCost(trip.from_country, trip.to_country, weight || 0);
+    return calculateShippingCost(
+      trip.from_country,
+      trip.to_country,
+      weight || 0,
+    );
   }, [weight, trip]);
 
   const handleRequestSubmit = async () => {
@@ -111,16 +146,14 @@ const TripDetails = () => {
       return;
     }
 
-    const { error } = await supabase
-      .from('requests')
-      .insert({
-        trip_id: trip.id,
-        sender_id: user.id,
-        ...values,
-      });
+    const { error } = await supabase.from('requests').insert({
+      trip_id: trip.id,
+      sender_id: user.id,
+      ...values,
+    });
 
     if (error) {
-      console.error("Error creating request:", error);
+      console.error('Error creating request:', error);
       showError(t('requestFailed'));
     } else {
       showSuccess(t('requestSentSuccess'));
@@ -128,30 +161,32 @@ const TripDetails = () => {
     }
   });
 
-  if (isLoading) return (
-    <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
 
-  if (error) return (
-    <div className="container p-4 text-red-500">
-      {t('errorLoadingTrips')}: {error.message}
-    </div>
-  );
+  if (error)
+    return (
+      <div className="container p-4 text-red-500">
+        {t('errorLoadingTrips')}: {error.message}
+      </div>
+    );
 
-  if (!trip) return (
-    <div className="container p-4">
-      {t('tripNotFound')}
-    </div>
-  );
+  if (!trip)
+    return <div className="container p-4">{t('tripNotFound')}</div>;
 
   const isOwner = user?.id === trip.user_id;
-  const travelerName = `${trip.profiles?.first_name || 'N/A'} ${trip.profiles?.last_name || ''}`.trim();
+  const travelerName = `${trip.profiles?.first_name || 'N/A'} ${
+    trip.profiles?.last_name || ''
+  }`.trim();
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Trip details card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl text-primary">
@@ -168,7 +203,7 @@ const TripDetails = () => {
           <CardContent className="space-y-4">
             <p className="flex items-center gap-2">
               <User className="h-5 w-5 text-gray-500" />
-              {t('traveler')}: 
+              {t('traveler')}:
               <span className="font-medium">{travelerName}</span>
               {trip.profiles?.is_verified && <VerifiedBadge />}
             </p>
@@ -195,7 +230,8 @@ const TripDetails = () => {
             )}
           </CardContent>
         </Card>
-        
+
+        {/* Request form / owner info */}
         {isOwner ? (
           <Card>
             <CardHeader>
@@ -203,7 +239,9 @@ const TripDetails = () => {
               <CardDescription>{t('yourTripDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">{t('cannotRequestOwnTrip')}</p>
+              <p className="text-muted-foreground">
+                {t('cannotRequestOwnTrip')}
+              </p>
               <Link to="/my-requests">
                 <Button className="w-full mt-4">
                   {t('manageMyRequests')}
@@ -219,7 +257,10 @@ const TripDetails = () => {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                <form
+                  onSubmit={(e) => e.preventDefault()}
+                  className="space-y-6"
+                >
                   <FormField
                     control={form.control}
                     name="weight_kg"
@@ -234,7 +275,9 @@ const TripDetails = () => {
                             max={trip.free_kg}
                             step={1}
                             value={[field.value]}
-                            onValueChange={(value) => field.onChange(value[0])}
+                            onValueChange={(value) =>
+                              field.onChange(value[0])
+                            }
                             className="mt-4"
                           />
                         </FormControl>
@@ -242,28 +285,42 @@ const TripDetails = () => {
                       </FormItem>
                     )}
                   />
-                  
-                  {priceCalculation && priceCalculation.totalPriceUSD > 0 && (
-                    <Card className="bg-primary/10 p-4">
-                      <CardTitle className="text-lg mb-2 text-center">
-                        {t('estimatedCost')}
-                      </CardTitle>
-                      <div className="flex justify-around text-center">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total (USD)</p>
-                          <p className="font-bold text-xl">${priceCalculation.totalPriceUSD.toFixed(2)}</p>
+
+                  {priceCalculation &&
+                    !priceCalculation.error &&
+                    priceCalculation.totalPriceUSD > 0 && (
+                      <Card className="bg-primary/10 p-4">
+                        <CardTitle className="text-lg mb-2 text-center">
+                          {t('estimatedCost')}
+                        </CardTitle>
+                        <div className="flex justify-around text-center">
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Total (USD)
+                            </p>
+                            <p className="font-bold text-xl">
+                              $
+                              {priceCalculation.totalPriceUSD.toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Total (IQD)
+                            </p>
+                            <p className="font-bold text-xl">
+                              {priceCalculation.totalPriceIQD.toLocaleString(
+                                'en-US',
+                              )}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total (IQD)</p>
-                          <p className="font-bold text-xl">{priceCalculation.totalPriceIQD.toLocaleString('en-US')}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center mt-2">
-                        {t('pricePerKg')}: ${priceCalculation.pricePerKgUSD.toFixed(2)}
-                      </p>
-                    </Card>
-                  )}
-                  
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          {t('pricePerKg')}:{' '}
+                          ${priceCalculation.pricePerKgUSD.toFixed(2)}
+                        </p>
+                      </Card>
+                    )}
+
                   <FormField
                     control={form.control}
                     name="description"
@@ -271,16 +328,16 @@ const TripDetails = () => {
                       <FormItem>
                         <FormLabel>{t('packageContents')}</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder={t('packageContentsPlaceholder')} 
-                            {...field} 
+                          <Textarea
+                            placeholder={t('packageContentsPlaceholder')}
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="destination_city"
@@ -288,18 +345,23 @@ const TripDetails = () => {
                       <FormItem>
                         <FormLabel>{t('destinationCity')}</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder={t('destinationCityPlaceholder', { 
-                              country: arabicCountries[trip.to_country] || trip.to_country 
-                            })} 
-                            {...field} 
+                          <Input
+                            placeholder={t(
+                              'destinationCityPlaceholder',
+                              {
+                                country:
+                                  arabicCountries[trip.to_country] ||
+                                  trip.to_country,
+                              },
+                            )}
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="receiver_details"
@@ -307,19 +369,19 @@ const TripDetails = () => {
                       <FormItem>
                         <FormLabel>{t('receiverDetails')}</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder={t('receiverDetailsPlaceholder')} 
-                            {...field} 
+                          <Textarea
+                            placeholder={t('receiverDetailsPlaceholder')}
+                            {...field}
                           />
-                        </ControlForm>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <Button 
-                    type="button" 
-                    onClick={handleRequestSubmit} 
+
+                  <Button
+                    type="button"
+                    onClick={handleRequestSubmit}
                     className="w-full"
                   >
                     {t('sendRequest')}
@@ -330,11 +392,11 @@ const TripDetails = () => {
           </Card>
         )}
       </div>
-      
-      <ForbiddenItemsDialog 
-        isOpen={isForbiddenItemsDialogOpen} 
-        onOpenChange={setIsForbiddenItemsDialogOpen} 
-        onConfirm={onConfirmSubmit} 
+
+      <ForbiddenItemsDialog
+        isOpen={isForbiddenItemsDialogOpen}
+        onOpenChange={setIsForbiddenItemsDialogOpen}
+        onConfirm={onConfirmSubmit}
       />
     </div>
   );
