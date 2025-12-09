@@ -56,13 +56,12 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="relative container mx-auto flex h-16 items-center px-3 sm:px-4">
-        {/* اليسار: إشعارات + يوزر + روابط (ديسكتوب) + زر القائمة (موبايل) */}
+      <div className="container mx-auto flex h-16 items-center px-3 sm:px-4">
+        {/* يسار: الإشعارات + الأفاتار أو زر الدخول (ديسكتوب) + زر القائمة (موبايل) */}
         <div className="flex items-center gap-3">
-          {/* إشعارات + أفاتار على اليسار دائماً */}
-          {session && <Notifications />}
-
-          <div className="hidden md:inline-flex">
+          {/* Desktop: notifications + avatar/login on the left */}
+          <div className="hidden md:flex items-center gap-2">
+            {session && <Notifications />}
             {session ? (
               <UserNav />
             ) : (
@@ -78,7 +77,66 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* روابط الديسكتوب بجانب الأفاتار */}
+          {/* Mobile: فقط زر القائمة على اليسار */}
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full border border-border/60 bg-background/80"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
+              >
+                <div className="mt-4 mb-6 flex items-center justify-between">
+                  <Brand />
+                </div>
+
+                <div className="flex flex-col space-y-2 mb-4">
+                  {mobileNavItems.map((item) => (
+                    <Link key={item.path} to={item.path}>
+                      <div
+                        className={cn(
+                          'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                          isActive(item.path)
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        )}
+                      >
+                        <span>{item.name}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* إشعارات + يوزر داخل القائمة في الموبايل */}
+                <div className="mt-2 border-t pt-4 flex flex-col gap-3">
+                  {session && (
+                    <div className="flex items-center gap-2">
+                      <Notifications />
+                      <UserNav />
+                    </div>
+                  )}
+                  {!session && (
+                    <Link to="/login">
+                      <Button className="w-full rounded-full py-2">
+                        {t('login')}
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
+
+        {/* الوسط: أزرار التنقل (ديسكتوب فقط) */}
+        <div className="flex flex-1 justify-center">
           <div className="hidden md:flex items-center gap-3">
             {publicNavItems.map((item) => (
               <Link key={item.path} to={item.path}>
@@ -111,72 +169,14 @@ const Navbar: React.FC = () => {
                 </Link>
               ))}
           </div>
-
-          {/* زر القائمة للموبايل – أيضاً على اليسار */}
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full border border-border/60 bg-background/80"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
-              >
-                <div className="mt-4 mb-6 flex items-center justify-between">
-                  <Brand />
-                </div>
-
-                <div className="flex flex-col space-y-2">
-                  {mobileNavItems.map((item) => (
-                    <Link key={item.path} to={item.path}>
-                      <div
-                        className={cn(
-                          'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                          isActive(item.path)
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        )}
-                      >
-                        <span>{item.name}</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-
-                <div className="mt-6 border-t pt-4">
-                  {session ? (
-                    <UserNav />
-                  ) : (
-                    <Link to="/login">
-                      <Button className="w-full rounded-full py-2">
-                        {t('login')}
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
         </div>
 
-        {/* الشعار في المنتصف تماماً */}
-        <div className="absolute inset-x-0 flex justify-center pointer-events-none">
-          <Link
-            to="/"
-            className="flex items-center pointer-events-auto"
-          >
+        {/* يمين: الشعار دائماً */}
+        <div className="flex items-center justify-end">
+          <Link to="/">
             <Brand />
           </Link>
         </div>
-
-        {/* يمين الشريط: فارغ (لضمان بقاء الشعار في المنتصف) */}
-        <div className="flex-1" />
       </div>
     </nav>
   );
