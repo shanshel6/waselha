@@ -51,7 +51,7 @@ const Index = () => {
             className="text-lg md:text-xl text-neutral-200 mb-8"
             style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}
           >
-            {t('startBuilding')}
+            اربط بين المسافرين والمرسلين لشحن الطرود بطريقة أسهل وأرخص من شركات الشحن التقليدية.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
             <Link to="/add-trip">
