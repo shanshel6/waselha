@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent } from '@/components/ui/card';
 import { DollarSign, ImageIcon, Smartphone } from 'lucide-react';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Trip {
@@ -185,7 +185,6 @@ const PaymentProofDialog: React.FC<PaymentProofDialogProps> = ({
         payment_reference: reference,
         payment_amount_iqd: expectedAmountIQD,
       });
-      showSuccess(t('resetPasswordEmailSent') ?? 'تم رفع إثبات الدفع بنجاح، بانتظار مراجعة المسؤول.');
     } catch (e: any) {
       console.error('Error in payment proof flow:', e);
       showError(e?.message || 'Failed to submit payment proof');
