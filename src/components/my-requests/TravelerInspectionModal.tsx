@@ -41,28 +41,34 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
 
   const handleCompleteInspection = async () => {
     if (!user) {
-      showError(t('mustBeLoggedIn'));
+      showError('يجب عليك تسجيل الدخول أولاً.');
       return;
     }
 
     if (paymentStatus !== 'paid') {
-      showError(t('travelerCannotInspectBeforePayment') ?? 'You cannot complete inspection until payment has been confirmed.');
+      showError(
+        t('travelerCannotInspectBeforePayment') ??
+        'لا يمكنك إكمال فحص الطرد قبل تأكيد الدفع من المرسل.'
+      );
       return;
     }
 
     if (inspectionPhotos.length < 1) {
-      showError(t('atLeastOneInspectionPhoto'));
+      showError(
+        t('atLeastOneInspectionPhoto') ??
+        'يرجى رفع صورة واحدة على الأقل للطرد بعد الفحص.'
+      );
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const updateData: { traveler_inspection_photos: string[], tracking_status?: RequestTrackingStatus } = {
+      const updateData: { traveler_inspection_photos: string[]; tracking_status?: RequestTrackingStatus } = {
         traveler_inspection_photos: inspectionPhotos
       };
       
-      // Only update tracking status if it's currently 'sender_photos_uploaded'
+      // تحديث حالة التتبع فقط إذا كانت حالياً "تم تحميل صور الطرد من المرسل"
       if (request.tracking_status === 'sender_photos_uploaded') {
         updateData.tracking_status = 'traveler_inspection_complete';
       }
@@ -74,11 +80,15 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
 
       if (error) throw error;
 
-      showSuccess(t('inspectionCompleteSuccess'));
+      showSuccess('تم حفظ صور الفحص بنجاح، يمكنك الآن متابعة حالة الطلب.');
       onInspectionComplete();
       onOpenChange(false);
     } catch (error: any) {
-      showError(error.message || t('inspectionCompleteError'));
+      showError(
+        error.message ||
+        t('inspectionCompleteError') ||
+        'حدث خطأ أثناء حفظ الفحص، يرجى المحاولة مرة أخرى.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -91,9 +101,9 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
       return (
         <Alert className="mb-2">
           <Wallet className="h-4 w-4" />
-          <AlertTitle>{t('pendingVerification')}</AlertTitle>
+          <AlertTitle>الدفع قيد المراجعة</AlertTitle>
           <AlertDescription>
-            {t('paymentPendingReviewTraveler') ?? 'Sender payment is under review. Please wait until it is approved before completing inspection.'}
+            قام المرسل بإرسال إثبات الدفع وهو الآن قيد المراجعة من المسؤول، يرجى الانتظار حتى يتم تأكيد الدفع قبل إكمال الفحص.
           </AlertDescription>
         </Alert>
       );
@@ -103,9 +113,9 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
       return (
         <Alert variant="destructive" className="mb-2">
           <Wallet className="h-4 w-4" />
-          <AlertTitle>{t('verificationRejected')}</AlertTitle>
+          <AlertTitle>تم رفض إثبات الدفع</AlertTitle>
           <AlertDescription>
-            {t('paymentRejectedTravelerMessage') ?? 'Payment proof was rejected. Please ask the sender to resolve payment before proceeding.'}
+            تم رفض إثبات الدفع من المرسل، يرجى إبلاغه بإعادة إرسال إثبات صحيح قبل المتابعة في فحص الطرد.
           </AlertDescription>
         </Alert>
       );
@@ -115,9 +125,9 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
     return (
       <Alert variant="destructive" className="mb-2">
         <Wallet className="h-4 w-4" />
-        <AlertTitle>{t('paymentRequired') ?? 'Payment required'}</AlertTitle>
+        <AlertTitle>الدفع غير مكتمل</AlertTitle>
         <AlertDescription>
-          {t('travelerCannotInspectBeforePayment') ?? 'You cannot complete inspection until the sender has paid and payment is confirmed.'}
+          لا يمكنك إكمال فحص الطرد قبل أن يقوم المرسل بالدفع وتأكيد الدفع من قبل المسؤول.
         </AlertDescription>
       </Alert>
     );
@@ -132,10 +142,10 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            {t('safetyVerification')}
+            فحص الأمان قبل السفر
           </DialogTitle>
           <DialogDescription>
-            {t('safetyVerificationDescription')}
+            قبل أن تحمل الطرد معك في الرحلة، تأكد من تطابق محتوياته مع ما تم الاتفاق عليه، وعدم احتوائه على أي مواد ممنوعة أو خطرة.
           </DialogDescription>
         </DialogHeader>
 
@@ -143,9 +153,9 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
 
         <Alert variant="default" className="bg-yellow-50/50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-300">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{t('important')}</AlertTitle>
+          <AlertTitle>إرشادات مهمة قبل القبول النهائي</AlertTitle>
           <AlertDescription>
-            {t('inspectionInstructions')}
+            افحص الطرد أمام المرسل قدر الإمكان، تأكد من خلوّه من المواد المحظورة، التقط صوراً واضحة للطرد من الخارج (ومن الداخل إن أمكن) واحتفظ بها كمرجع في حال حدوث أي مشكلة لاحقة.
           </AlertDescription>
         </Alert>
 
@@ -154,7 +164,7 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
             onPhotosChange={setInspectionPhotos}
             maxPhotos={3}
             minPhotos={1}
-            label={t('inspectionPhotos')}
+            label="صور فحص الطرد من قبل المسافر"
             existingPhotos={inspectionPhotos}
           />
           
@@ -166,12 +176,12 @@ const TravelerInspectionModal: React.FC<TravelerInspectionModalProps> = ({
             {isSubmitting ? (
               <>
                 <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
-                {t('completingInspection')}
+                جاري حفظ الفحص...
               </>
             ) : (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                {t('completeInspection')}
+                إكمال فحص الطرد وتأكيده
               </>
             )}
           </Button>
