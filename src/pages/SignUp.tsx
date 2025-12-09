@@ -17,13 +17,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -34,10 +27,6 @@ const signUpSchema = z
     email: z.string().email({ message: 'invalidEmail' }),
     password: z.string().min(6, { message: 'passwordTooShort' }),
     confirm_password: z.string().min(6, { message: 'passwordTooShort' }),
-    phone: z.string().optional(),
-    role: z.enum(['traveler', 'sender', 'both'], {
-      required_error: 'requiredField',
-    }),
   })
   .refine((data) => data.password === data.confirm_password, {
     path: ['confirm_password'],
@@ -56,8 +45,6 @@ const SignUp = () => {
       email: '',
       password: '',
       confirm_password: '',
-      phone: '',
-      role: 'both',
     },
   });
 
@@ -69,8 +56,8 @@ const SignUp = () => {
         data: {
           first_name: values.first_name,
           last_name: values.last_name,
-          phone: values.phone,
-          role: values.role,
+          // Default role to 'both' and phone to null/undefined
+          role: 'both',
         },
       },
     });
@@ -156,47 +143,10 @@ const SignUp = () => {
                   name="confirm_password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('confirmPassword') ?? 'تأكيد كلمة المرور'}</FormLabel>
+                      <FormLabel>{t('confirmPassword')}</FormLabel>
                       <FormControl>
                         <Input type="password" {...field} />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('phone')}</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('role')}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('selectRole')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="traveler">{t('roleTraveler')}</SelectItem>
-                          <SelectItem value="sender">{t('roleSender')}</SelectItem>
-                          <SelectItem value="both">{t('roleBoth')}</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
