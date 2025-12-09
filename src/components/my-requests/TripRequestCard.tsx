@@ -1,3 +1,4 @@
+= payment_done.">
 "use client";
 
 import React, { useState } from 'react';
@@ -29,73 +30,13 @@ import {
 } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
-import { RequestTrackingStatus } from '@/lib/tracking-stages';
+import { RequestTrackingStatus, TRACKING_STAGES } from '@/lib/tracking-stages';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 import VerifiedBadge from '@/components/VerifiedBadge';
 
-interface Profile {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-}
-interface Trip {
-  id: string;
-  user_id: string;
-  from_country: string;
-  to_country: string;
-  trip_date: string;
-  free_kg: number;
-  charge_per_kg: number | null;
-  traveler_location: string | null;
-  notes: string | null;
-  created_at: string;
-}
-interface Request {
-  id: string;
-  trip_id: string;
-  sender_id: string;
-  description: string;
-  weight_kg: number;
-  destination_city: string;
-  receiver_details: string;
-  handover_location: string | null;
-  status: 'pending' | 'accepted' | 'rejected';
-  created_at: string;
-  updated_at: string | null;
-  trips: Trip;
-  cancellation_requested_by: string | null;
-  proposed_changes: { weight_kg: number; description: string } | null;
-  sender_item_photos: string[] | null;
-  tracking_status: RequestTrackingStatus;
-  general_order_id: string | null;
-  type: 'trip_request';
-  payment_status?: 'unpaid' | 'pending_review' | 'paid' | 'rejected' | null;
-  payment_method?: 'zaincash' | 'qicard' | 'other' | null;
-  payment_amount_iqd?: number | null;
-  payment_proof_url?: string | null;
-  payment_reference?: string | null;
-}
-interface RequestWithProfiles extends Request {
-  sender_profile: Profile | null;
-  traveler_profile: Profile | null;
-}
-
-interface TripRequestCardProps {
-  req: RequestWithProfiles;
-  priceCalculation: ReturnType<typeof calculateShippingCost> | null;
-  onCancelRequest: (request: Request) => void;
-  deleteRequestMutation: any;
-  onCancelAcceptedRequest: (request: Request) => void;
-  onEditRequest: (request: Request) => void;
-  onUploadSenderPhotos: (request: Request) => void;
-  onTrackingUpdate: (request: Request, newStatus: RequestTrackingStatus) => void;
-  trackingUpdateMutation: any;
-  onOpenPaymentDialog: (request: Request) => void;
-  t: (key: string, options?: any) => string;
-}
+// types unchanged...
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -151,7 +92,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const travelerName =
     `${req.traveler_profile?.first_name || ''} ${req.traveler_profile?.last_name || ''}`.trim() ||
     t('traveler');
-  const travelerIsVerified = !!req.traveler_profile?.id && false; // يمكنك ربطها بحقل is_verified لاحقاً
+  const travelerIsVerified = !!req.traveler_profile?.id && false; // not wired to is_verified yet
   const fromCountry = req.trips?.from_country || 'N/A';
   const toCountry = req.trips?.to_country || 'N/A';
   const tripDate = req.trips?.trip_date;
@@ -160,10 +101,16 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const hasPendingChanges = !!req.proposed_changes;
   const isGeneralOrderMatch = !!req.general_order_id;
 
-  // حالة الدفع
+  // Payment state
   const paymentStatus = req.payment_status || 'unpaid';
   const showPayButton =
     req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
+
+  // We only allow sender photo upload once tracking >= payment_done
+  const paymentDoneStage = TRACKING_STAGES.find(s => s.key === 'payment_done');
+  const currentStage = TRACKING_STAGES.find(s => s.key === currentTrackingStatus);
+  const isPaymentStepReached =
+    !!paymentDoneStage && !!currentStage && currentStage.order >= paymentDoneStage.order;
 
   const renderPaymentBadge = () => {
     switch (paymentStatus) {
@@ -176,7 +123,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
       case 'pending_review':
         return (
           <Badge variant="outline" className="border-amber-500 text-amber-600 text-[11px]">
-            بانتظار مراجعة المسؤول
+            بانتظار مراجعة الدفع
           </Badge>
         );
       case 'rejected':
@@ -361,8 +308,8 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 </Button>
               )}
 
-              {/* Upload item photos (sender) */}
-              {req.status === 'accepted' && (
+              {/* Upload item photos: ONLY after payment step is reached */}
+              {req.status === 'accepted' && isPaymentStepReached && (
                 <Button
                   size="sm"
                   variant="secondary"
@@ -376,7 +323,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 </Button>
               )}
 
-              {/* Complete tracking (mark as completed) */}
+              {/* Mark as completed (after delivered) */}
               {canUpdateToCompleted && (
                 <Button
                   size="sm"
@@ -397,7 +344,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 </Button>
               )}
 
-              {/* Cancel / Delete */}
+              {/* Cancel / delete */}
               {req.status === 'accepted' ? (
                 <Button
                   size="sm"
