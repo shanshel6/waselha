@@ -35,6 +35,7 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // 1) التحقق من التوكن
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -53,6 +54,10 @@ serve(async (req) => {
       );
     }
 
+    const reporterId = userData.user.id;
+    const reporterEmail = userData.user.email ?? "";
+
+    // 2) قراءة جسم الطلب
     const body = (await req.json()) as ReportPayload;
     if (!body.request_id || !body.description) {
       return new Response(
@@ -61,17 +66,78 @@ serve(async (req) => {
       );
     }
 
-    const reporterId = userData.user.id;
+    // 3) جلب اسم ورقم هاتف المبلِّغ من profiles
+    const { data: profile, error: profileError } = await adminClient
+      .from("profiles")
+      .select("first_name, last_name, phone")
+      .eq("id", reporterId)
+      .maybeSingle();
 
-    // يمكنك استبدال هذا القسم بدمج مع خدمة بريد مثل Resend / SendGrid.
-    // حالياً نحفظ البلاغ في جدول logs مخصصاً (إن أردت لاحقاً)، أو نطبع في الـ logs.
-    console.log("Order issue report:", {
-      request_id: body.request_id,
-      reporter_id: reporterId,
-      description: body.description,
+    if (profileError) {
+      console.error("Failed to load reporter profile:", profileError);
+    }
+
+    const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "بدون اسم";
+    const phone = profile?.phone ?? "غير مذكور";
+
+    // 4) بناء نص الرسالة
+    const emailTo = "shanshel6@gmail.com"; // لا يُعرَض للمستخدم في الواجهة
+    const subject = `Waslaha - بلاغ عن طلب رقم ${body.request_id}`;
+    const textBody = `
+تم استلام بلاغ جديد عن طلب.
+
+تفاصيل البلاغ:
+- رقم الطلب (request_id): ${body.request_id}
+- معرف المبلِّغ (user_id): ${reporterId}
+- بريد المبلِّغ: ${reporterEmail || "غير مذكور"}
+
+بيانات المبلِّغ من الملف الشخصي:
+- الاسم: ${fullName}
+- رقم الهاتف: ${phone}
+
+نص المشكلة:
+${body.description}
+
+--
+هذه الرسالة أُرسلت من نظام بلاغات الطلبات في وصلها.
+`.trim();
+
+    console.log("Order issue report - will be emailed:", {
+      to: emailTo,
+      subject,
+      textBody,
     });
 
-    // هنا مكان استدعاء خدمة بريد حقيقية بإرسال رسالة إلى shanshel30@gmail.com
+    // 5) إرسال البريد عبر خدمة خارجية (مثال باستخدام Resend API)
+    // ملاحظة: يجب أن تضيف secret باسم RESEND_API_KEY في Supabase (Edge Functions → Manage Secrets)
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+
+    if (resendApiKey) {
+      try {
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "no-reply@waslaha.app",
+            to: [emailTo],
+            subject,
+            text: textBody,
+          }),
+        });
+
+        if (!emailRes.ok) {
+          const errText = await emailRes.text();
+          console.error("Resend email error:", emailRes.status, errText);
+        }
+      } catch (emailErr) {
+        console.error("Error calling Resend API:", emailErr);
+      }
+    } else {
+      console.warn("RESEND_API_KEY is not set; email will not be sent, but report is logged.");
+    }
 
     return new Response(
       JSON.stringify({ success: true }),
