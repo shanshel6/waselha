@@ -56,8 +56,8 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-3 sm:px-4">
-        {/* يسار: قائمة الديسكتوب */}
+      <div className="relative container mx-auto flex h-16 items-center justify-between px-3 sm:px-4">
+        {/* يسار: روابط الديسكتوب */}
         <div className="hidden md:flex items-center gap-4">
           {publicNavItems.map((item) => (
             <Link key={item.path} to={item.path}>
@@ -91,15 +91,18 @@ const Navbar: React.FC = () => {
             ))}
         </div>
 
-        {/* وسط: الشعار */}
-        <div className="flex-1 flex justify-center md:justify-center">
-          <Link to="/" className="flex items-center">
+        {/* الوسط: الشعار ثابت في منتصف الـ container */}
+        <div className="absolute inset-x-0 flex justify-center pointer-events-none">
+          <Link
+            to="/"
+            className="flex items-center pointer-events-auto"
+          >
             <Brand />
           </Link>
         </div>
 
-        {/* يمين: أزرار المستخدم / الموبايل */}
-        <div className="flex items-center gap-2">
+        {/* يمين: المستخدم / الموبايل */}
+        <div className="flex items-center gap-2 ml-auto">
           {/* Desktop user section */}
           <div className="hidden md:flex items-center gap-3">
             {session && <Notifications />}
