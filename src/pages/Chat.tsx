@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Send, Plane, User, MessageSquare, DollarSign, Phone, AlertTriangle, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 const messageSchema = z.object({
   content: z.string().min(1),
@@ -30,14 +31,12 @@ const Chat = () => {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mutation to update the chat read status
   const updateReadStatusMutation = useMutation({
     mutationFn: async (chatId: string) => {
       if (!user) return;
       
       const now = new Date().toISOString();
       
-      // Try to update first (if status already exists)
       const { error: updateError, count } = await supabase
         .from('chat_read_status')
         .update({ last_read_at: now })
@@ -48,7 +47,6 @@ const Chat = () => {
         
       if (updateError) throw updateError;
       
-      // If no row was updated, insert a new one
       if (!updateError && !count) {
         const { error: insertError } = await supabase
           .from('chat_read_status')
@@ -58,7 +56,6 @@ const Chat = () => {
       }
     },
     onSuccess: () => {
-      // Invalidate the unread count query to reflect the change immediately
       queryClient.invalidateQueries({ queryKey: ['unreadChatCount', user?.id] });
     },
     onError: (err: any) => {
@@ -66,7 +63,6 @@ const Chat = () => {
     }
   });
 
-  // Query 1: Get the chat ID
   const { data: chatData, isLoading: isLoadingChat } = useQuery({
     queryKey: ['chatIdForRequest', requestId],
     queryFn: async () => {
@@ -86,18 +82,18 @@ const Chat = () => {
 
   const chatId = chatData?.id;
 
-  // Query 2: Get request details (now handles both regular and general order matches)
   const { data: itemDetails, isLoading: isLoadingDetails, error: detailsError } = useQuery({
     queryKey: ['itemDetailsForChat', requestId],
     queryFn: async () => {
       if (!requestId || !user) return null;
 
-      // Fetch as a regular trip request (which now includes general order matches)
       const { data: request, error: requestError } = await supabase
         .from('requests')
         .select(`
           id, trip_id, sender_id, description, weight_kg, status, destination_city, receiver_details, tracking_status, created_at, general_order_id,
-          trips( id, from_country, to_country, trip_date, user_id, free_kg )
+          trips( id, from_country, to_country, trip_date, user_id, free_kg ),
+          sender_profile:profiles!requests_sender_id_fkey(id, first_name, last_name, phone, is_verified),
+          traveler_profile:profiles!inner(id, first_name, last_name, phone, is_verified)
         `)
         .eq('id', requestId)
         .single();
@@ -106,30 +102,21 @@ const Chat = () => {
       
       if (request) {
         const isCurrentUserSender = user.id === request.sender_id;
-        const otherUserId = isCurrentUserSender ? request.trips?.user_id : request.sender_id;
-        
-        const { data: otherProfile } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, phone')
-          .eq('id', otherUserId)
-          .single();
+        const otherUser = isCurrentUserSender ? request.traveler_profile : request.sender_profile;
 
         return {
           type: 'trip_request',
           data: request,
           isCurrentUserSender,
-          otherUser: otherProfile,
+          otherUser,
         };
       }
 
-      // Fallback: If it's not a request, it might be an old general order ID used as a chat ID before refactoring.
-      // We rely on the RLS policy to prevent unauthorized access if the chat ID is invalid.
       return null;
     },
     enabled: !!requestId && !!user,
   });
 
-  // Query 3: Get messages, only enabled when we have a chat ID
   const { data: messages, isLoading: isLoadingMessages } = useQuery({
     queryKey: ['messages', chatId],
     queryFn: async () => {
@@ -147,7 +134,6 @@ const Chat = () => {
     enabled: !!chatId,
   });
 
-  // Calculate Price (only for trip requests)
   const priceCalculation = useMemo(() => {
     if (itemDetails?.type === 'trip_request') {
       const request = itemDetails.data;
@@ -161,11 +147,9 @@ const Chat = () => {
     return null;
   }, [itemDetails]);
 
-  // Real-time subscription for new messages
   useEffect(() => {
     if (!chatId) return;
 
-    // 1. Update read status immediately upon entering the chat
     updateReadStatusMutation.mutate(chatId);
 
     const channel = supabase
@@ -181,7 +165,6 @@ const Chat = () => {
         (payload) => {
           queryClient.invalidateQueries({ queryKey: ['messages', chatId] });
           
-          // If the new message is from the other user, update read status immediately
           const newMessage = payload.new as { sender_id: string };
           if (newMessage.sender_id !== user?.id) {
             updateReadStatusMutation.mutate(chatId);
@@ -193,9 +176,8 @@ const Chat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [chatId, queryClient, user?.id]); // Added user?.id to dependencies
+  }, [chatId, queryClient, user?.id]);
 
-  // Scroll to the bottom of the messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -238,7 +220,7 @@ const Chat = () => {
 
       return { previousMessages };
     },
-    onError: (err: any, newMessage, context) => {
+    onError: (err: any, _newMessage, context) => {
       showError(err.message);
       if (context?.previousMessages) {
         queryClient.setQueryData(['messages', chatId], context.previousMessages);
@@ -264,13 +246,15 @@ const Chat = () => {
     return <div className="container p-4 flex items-center justify-center h-full">{t('tripDetailsNotAvailable')}</div>;
   }
 
-  const otherUserName = itemDetails.otherUser ? `${itemDetails.otherUser.first_name || ''} ${itemDetails.otherUser.last_name || ''}`.trim() || t('user') : t('user');
+  const otherUserName = itemDetails.otherUser
+    ? `${itemDetails.otherUser.first_name || ''} ${itemDetails.otherUser.last_name || ''}`.trim() || t('user')
+    : t('user');
   const otherUserPhone = itemDetails.otherUser?.phone || t('noPhoneProvided');
+  const otherUserVerified = !!itemDetails.otherUser?.is_verified;
   
   const isTripRequest = itemDetails.type === 'trip_request';
   const request = isTripRequest ? itemDetails.data : null;
 
-  // Since all matched orders are now trip requests, we rely on the request object
   const tripRoute = request?.trips 
     ? `${request.trips.from_country || t('undefined')} → ${request.trips.to_country || t('undefined')}` 
     : t('tripDetailsNotAvailable');
@@ -295,15 +279,17 @@ const Chat = () => {
     <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
       <Card className="h-full flex flex-col">
         <CardHeader className="border-b p-4">
-          <CardTitle className="text-xl">
+          <CardTitle className="text-xl flex flex-wrap items-center gap-2">
             {t('chattingWith')}: {otherUserName}
+            {otherUserVerified && <VerifiedBadge />}
           </CardTitle>
           
-          {/* User Details */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-primary/80" />
-              <span>{otherUserName} ({itemDetails.isCurrentUserSender ? t('sender') : t('traveler')})</span>
+              <span>
+                {otherUserName} ({itemDetails.isCurrentUserSender ? t('sender') : t('traveler')})
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-primary/80" />
@@ -311,7 +297,6 @@ const Chat = () => {
             </div>
           </div>
           
-          {/* Item Details */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2">
             <div className="flex items-center gap-2">
               <Plane className="h-4 w-4 text-primary/80" />
@@ -326,7 +311,6 @@ const Chat = () => {
             </div>
           </div>
           
-          {/* Price Details */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground mt-2 gap-2 pt-2 border-t">
             <div className="flex items-center gap-2">
               <span className="font-semibold">{t('estimatedCost')}:</span>
@@ -339,7 +323,6 @@ const Chat = () => {
             )}
           </div>
           
-          {/* Tracking Status */}
           {isAccepted && (
             <div className="mt-2 p-2 bg-primary/10 rounded-md text-sm font-medium text-primary flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />

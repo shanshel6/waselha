@@ -22,6 +22,7 @@ import { Plane, Package, User, MapPin, Calendar, Info, Loader2 } from 'lucide-re
 import CountryFlag from '@/components/CountryFlag';
 import { Slider } from '@/components/ui/slider';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface TripData {
   id: string;
@@ -35,6 +36,7 @@ interface TripData {
   profiles: {
     first_name: string | null;
     last_name: string | null;
+    is_verified: boolean;
   } | null;
 }
 
@@ -50,7 +52,7 @@ const TripDetails = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select(` *, profiles ( first_name, last_name ) `)
+        .select(` *, profiles ( first_name, last_name, is_verified ) `)
         .eq('id', tripId)
         .single();
 
@@ -166,7 +168,9 @@ const TripDetails = () => {
           <CardContent className="space-y-4">
             <p className="flex items-center gap-2">
               <User className="h-5 w-5 text-gray-500" />
-              {t('traveler')}: {travelerName}
+              {t('traveler')}: 
+              <span className="font-medium">{travelerName}</span>
+              {trip.profiles?.is_verified && <VerifiedBadge />}
             </p>
             <p className="flex items-center gap-2">
               <Package className="h-5 w-5 text-gray-500" />
@@ -307,7 +311,7 @@ const TripDetails = () => {
                             placeholder={t('receiverDetailsPlaceholder')} 
                             {...field} 
                           />
-                        </FormControl>
+                        </ControlForm>
                         <FormMessage />
                       </FormItem>
                     )}
