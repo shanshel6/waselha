@@ -1,4 +1,4 @@
-0).">
+0 filter.">
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -131,7 +131,7 @@ const Trips = () => {
         .eq('is_approved', true)
         .eq('is_deleted_by_user', false)
         .gte('trip_date', tomorrowDateStr)
-        // Key condition: don't show fully used trips (no remaining kg)
+        // لا نظهر الرحلات التي أصبح وزنها المتاح 0 أو أقل
         .gt('free_kg', 0);
 
       if (filters.from_country) {
