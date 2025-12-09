@@ -35,7 +35,7 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // 1) التحقق من التوكن
+    // 1) Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -57,7 +57,7 @@ serve(async (req) => {
     const reporterId = userData.user.id;
     const reporterEmail = userData.user.email ?? "";
 
-    // 2) قراءة جسم الطلب
+    // 2) Payload
     const body = (await req.json()) as ReportPayload;
     if (!body.request_id || !body.description) {
       return new Response(
@@ -66,7 +66,29 @@ serve(async (req) => {
       );
     }
 
-    // 3) جلب اسم ورقم هاتف المبلِّغ من profiles
+    // 3) Limit to max 3 reports per (request_id, reporter_id)
+    const { count: existingCount, error: countError } = await adminClient
+      .from("reports")
+      .select("id", { count: "exact", head: true })
+      .eq("request_id", body.request_id)
+      .eq("reporter_id", reporterId);
+
+    if (countError) {
+      console.error("Error counting existing reports:", countError);
+      return new Response(
+        JSON.stringify({ error: "Failed to check existing reports" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if ((existingCount ?? 0) >= 3) {
+      return new Response(
+        JSON.stringify({ error: "Max reports reached for this order" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 4) Profile for name & phone
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("first_name, last_name, phone")
@@ -80,7 +102,7 @@ serve(async (req) => {
     const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || "بدون اسم";
     const phone = profile?.phone ?? "غير مذكور";
 
-    // 4) حفظ البلاغ في جدول reports
+    // 5) Insert into reports table
     const { error: insertError } = await adminClient
       .from("reports")
       .insert({
@@ -100,7 +122,7 @@ serve(async (req) => {
       );
     }
 
-    // 5) (اختياري) إرسال بريد إلى المالك
+    // 6) Optional email to owner (best-effort)
     const emailTo = "shanshel6@gmail.com";
     const subject = `Waslaha - بلاغ عن طلب رقم ${body.request_id}`;
     const textBody = `
