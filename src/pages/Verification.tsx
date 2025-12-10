@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,13 +27,15 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2 } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
+import { useProfile } from '@/hooks/use-profile'; // Import useProfile
 
 const verificationSchema = z.object({
   first_name: z.string().min(1, { message: 'requiredField' }),
   last_name: z.string().min(1, { message: 'requiredField' }),
+  phone: z.string().min(1, { message: 'requiredField' }), // Added phone field
   id_front_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
@@ -209,25 +211,37 @@ const Verification = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const { data: verificationInfo, isLoading: isVerificationLoading } = useVerificationStatus();
+  const { data: profile, isLoading: isLoadingProfile } = useProfile(); // Fetch profile for pre-filling
 
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationSchema),
     defaultValues: {
       first_name: '',
       last_name: '',
+      phone: '', // Added phone default
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
       residential_card_front_file: undefined as unknown as File,
       residential_card_back_file: undefined as unknown as File,
       photo_id_file: undefined as unknown as File
-    }
+    },
+    values: useMemo(() => ({
+      first_name: profile?.first_name || '',
+      last_name: profile?.last_name || '',
+      phone: profile?.phone || '', // Pre-fill phone
+      id_front_file: undefined as unknown as File,
+      id_back_file: undefined as unknown as File,
+      residential_card_front_file: undefined as unknown as File,
+      residential_card_back_file: undefined as unknown as File,
+      photo_id_file: undefined as unknown as File
+    }), [profile])
   });
 
   const status = verificationInfo?.status || 'none';
   const isPending = status === 'pending';
   const isApproved = status === 'approved';
 
-  if (isVerificationLoading) {
+  if (isVerificationLoading || isLoadingProfile) {
     return (
       <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -287,11 +301,13 @@ const Verification = () => {
         throw error;
       }
 
+      // Update profile with name and phone number
       await supabase
         .from('profiles')
         .update({
           first_name: values.first_name,
-          last_name: values.last_name
+          last_name: values.last_name,
+          phone: values.phone, // Store phone number
         })
         .eq('id', user.id);
 
@@ -332,7 +348,7 @@ const Verification = () => {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Basic info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="first_name"
@@ -352,6 +368,23 @@ const Verification = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('lastName')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} disabled={submitDisabled} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {/* New Phone Field */}
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1">
+                        <Phone className="h-4 w-4" />
+                        {t('phone')}
+                      </FormLabel>
                       <FormControl>
                         <Input {...field} disabled={submitDisabled} />
                       </FormControl>
