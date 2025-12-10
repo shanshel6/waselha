@@ -9,7 +9,6 @@ import { supabase } from './client';
  * بدون أي عمليات توجيه (navigation) مرتبطة بالمسار.
  * حماية الصفحات تتم في أماكن أخرى (AppContent, ProfileCheckWrapper).
  */
-
 interface SessionContextType {
   session: Session | null;
   user: User | null;

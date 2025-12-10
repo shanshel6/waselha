@@ -21,14 +21,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
 
   // Paths that should be accessible without auth
   const publicPaths = ['/login', '/signup', '/reset-password'];
-
   const isPublic = publicPaths.includes(location.pathname);
 
   useEffect(() => {
     if (isLoading) return;
-
+    
     if (!user && !isPublic) {
-      // You could optionally preserve returnTo=location.pathname here
+      // Redirect to login if not authenticated and not on a public page
       navigate('/login', { replace: true });
     }
   }, [user, isLoading, isPublic, navigate]);

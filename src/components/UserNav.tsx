@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +37,11 @@ const UserNav = ({ profile }: UserNavProps) => {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error);
+    }
+    // Navigate to login page after sign out
     navigate('/login');
   };
 
