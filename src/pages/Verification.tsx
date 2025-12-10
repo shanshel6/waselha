@@ -277,7 +277,7 @@ const Verification = () => {
         user_id: user.id,
         id_front_url: idFrontUrl,
         id_back_url: idBackUrl,
-        residential_card_url: residentialFrontUrl || residentialBackUrl,
+        residential_card_url: residentialFrontUrl || residentialBackUrl, // Assuming one URL for residential card
         photo_id_url: photoIdUrl,
         status: 'pending'
       });
