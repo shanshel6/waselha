@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,7 +48,7 @@ const CompleteProfile = () => {
     },
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isLoadingProfile && profile && profile.first_name && profile.last_name) {
       // If profile is complete, redirect to home
       navigate('/');

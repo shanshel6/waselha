@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 
 const UNREAD_COUNT_FUNCTION_NAME = 'unread-chat-count';
 
@@ -10,7 +10,7 @@ export const useUnreadChatCount = () => {
   const queryClient = useQueryClient();
   const userId = user?.id;
 
-  const fetchCount = React.useCallback(async () => {
+  const fetchCount = useCallback(async () => {
     if (!userId || !session) return 0;
 
     // We use the invoke method which automatically handles the Authorization header
@@ -33,7 +33,7 @@ export const useUnreadChatCount = () => {
   });
 
   // Real-time subscription to invalidate the query when a new message is inserted
-  React.useEffect(() => {
+  useEffect(() => {
     if (!userId) return;
 
     // We subscribe to all chat messages inserts. The Edge Function handles filtering.

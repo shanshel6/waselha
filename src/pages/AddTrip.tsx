@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -69,7 +69,7 @@ const AddTrip = () => {
 
   const { from_country, to_country, free_kg } = form.watch();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (from_country && from_country !== 'Iraq' && to_country !== 'Iraq') {
       form.setValue('to_country', 'Iraq');
     } else if (to_country && to_country !== 'Iraq' && from_country !== 'Iraq') {

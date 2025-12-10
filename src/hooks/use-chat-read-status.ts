@@ -1,7 +1,9 @@
+"use client";
+
+import React, { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import React from 'react';
 
 interface ChatReadStatus {
   hasUnread: boolean;
@@ -69,7 +71,7 @@ export const useChatReadStatus = (requestId: string | undefined) => {
   });
   
   // Real-time subscription to invalidate the query when a new message is inserted
-  React.useEffect(() => {
+  useEffect(() => {
     if (!userId || !requestId) return;
 
     // We need the chat ID to subscribe

@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +36,7 @@ const AdminDashboard = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
   const queryClient = useQueryClient();
-  const [expandedTripId, setExpandedTripId] = React.useState<string | null>(null);
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
 
   const { data: pendingTrips, isLoading: isTripsLoading } = useQuery<Trip[], Error>({
     queryKey: ['pendingTrips'],

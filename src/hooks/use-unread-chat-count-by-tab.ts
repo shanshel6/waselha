@@ -1,9 +1,9 @@
 "use client";
 
+import React, { useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import React from 'react';
 
 interface UnreadCounts {
   sent: number;
@@ -21,7 +21,7 @@ export const useUnreadChatCountByTab = () => {
   const queryClient = useQueryClient();
   const userId = user?.id;
 
-  const fetchCounts = React.useCallback(async (): Promise<UnreadCounts> => {
+  const fetchCounts = useCallback(async (): Promise<UnreadCounts> => {
     if (!userId || !session) {
       return { sent: 0, received: 0 };
     }
@@ -108,7 +108,7 @@ export const useUnreadChatCountByTab = () => {
   });
 
   // Real-time subscription to invalidate the query when a new message is inserted or read status changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!userId) return;
 
     const channel = supabase.channel(`chat-status-by-tab-listener`);
