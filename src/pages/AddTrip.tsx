@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ import TicketUpload from '@/components/TicketUpload';
 import { useVerificationCheck } from '@/hooks/use-verification-check';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
+import { arabicCountries } from '@/lib/countries-ar';
 
 const MIN_KG = 1;
 const MAX_KG = 50;
@@ -100,24 +102,19 @@ const AddTrip = () => {
 
   const uploadTicketAndGetUrl = async (file: File, userId: string) => {
     await ensureBucketExists();
-
     const ext = file.name.split('.').pop() || 'pdf';
     const filePath = `${userId}/${Date.now()}-ticket.${ext}`;
-
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
       });
-
     if (uploadError) {
       console.error('Ticket upload error:', uploadError);
       throw new Error(uploadError.message || 'Failed to upload ticket file.');
     }
-
     const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-
     return publicUrlData.publicUrl;
   };
 
@@ -129,7 +126,6 @@ const AddTrip = () => {
     }
 
     const isVerified = verificationInfo?.status === 'approved';
-
     if (!isVerified) {
       showError(t('verificationRequiredTitle'));
       navigate('/verification');
@@ -143,12 +139,10 @@ const AddTrip = () => {
 
     try {
       const ticketUrl = await uploadTicketAndGetUrl(ticketFile, user.id);
-
       let charge_per_kg = 0;
       if (estimatedProfit) {
         charge_per_kg = estimatedProfit.pricePerKgUSD;
       }
-
       const { error } = await supabase.from('trips').insert({
         user_id: user.id,
         from_country: values.from_country,
@@ -219,7 +213,7 @@ const AddTrip = () => {
                             <SelectItem key={c} value={c}>
                               <div className="flex items-center gap-2">
                                 <CountryFlag country={c} />
-                                <span>{c}</span>
+                                <span>{arabicCountries[c] || c}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -246,7 +240,7 @@ const AddTrip = () => {
                             <SelectItem key={c} value={c}>
                               <div className="flex items-center gap-2">
                                 <CountryFlag country={c} />
-                                <span>{c}</span>
+                                <span>{arabicCountries[c] || c}</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -269,7 +263,7 @@ const AddTrip = () => {
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
-                            variant="outline"
+                            variant={'outline'}
                             className={cn(
                               'w-full justify-between text-left font-normal',
                               !field.value && 'text-muted-foreground'
@@ -341,10 +335,7 @@ const AddTrip = () => {
                       {t('travelerLocation')}
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder={t('travelerLocationPlaceholder')}
-                        {...field}
-                      />
+                      <Input placeholder={t('travelerLocationPlaceholder')} {...field} />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
                       {t('travelerLocationDescription')}
@@ -365,11 +356,7 @@ const AddTrip = () => {
                       {t('notes')}
                     </FormLabel>
                     <FormControl>
-                      <Textarea
-                        rows={3}
-                        placeholder={t('notes')}
-                        {...field}
-                      />
+                      <Textarea rows={3} placeholder={t('notes')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -430,7 +417,6 @@ const AddTrip = () => {
           </Form>
         </CardContent>
       </Card>
-
       <ForbiddenItemsDialog
         isOpen={isForbiddenOpen}
         onOpenChange={setIsForbiddenOpen}
