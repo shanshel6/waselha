@@ -30,12 +30,23 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
-import { useProfile } from '@/hooks/use-profile'; // Import useProfile
+import { useProfile } from '@/hooks/use-profile';
 
+// Updated schema with phone validation
 const verificationSchema = z.object({
   first_name: z.string().min(1, { message: 'requiredField' }),
   last_name: z.string().min(1, { message: 'requiredField' }),
-  phone: z.string().min(1, { message: 'requiredField' }), // Added phone field
+  phone: z
+    .string()
+    .min(1, { message: 'requiredField' })
+    .refine(
+      (val) => /^\d+$/.test(val),
+      { message: 'phoneMustBeNumbers' }
+    )
+    .refine(
+      (val) => val.length >= 10 && val.length <= 12,
+      { message: 'phoneMustBe10To12Digits' }
+    ),
   id_front_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
@@ -211,14 +222,14 @@ const Verification = () => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const { data: verificationInfo, isLoading: isVerificationLoading } = useVerificationStatus();
-  const { data: profile, isLoading: isLoadingProfile } = useProfile(); // Fetch profile for pre-filling
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
 
   const form = useForm<VerificationFormValues>({
     resolver: zodResolver(verificationSchema),
     defaultValues: {
       first_name: '',
       last_name: '',
-      phone: '', // Added phone default
+      phone: '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
       residential_card_front_file: undefined as unknown as File,
@@ -228,7 +239,7 @@ const Verification = () => {
     values: useMemo(() => ({
       first_name: profile?.first_name || '',
       last_name: profile?.last_name || '',
-      phone: profile?.phone || '', // Pre-fill phone
+      phone: profile?.phone || '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
       residential_card_front_file: undefined as unknown as File,
@@ -307,7 +318,7 @@ const Verification = () => {
         .update({
           first_name: values.first_name,
           last_name: values.last_name,
-          phone: values.phone, // Store phone number
+          phone: values.phone,
         })
         .eq('id', user.id);
 
@@ -375,7 +386,7 @@ const Verification = () => {
                     </FormItem>
                   )}
                 />
-                {/* New Phone Field */}
+                {/* Phone Field with Validation */}
                 <FormField
                   control={form.control}
                   name="phone"
@@ -386,7 +397,11 @@ const Verification = () => {
                         {t('phone')}
                       </FormLabel>
                       <FormControl>
-                        <Input {...field} disabled={submitDisabled} />
+                        <Input 
+                          {...field} 
+                          disabled={submitDisabled}
+                          placeholder={t('phonePlaceholder')}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
