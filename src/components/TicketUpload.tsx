@@ -54,8 +54,7 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onFileSelected, existingFil
     setProgress(0);
 
     try {
-      // Create a local preview URL
-      if (previewUrl && !existingFileUrl) {
+      // Create a local preview URL if (previewUrl && !existingFileUrl) {
         URL.revokeObjectURL(previewUrl);
       }
       const localUrl = URL.createObjectURL(file);
@@ -80,7 +79,6 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onFileSelected, existingFil
     setHasFile(false);
     setError(null);
     onFileSelected(null);
-
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -90,33 +88,22 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onFileSelected, existingFil
     <div className="space-y-4">
       <div className="font-medium flex items-center gap-2">
         <FileText className="h-5 w-5" />
-        {t('flightTicket')}
+        {"تحميل تذكرة السفر"}
       </div>
-
       {hasFile && previewUrl ? (
         <div className="border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-green-600">
               <CheckCircle className="h-5 w-5" />
-              <span className="font-medium text-sm">{t('ticketUploaded')}</span>
+              <span className="font-medium text-sm">{"تم تحميل التذكرة"}</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={removeFile}
-              disabled={uploading}
-            >
-              {t('removeFile')}
+            <Button variant="outline" size="sm" onClick={removeFile} disabled={uploading}>
+              {"إزالة الملف"}
             </Button>
           </div>
           <div className="mt-2">
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm break-all"
-            >
-              {t('viewTicket')}
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm break-all">
+              {"عرض التذكرة"}
             </a>
           </div>
         </div>
@@ -134,20 +121,18 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onFileSelected, existingFil
             disabled={uploading}
           />
           <UploadCloud className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground mb-1">{t('clickToUploadTicket')}</p>
+          <p className="text-muted-foreground mb-1">{"انقر لتحميل التذكرة"}</p>
           <p className="text-xs text-muted-foreground">
-            {t('supportedFormats')}: PDF, JPG, PNG (Max 10MB)
+            {"الصيغ المدعومة: PDF, JPG, PNG (الحجم الأقصى 10MB)"}
           </p>
         </div>
       )}
-
       {uploading && (
         <div className="space-y-2">
           <Progress value={progress} className="w-full" />
-          <p className="text-sm text-muted-foreground text-center">{t('uploading')}...</p>
+          <p className="text-sm text-muted-foreground text-center">{"جاري التحميل..."}</p>
         </div>
       )}
-
       {error && (
         <Alert variant="destructive">
           <XCircle className="h-4 w-4" />
