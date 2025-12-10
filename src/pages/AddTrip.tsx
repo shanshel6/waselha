@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -57,7 +56,8 @@ const AddTrip = () => {
   const queryClient = useQueryClient();
   const [ticketFile, setTicketFile] = useState<File | null>(null);
   const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
-
+  const [tripData, setTripData] = useState<z.infer<typeof formSchema> | null>(null);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -119,7 +119,15 @@ const AddTrip = () => {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // If user is not logged in, save data and redirect to login
     if (!user) {
+      setTripData(values);
+      localStorage.setItem('pendingTripData', JSON.stringify(values));
+      localStorage.setItem('pendingTicketFile', JSON.stringify({
+        name: ticketFile?.name,
+        type: ticketFile?.type,
+        size: ticketFile?.size
+      }));
       showError(t('mustBeLoggedIn'));
       navigate('/login');
       return;
@@ -143,6 +151,7 @@ const AddTrip = () => {
       if (estimatedProfit) {
         charge_per_kg = estimatedProfit.pricePerKgUSD;
       }
+
       const { error } = await supabase.from('trips').insert({
         user_id: user.id,
         from_country: values.from_country,
@@ -171,6 +180,38 @@ const AddTrip = () => {
       showError(err.message || t('tripAddedError'));
     }
   };
+
+  // Check for pending trip data after login
+  useEffect(() => {
+    if (user && !tripData) {
+      const pendingData = localStorage.getItem('pendingTripData');
+      if (pendingData) {
+        try {
+          const data = JSON.parse(pendingData);
+          setTripData(data);
+          form.reset(data);
+          
+          // Clear localStorage
+          localStorage.removeItem('pendingTripData');
+          
+          // Show message that we're submitting the pending trip
+          showSuccess('جارٍ إرسال بيانات الرحلة...');
+        } catch (e) {
+          console.error('Error parsing pending trip data:', e);
+        }
+      }
+    }
+  }, [user, tripData, form]);
+
+  // Submit pending trip after login
+  useEffect(() => {
+    if (user && tripData) {
+      // In a real implementation, we would need to handle file upload after login
+      // For now, we'll just show a message that login is required for submission
+      showSuccess('تم تسجيل الدخول. يرجى إعادة تحميل تذكرة الطيران وإرسال الرحلة.');
+      setTripData(null);
+    }
+  }, [user, tripData]);
 
   if (isVerificationLoadingLegacy || isVerificationStatusLoading) {
     return (
@@ -283,9 +324,7 @@ const AddTrip = () => {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                           initialFocus
                         />
                       </PopoverContent>
@@ -369,8 +408,8 @@ const AddTrip = () => {
               {/* Safety note + forbidden items link */}
               <p className="text-xs text-muted-foreground">
                 لا تقبل أي طرد دون التأكد من خلوّه من المواد المحظورة.{' '}
-                <button
-                  type="button"
+                <button 
+                  type="button" 
                   onClick={() => setIsForbiddenOpen(true)}
                   className="underline underline-offset-2 text-primary hover:text-primary/80"
                 >
@@ -402,9 +441,8 @@ const AddTrip = () => {
               <p className="text-xs text-muted-foreground">
                 {t('tripPendingApprovalNote')}
               </p>
-
-              <Button
-                type="submit"
+              <Button 
+                type="submit" 
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={form.formState.isSubmitting}
               >
@@ -417,11 +455,7 @@ const AddTrip = () => {
           </Form>
         </CardContent>
       </Card>
-      <ForbiddenItemsDialog
-        isOpen={isForbiddenOpen}
-        onOpenChange={setIsForbiddenOpen}
-        readOnly
-      />
+      <ForbiddenItemsDialog isOpen={isForbiddenOpen} onOpenChange={setIsForbiddenOpen} readOnly />
     </div>
   );
 };

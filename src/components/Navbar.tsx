@@ -21,8 +21,8 @@ const Navbar: React.FC = () => {
   const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
+    { name: t('myRequests'), path: '/my-requests' }, // Changed from FAQ to My Orders
     { name: 'عن وصلها', path: '/about' },
-    { name: 'الأسئلة الشائعة', path: '/faq' },
   ];
 
   // For mobile sidebar we still show profile-related links when logged in
