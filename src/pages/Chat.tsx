@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -15,16 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
-import {
-  Send,
-  Plane,
-  User,
-  MessageSquare,
-  DollarSign,
-  AlertTriangle,
-  Package,
-  MapPin,
-} from 'lucide-react';
+import { Send, Plane, User, MessageSquare, DollarSign, AlertTriangle, Package, MapPin, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 
@@ -70,6 +60,7 @@ interface ProfileRow {
   id: string;
   first_name: string | null;
   last_name: string | null;
+  phone: string | null;
 }
 
 const Chat: React.FC = () => {
@@ -78,59 +69,43 @@ const Chat: React.FC = () => {
   const { user } = useSession();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
   const form = useForm<z.infer<typeof messageSchema>>({
     resolver: zodResolver(messageSchema),
-    defaultValues: { content: '' },
+    defaultValues: {
+      content: ''
+    },
   });
 
   // 1) طلب + رحلة
-  const {
-    data: requestData,
-    isLoading: isRequestLoading,
-    error: requestError,
-  } = useQuery<RequestRow | null, Error>({
+  const { data: requestData, isLoading: isRequestLoading, error: requestError } = useQuery<RequestRow | null, Error>({
     queryKey: ['chatRequest', requestId],
     enabled: !!requestId,
     queryFn: async () => {
       if (!requestId) return null;
-
       const { data, error } = await supabase
         .from('requests')
-        .select(
-          `
-          id,
-          sender_id,
-          description,
-          weight_kg,
-          destination_city,
-          receiver_details,
-          status,
-          created_at,
+        .select(`
+          id, sender_id, description, weight_kg, destination_city, receiver_details, status, created_at,
           trips (*)
-        `
-        )
+        `)
         .eq('id', requestId)
         .maybeSingle();
-
       if (error) throw error;
       return data as unknown as RequestRow;
     },
   });
 
-  // 2) صف الدردشة لهذا الطلب
+  // 2) صف.الدردشة لهذا الطلب
   const { data: chatRow } = useQuery<ChatRow | null, Error>({
     queryKey: ['chatRow', requestId],
     enabled: !!requestId,
     queryFn: async () => {
       if (!requestId) return null;
-
       const { data, error } = await supabase
         .from('chats')
         .select('*')
         .eq('request_id', requestId)
         .maybeSingle();
-
       if (error) throw error;
       return data as ChatRow | null;
     },
@@ -150,10 +125,9 @@ const Chat: React.FC = () => {
       if (!otherUserId) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name')
+        .select('id, first_name, last_name, phone')
         .eq('id', otherUserId)
         .maybeSingle();
-
       if (error) throw error;
       return data as ProfileRow | null;
     },
@@ -170,7 +144,6 @@ const Chat: React.FC = () => {
         .select('*')
         .eq('chat_id', chatRow.id)
         .order('created_at', { ascending: true });
-
       if (error) throw error;
       return data as MessageRow[];
     },
@@ -180,18 +153,15 @@ const Chat: React.FC = () => {
   useEffect(() => {
     const markAsRead = async () => {
       if (!chatRow?.id || !user?.id) return;
-
       const { error } = await supabase
         .from('chat_read_status')
-        .upsert(
-          {
-            chat_id: chatRow.id,
-            user_id: user.id,
-            last_read_at: new Date().toISOString(),
-          },
-          { onConflict: 'chat_id,user_id' }
-        );
-
+        .upsert({
+          chat_id: chatRow.id,
+          user_id: user.id,
+          last_read_at: new Date().toISOString(),
+        }, {
+          onConflict: 'chat_id,user_id'
+        });
       if (error) {
         console.error('Error marking chat as read:', error);
       } else {
@@ -199,7 +169,6 @@ const Chat: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['unreadChatCountByTab'] });
       }
     };
-
     void markAsRead();
   }, [chatRow?.id, user?.id, queryClient]);
 
@@ -213,18 +182,21 @@ const Chat: React.FC = () => {
   // Realtime subscription for new messages
   useEffect(() => {
     if (!chatRow?.id) return;
-
     const channel = supabase
       .channel(`chat-${chatRow.id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `chat_id=eq.${chatRow.id}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `chat_id=eq.${chatRow.id}`
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: ['chatMessages', chatRow.id] });
         }
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
@@ -262,8 +234,7 @@ const Chat: React.FC = () => {
   // اسم الطرف الآخر من البروفايل (أو fallback)
   const otherPartyName = useMemo(() => {
     if (otherProfile) {
-      const full =
-        `${otherProfile.first_name || ''} ${otherProfile.last_name || ''}`.trim();
+      const full = `${otherProfile.first_name || ''} ${otherProfile.last_name || ''}`.trim();
       if (full) return full;
     }
     return t('user');
@@ -278,9 +249,7 @@ const Chat: React.FC = () => {
     );
   }, [requestData]);
 
-  const priceDisplay = priceCalculation
-    ? `$${priceCalculation.totalPriceUSD.toFixed(2)}`
-    : '';
+  const priceDisplay = priceCalculation ? `$${priceCalculation.totalPriceUSD.toFixed(2)}` : '';
 
   if (isRequestLoading) {
     return (
@@ -359,9 +328,7 @@ const Chat: React.FC = () => {
                       <div
                         className={cn(
                           'max-w-[80%] rounded-lg px-3 py-2 text-xs',
-                          isMine
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-foreground'
+                          isMine ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
                         )}
                       >
                         <p className="whitespace-pre-wrap break-words">
@@ -387,30 +354,19 @@ const Chat: React.FC = () => {
             {/* Input */}
             <div className="pt-3 border-t mt-3">
               <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="flex items-center gap-2"
-                >
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex items-center gap-2">
                   <FormField
                     control={form.control}
                     name="content"
                     render={({ field }) => (
                       <FormItem className="flex-1 mb-0">
                         <FormControl>
-                          <Input
-                            placeholder={t('typeMessage')}
-                            {...field}
-                            autoComplete="off"
-                          />
+                          <Input placeholder={t('typeMessage')} {...field} autoComplete="off" />
                         </FormControl>
                       </FormItem>
                     )}
                   />
-                  <Button
-                    type="submit"
-                    size="icon"
-                    disabled={sendMessageMutation.isPending}
-                  >
+                  <Button type="submit" size="icon" disabled={sendMessageMutation.isPending}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </form>
@@ -441,6 +397,22 @@ const Chat: React.FC = () => {
               <User className="h-3 w-3" />
               {requestData.receiver_details}
             </p>
+            
+            {/* Phone number of the other party */}
+            {otherProfile?.phone && (
+              <div className="pt-2 border-t mt-2">
+                <p className="font-medium flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {t('phone')}
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  {otherProfile.phone}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {t('youCanCallThisNumber')}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
