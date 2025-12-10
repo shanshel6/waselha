@@ -1,3 +1,4 @@
+import React from "react"; // Explicitly import React
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,7 +12,6 @@ import Trips from "./pages/Trips";
 import MyProfile from "./pages/MyProfile";
 import Verification from "./pages/Verification";
 import AddTrip from "./pages/AddTrip";
-import TripDetails from "./pages/TripDetails";
 import MyRequests from "./pages/MyRequests";
 import Chat from "./pages/Chat";
 import CompleteProfile from "./pages/CompleteProfile";
