@@ -9,7 +9,7 @@ import { useVerificationStatus } from '@/hooks/use-verification-status';
 const Index = () => {
   const { t } = useTranslation();
   const { user } = useSession();
-  const { data: verificationInfo } = useVerificationStatus();
+  const { data: verificationInfo, isLoading: isVerificationLoading } = useVerificationStatus();
   
   const isLoggedIn = !!user;
   const isVerified = verificationInfo?.status === 'approved';
@@ -36,6 +36,12 @@ const Index = () => {
       description: t('step4Description'),
     },
   ];
+
+  // Don't show verification banner if:
+  // 1. User is not logged in
+  // 2. Verification status is still loading
+  // 3. User is already verified
+  const showVerificationBanner = isLoggedIn && !isVerificationLoading && !isVerified;
 
   return (
     <div className="flex flex-col items-center bg-background">
@@ -68,7 +74,7 @@ const Index = () => {
               </Button>
             </Link>
           </div>
-          {isLoggedIn && !isVerified && (
+          {showVerificationBanner && (
             <div className="max-w-2xl mx-auto mt-2">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2 rounded-lg bg-yellow-50/90 text-yellow-900 px-3 py-2 text-xs sm:text-sm shadow-sm">
                 <div className="flex items-center gap-2">
