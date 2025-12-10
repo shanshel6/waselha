@@ -17,12 +17,12 @@ const Navbar: React.FC = () => {
   const location = useLocation();
   const { data: profile } = useProfile();
 
-  // Public navigation (top center)
+  // Public navigation (top center) - in Arabic
   const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
-    { name: 'For Travelers', path: '/traveler-landing' }, // Added link to traveler landing page
-    { name: 'About', path: '/about' },
+    { name: 'عن وصلها', path: '/about' },
+    { name: 'الأسئلة الشائعة', path: '/faq' },
   ];
 
   // For mobile sidebar we still show profile-related links when logged in

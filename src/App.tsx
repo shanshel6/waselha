@@ -1,4 +1,4 @@
-import React from "react"; // Explicitly import React
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,43 +35,9 @@ import AdminPayments from "./pages/AdminPayments";
 import AdminReports from "./pages/AdminReports";
 import AuthGuard from "./components/AuthGuard";
 import TripDetails from "./pages/TripDetails";
-import TravelerLanding from "./pages/TravelerLanding"; // Added import for TravelerLanding
+import TravelerLanding from "./pages/TravelerLanding";
 
 const queryClient = new QueryClient();
-
-const MainLayout = () => (
-  <AuthGuard>
-    <Navbar />
-    <ChatNotificationListener />
-    <ChatUnreadNotificationBridge />
-    <ProfileCheckWrapper>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/trips" element={<Trips />} />
-        <Route path="/trips/:tripId" element={<TripDetails />} />
-        <Route path="/my-profile" element={<MyProfile />} />
-        <Route path="/verification" element={<Verification />} />
-        <Route path="/add-trip" element={<AddTrip />} />
-        <Route path="/my-requests" element={<MyRequests />} />
-        <Route path="/my-flights" element={<MyTripsPage />} />
-        <Route path="/chat/:requestId" element={<Chat />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/verifications" element={<AdminVerificationDashboard />} />
-        <Route path="/admin/payments" element={<AdminPayments />} />
-        <Route path="/admin/reports" element={<AdminReports />} />
-        <Route path="/place-order" element={<PlaceOrder />} />
-        <Route path="/traveler-landing" element={<TravelerLanding />} /> {/* Added route for TravelerLanding */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </ProfileCheckWrapper>
-    <Footer />
-  </AuthGuard>
-);
 
 const AppContent = () => {
   const { isLoading } = useSession();
@@ -84,19 +50,86 @@ const AppContent = () => {
   }
   return (
     <Routes>
-      {/* Public auth routes */}
+      {/* Public routes - no AuthGuard */}
+      <Route path="/" element={<Index />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/trips" element={<Trips />} />
+      <Route path="/trips/:tripId" element={<TripDetails />} />
+      <Route path="/traveler-landing" element={<TravelerLanding />} />
+      
+      {/* Auth routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/complete-profile" element={<CompleteProfile />} />
-      {/* Everything else goes through MainLayout + AuthGuard */}
-      <Route path="/*" element={<MainLayout />} />
+      
+      {/* Protected routes - wrapped with AuthGuard */}
+      <Route path="/my-profile" element={
+        <AuthGuard>
+          <MyProfile />
+        </AuthGuard>
+      } />
+      <Route path="/verification" element={
+        <AuthGuard>
+          <Verification />
+        </AuthGuard>
+      } />
+      <Route path="/add-trip" element={
+        <AuthGuard>
+          <AddTrip />
+        </AuthGuard>
+      } />
+      <Route path="/my-requests" element={
+        <AuthGuard>
+          <MyRequests />
+        </AuthGuard>
+      } />
+      <Route path="/my-flights" element={
+        <AuthGuard>
+          <MyTripsPage />
+        </AuthGuard>
+      } />
+      <Route path="/chat/:requestId" element={
+        <AuthGuard>
+          <Chat />
+        </AuthGuard>
+      } />
+      <Route path="/admin/dashboard" element={
+        <AuthGuard>
+          <AdminDashboard />
+        </AuthGuard>
+      } />
+      <Route path="/admin/verifications" element={
+        <AuthGuard>
+          <AdminVerificationDashboard />
+        </AuthGuard>
+      } />
+      <Route path="/admin/payments" element={
+        <AuthGuard>
+          <AdminPayments />
+        </AuthGuard>
+      } />
+      <Route path="/admin/reports" element={
+        <AuthGuard>
+          <AdminReports />
+        </AuthGuard>
+      } />
+      <Route path="/place-order" element={
+        <AuthGuard>
+          <PlaceOrder />
+        </AuthGuard>
+      } />
+      
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
 
 const App = () => {
-  // Use VITE_APP_BASE_PATH environment variable if available, otherwise default to '/'
   const basename = import.meta.env.VITE_APP_BASE_PATH || '/';
   return (
     <QueryClientProvider client={queryClient}>
@@ -105,7 +138,17 @@ const App = () => {
         <Sonner />
         <BrowserRouter basename={basename}>
           <SessionContextProvider>
-            <AppContent />
+            <div className="flex flex-col min-h-screen">
+              <Navbar />
+              <ChatNotificationListener />
+              <ChatUnreadNotificationBridge />
+              <ProfileCheckWrapper>
+                <main className="flex-grow">
+                  <AppContent />
+                </main>
+              </ProfileCheckWrapper>
+              <Footer />
+            </div>
           </SessionContextProvider>
         </BrowserRouter>
       </TooltipProvider>
