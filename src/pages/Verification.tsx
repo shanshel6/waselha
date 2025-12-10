@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useRef, useMemo } from "react";
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,29 +9,17 @@ import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from '@/components/ui/form';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription
-} from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2, Phone } from 'lucide-react';
+import { UploadCloud, CheckCircle, XCircle, FileImage, Loader2, Phone, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
 import { useProfile } from '@/hooks/use-profile';
 
-// Updated schema with phone validation
+// Updated schema with phone validation and address field
 const verificationSchema = z.object({
   first_name: z.string().min(1, { message: 'requiredField' }),
   last_name: z.string().min(1, { message: 'requiredField' }),
@@ -47,6 +34,7 @@ const verificationSchema = z.object({
       (val) => val.length >= 10 && val.length <= 12,
       { message: 'phoneMustBe10To12Digits' }
     ),
+  address: z.string().min(1, { message: 'requiredField' }),
   id_front_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
@@ -75,12 +63,7 @@ interface FileUploadFieldProps {
 
 const VERIFICATION_BUCKET = 'verification-documents';
 
-const FileUploadField: React.FC<FileUploadFieldProps> = ({
-  label,
-  required,
-  value,
-  onChange
-}) => {
+const FileUploadField: React.FC<FileUploadFieldProps> = ({ label, required, value, onChange }) => {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -140,20 +123,11 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
               <CheckCircle className="h-4 w-4" />
               <span className="text-sm font-medium">{t('uploadComplete')}</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFile}
-              disabled={uploading}
-            >
+            <Button variant="outline" size="sm" onClick={clearFile} disabled={uploading}>
               {t('removeFile')}
             </Button>
           </div>
-          <img
-            src={previewUrl}
-            alt={label}
-            className="w-full h-32 object-cover rounded-md border"
-          />
+          <img src={previewUrl} alt={label} className="w-full h-32 object-cover rounded-md border" />
         </div>
       ) : (
         <div
@@ -174,7 +148,6 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
           </p>
         </div>
       )}
-
       {uploading && (
         <div className="space-y-1">
           <Progress value={progress} className="w-full" />
@@ -183,7 +156,6 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
           </p>
         </div>
       )}
-
       {error && (
         <Alert variant="destructive">
           <XCircle className="h-4 w-4" />
@@ -197,7 +169,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
 const uploadVerificationFile = async (file: File, userId: string, key: string) => {
   const ext = file.name.split('.').pop() || 'jpg';
   const filePath = `${userId}/${key}-${Date.now()}.${ext}`;
-
+  
   const { error: uploadError } = await supabase.storage
     .from(VERIFICATION_BUCKET)
     .upload(filePath, file, {
@@ -230,21 +202,23 @@ const Verification = () => {
       first_name: '',
       last_name: '',
       phone: '',
+      address: '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
       residential_card_front_file: undefined as unknown as File,
       residential_card_back_file: undefined as unknown as File,
-      photo_id_file: undefined as unknown as File
+      photo_id_file: undefined as unknown as File,
     },
     values: useMemo(() => ({
       first_name: profile?.first_name || '',
       last_name: profile?.last_name || '',
       phone: profile?.phone || '',
+      address: profile?.address || '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
       residential_card_front_file: undefined as unknown as File,
       residential_card_back_file: undefined as unknown as File,
-      photo_id_file: undefined as unknown as File
+      photo_id_file: undefined as unknown as File,
     }), [profile])
   });
 
@@ -276,6 +250,7 @@ const Verification = () => {
       showError(t('pendingVerification'));
       return;
     }
+
     if (verificationInfo?.status === 'approved') {
       showError(t('verificationApproved'));
       navigate('/my-profile');
@@ -283,7 +258,6 @@ const Verification = () => {
     }
 
     setSubmitting(true);
-
     try {
       const [
         idFrontUrl,
@@ -312,13 +286,14 @@ const Verification = () => {
         throw error;
       }
 
-      // Update profile with name and phone number
+      // Update profile with name, phone number, and address
       await supabase
         .from('profiles')
         .update({
           first_name: values.first_name,
           last_name: values.last_name,
           phone: values.phone,
+          address: values.address,
         })
         .eq('id', user.id);
 
@@ -349,13 +324,11 @@ const Verification = () => {
               <AlertDescription className="text-xs md:text-sm">{t('pendingVerification')}</AlertDescription>
             </Alert>
           )}
-
           {status === 'rejected' && (
             <Alert className="mb-2" variant="destructive">
               <AlertDescription className="text-xs md:text-sm">{t('verificationRejected')}</AlertDescription>
             </Alert>
           )}
-
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Basic info */}
@@ -397,17 +370,36 @@ const Verification = () => {
                         {t('phone')}
                       </FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          disabled={submitDisabled}
-                          placeholder={t('phonePlaceholder')}
-                        />
+                        <Input {...field} disabled={submitDisabled} placeholder={t('phonePlaceholder')} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+              
+              {/* Address Field */}
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {t('address')}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        disabled={submitDisabled} 
+                        placeholder={t('addressPlaceholder')}
+                        rows={3}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* ID front/back */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -416,12 +408,7 @@ const Verification = () => {
                   name="id_front_file"
                   render={({ field }) => (
                     <FormItem>
-                      <FileUploadField
-                        label={t('idFront')}
-                        required
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
+                      <FileUploadField label={t('idFront')} required value={field.value} onChange={field.onChange} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -431,12 +418,7 @@ const Verification = () => {
                   name="id_back_file"
                   render={({ field }) => (
                     <FormItem>
-                      <FileUploadField
-                        label={t('idBack')}
-                        required
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
+                      <FileUploadField label={t('idBack')} required value={field.value} onChange={field.onChange} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -450,12 +432,7 @@ const Verification = () => {
                   name="residential_card_front_file"
                   render={({ field }) => (
                     <FormItem>
-                      <FileUploadField
-                        label={t('residentCardFront')}
-                        required
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
+                      <FileUploadField label={t('residentCardFront')} required value={field.value} onChange={field.onChange} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -465,12 +442,7 @@ const Verification = () => {
                   name="residential_card_back_file"
                   render={({ field }) => (
                     <FormItem>
-                      <FileUploadField
-                        label={t('residentCardBack')}
-                        required
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
+                      <FileUploadField label={t('residentCardBack')} required value={field.value} onChange={field.onChange} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -489,12 +461,7 @@ const Verification = () => {
                       name="photo_id_file"
                       render={({ field }) => (
                         <FormItem>
-                          <FileUploadField
-                            label={t('faceWithId')}
-                            required
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
+                          <FileUploadField label={t('faceWithId')} required value={field.value} onChange={field.onChange} />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -502,11 +469,7 @@ const Verification = () => {
                   </div>
                   <div className="order-1 md:order-2">
                     <div className="rounded-2xl border bg-muted/40 p-3">
-                      <img
-                        src="/holding-id.png"
-                        alt="Example of selfie with ID"
-                        className="w-full h-auto rounded-xl object-cover"
-                      />
+                      <img src="/holding-id.png" alt="Example of selfie with ID" className="w-full h-auto rounded-xl object-cover" />
                       <p className="mt-2 text-[11px] md:text-xs text-muted-foreground text-center md:text-right">
                         هذه صورة توضيحية توضح الشكل المطلوب: وجهك واضح والهوية ممسوكة بيدك بحيث تظهر بياناتها بوضوح.
                       </p>
@@ -515,11 +478,7 @@ const Verification = () => {
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={submitDisabled}
-              >
+              <Button type="submit" className="w-full" disabled={submitDisabled}>
                 {submitDisabled ? t('pendingVerification') : t('submitVerification')}
               </Button>
             </form>
