@@ -1,5 +1,4 @@
 "use client";
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -22,25 +21,22 @@ const Navbar: React.FC = () => {
   const publicNavItems = [
     { name: t('home'), path: '/' },
     { name: t('trips'), path: '/trips' },
-    { name: t('myRequests'), path: '/my-requests' }, // "طلباتي" بجانب "الرحلات"
-    { name: 'عن وصلها', path: '/about' },
+    { name: 'For Travelers', path: '/traveler-landing' }, // Added link to traveler landing page
+    { name: 'About', path: '/about' },
   ];
 
   // For mobile sidebar we still show profile-related links when logged in
   const mobileNavItems = [
     ...publicNavItems,
-    ...(session
-      ? [
-          { name: t('myFlights'), path: '/my-flights' },
-          { name: t('myProfile'), path: '/my-profile' },
-        ]
-      : []),
+    ...(session ? [
+      { name: t('myFlights'), path: '/my-flights' },
+      { name: t('myProfile'), path: '/my-profile' },
+    ] : []),
   ];
 
-  const isActive = (path: string) =>
-    path === '/'
-      ? location.pathname === '/'
-      : location.pathname.startsWith(path);
+  const isActive = (path: string) => path === '/' 
+    ? location.pathname === '/' 
+    : location.pathname.startsWith(path);
 
   const Brand = () => (
     <div className="inline-flex items-center gap-2">
@@ -67,46 +63,31 @@ const Navbar: React.FC = () => {
               </>
             ) : (
               <Link to="/login">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full px-4 py-2 text-sm"
-                >
+                <Button variant="outline" size="sm" className="rounded-full px-4 py-2 text-sm">
                   {t('login')}
                 </Button>
               </Link>
             )}
           </div>
-
           {/* Mobile: زر القائمة على اليسار */}
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full border border-border/60 bg-background/80"
-                >
+                <Button variant="ghost" size="icon" className="rounded-full border border-border/60 bg-background/80">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60"
-              >
+              <SheetContent side="left" className="w-[260px] sm:w-[300px] bg-background/95 backdrop-blur-md border-r border-border/60">
                 <div className="mt-4 mb-6 flex items-center justify-between">
                   <Brand />
                 </div>
-
                 <div className="flex flex-col space-y-2 mb-4">
                   {mobileNavItems.map((item) => (
                     <Link key={item.path} to={item.path}>
                       <div
                         className={cn(
                           'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                          isActive(item.path)
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                          isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                         )}
                       >
                         <span>{item.name}</span>
@@ -114,7 +95,6 @@ const Navbar: React.FC = () => {
                     </Link>
                   ))}
                 </div>
-
                 <div className="mt-2 border-t pt-4 flex flex-col gap-3">
                   {session && (
                     <div className="flex items-center gap-2">
@@ -143,9 +123,7 @@ const Navbar: React.FC = () => {
                 <span
                   className={cn(
                     'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
-                    isActive(item.path)
-                      ? 'text-primary bg-primary/10'
-                      : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                    isActive(item.path) ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
                   )}
                 >
                   {item.name}

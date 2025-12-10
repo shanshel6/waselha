@@ -34,7 +34,8 @@ import ResetPassword from "./pages/ResetPassword";
 import AdminPayments from "./pages/AdminPayments";
 import AdminReports from "./pages/AdminReports";
 import AuthGuard from "./components/AuthGuard";
-import TripDetails from "./pages/TripDetails"; // Added import for TripDetails
+import TripDetails from "./pages/TripDetails";
+import TravelerLanding from "./pages/TravelerLanding"; // Added import for TravelerLanding
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const MainLayout = () => (
         <Route path="/admin/payments" element={<AdminPayments />} />
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/place-order" element={<PlaceOrder />} />
+        <Route path="/traveler-landing" element={<TravelerLanding />} /> {/* Added route for TravelerLanding */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </ProfileCheckWrapper>
@@ -73,7 +75,6 @@ const MainLayout = () => (
 
 const AppContent = () => {
   const { isLoading } = useSession();
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-xl text-gray-700 dark:text-gray-300">
@@ -81,7 +82,6 @@ const AppContent = () => {
       </div>
     );
   }
-
   return (
     <Routes>
       {/* Public auth routes */}
@@ -98,7 +98,6 @@ const AppContent = () => {
 const App = () => {
   // Use VITE_APP_BASE_PATH environment variable if available, otherwise default to '/'
   const basename = import.meta.env.VITE_APP_BASE_PATH || '/';
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
