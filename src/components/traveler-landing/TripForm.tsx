@@ -27,7 +27,7 @@ const MAX_KG = 50;
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: 'requiredField' }),
-  to_country: z.string().min(1, { message: 'requiredField' });
+  to_country: z.string().min(1, { message: 'requiredField' }),
   trip_date: z.date({ required_error: 'dateRequired' }),
   free_kg: z
     .coerce.number()
