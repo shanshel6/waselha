@@ -34,6 +34,7 @@ import ResetPassword from "./pages/ResetPassword";
 import AdminPayments from "./pages/AdminPayments";
 import AdminReports from "./pages/AdminReports";
 import AuthGuard from "./components/AuthGuard";
+import TripDetails from "./pages/TripDetails"; // Added import for TripDetails
 
 const queryClient = new QueryClient();
 
