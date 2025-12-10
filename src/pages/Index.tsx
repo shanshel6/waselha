@@ -10,7 +10,7 @@ const Index = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const { data: verificationInfo, isLoading: isVerificationLoading } = useVerificationStatus();
-  
+
   const isLoggedIn = !!user;
   const isVerified = verificationInfo?.status === 'approved';
 
@@ -49,7 +49,7 @@ const Index = () => {
       <section className="relative w-full h-[60vh] md:h-[70vh] flex items-center justify-center text-center text-white">
         <div className="absolute inset-0 bg-black/50 z-10" />
         <img
-          src="https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=2070&auto=format&fit=crop&ixlib-rb-4.0.3&ixlib=idM3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          src="https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixlib=idM3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           alt="Modern airport terminal"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -58,7 +58,7 @@ const Index = () => {
             {t('welcome')}
           </h1>
           <p className="text-lg md:text-xl text-neutral-200 mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}>
-            اربط بين المسافرين والمرسلين لشحن الطرود بطريقة أسهل وأرخص من شركات الشحن التقليدية.
+            وصلها تربطك بالأشخاص المناسبين لشحن طرودك بسرعة وأمان وتكلفة أقل بكثير من شركات الشحن
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-4">
             <Link to="/add-trip">
@@ -105,7 +105,7 @@ const Index = () => {
               إذا كنت مسافرًا ولديك وزن فارغ في حقيبتك، يمكنك نشر رحلتك وكسب المال مقابل حمل طرود آمنة ومحددة.
             </p>
             <ul className="text-sm text-foreground space-y-1 list-disc pr-4">
-              <li>انشر رحلتك من صفحة &quot;إضافة رحلة&quot;.</li>
+              <li>انشر رحلتك من صفحة "إضافة رحلة".</li>
               <li>استقبل طلبات من المرسلين الذين يطابقون مسار رحلتك.</li>
               <li>تأكد من محتوى الطرد عبر الصور والفحص قبل السفر.</li>
               <li>سلّم الطرد عند الوصول واستلم المبلغ المتفق عليه.</li>
@@ -133,10 +133,10 @@ const Index = () => {
               إذا أردت إرسال طرد إلى دولة أخرى أو مدينة أخرى، يمكنك إما اختيار رحلة مناسبة أو إنشاء طلب شحن عام.
             </p>
             <ul className="text-sm text-foreground space-y-1 list-disc pr-4">
-              <li>ابحث عن رحلة من صفحة &quot;الرحلات&quot; واختر مسافرًا مناسبًا.</li>
-              <li>أو أنشئ &quot;طلب شحن عام&quot; من صفحة &quot;طلب شحن جديد&quot;.</li>
+              <li>ابحث عن رحلة من صفحة "الرحلات" واختر مسافرًا مناسبًا.</li>
+              <li>أو أنشئ "طلب شحن عام" من صفحة "طلب شحن جديد".</li>
               <li>تواصل مع المسافر داخل التطبيق لتحديد مكان ووقت التسليم.</li>
-              <li>تابع حالة الطرد خطوة بخطوة من صفحة &quot;طلباتي&quot;.</li>
+              <li>تابع حالة الطرد خطوة بخطوة من صفحة "طلباتي".</li>
             </ul>
             <div className="mt-4 flex flex-wrap gap-2 justify-between items-center">
               <div className="flex gap-2">
