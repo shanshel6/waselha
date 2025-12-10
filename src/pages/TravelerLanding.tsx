@@ -1,89 +1,74 @@
 "use client";
-import React, { useMemo, useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { format } from 'date-fns';
-import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import { showSuccess, showError } from '@/utils/toast';
-import { countries } from '@/lib/countries';
-import { calculateTravelerProfit } from '@/lib/pricing';
-import CountryFlag from '@/components/CountryFlag';
-import { useQueryClient } from '@tanstack/react-query';
-import { Slider } from '@/components/ui/slider';
-import TicketUpload from '@/components/TicketUpload';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
-import { arabicCountries } from '@/lib/countries-ar';
-
-const MIN_KG = 1;
-const MAX_KG = 50;
-
-const formSchema = z.object({
-  from_country: z.string().min(1, { message: 'requiredField' }),
-  to_country: z.string().min(1, { message: 'requiredField' }),
-  trip_date: z.date({ required_error: 'dateRequired' }),
-  free_kg: z
-    .coerce.number()
-    .min(MIN_KG, { message: 'minimumWeight' })
-    .max(MAX_KG, { message: 'maxWeight' }),
-  traveler_location: z.string().min(1, { message: 'requiredField' }),
-  notes: z.string().optional(),
-});
-
-const BUCKET_NAME = 'trip-tickets';
+import { showSuccess, showError } from '@/utils/toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { TripForm } from '@/components/traveler-landing/TripForm';
+import { BenefitsSection } from '@/components/traveler-landing/BenefitsSection';
+import { Loader2 } from 'lucide-react';
 
 const TravelerLanding = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
-  const [ticketFile, setTicketFile] = useState<File | null>(null);
-  const [tripData, setTripData] = useState<z.infer<typeof formSchema> | null>(null);
+  const [tripData, setTripData] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      from_country: 'Iraq',
-      to_country: '',
-      free_kg: MIN_KG,
-      traveler_location: '',
-      notes: '',
-    },
-  });
 
-  const { from_country, to_country, free_kg } = form.watch();
-
+  // Check for pending trip data after login
   useEffect(() => {
-    if (from_country && from_country !== 'Iraq' && to_country !== 'Iraq') {
-      form.setValue('to_country', 'Iraq');
-    } else if (to_country && to_country !== 'Iraq' && from_country !== 'Iraq') {
-      form.setValue('from_country', 'Iraq');
-    } else if (from_country === 'Iraq' && to_country === 'Iraq') {
-      form.setValue('to_country', '');
+    if (user && !tripData) {
+      const pendingData = localStorage.getItem('pendingTripData');
+      const pendingTicketFileInfo = localStorage.getItem('pendingTicketFileInfo');
+      
+      if (pendingData && pendingTicketFileInfo) {
+        try {
+          const data = JSON.parse(pendingData);
+          const ticketFileInfo = JSON.parse(pendingTicketFileInfo);
+          
+          setTripData(data);
+          showSuccess('جارٍ إرسال بيانات الرحلة...');
+        } catch (e) {
+          console.error('Error parsing pending trip data:', e);
+        }
+      }
     }
-  }, [from_country, to_country, form]);
+  }, [user, tripData]);
 
-  const estimatedProfit = useMemo(() => {
-    if (from_country && to_country && free_kg > 0) {
-      return calculateTravelerProfit(from_country, to_country, free_kg);
-    }
-    return null;
-  }, [from_country, to_country, free_kg]);
+  // Submit pending trip after login
+  useEffect(() => {
+    const submitPendingTrip = async () => {
+      if (user && tripData) {
+        const pendingTicketFileInfo = localStorage.getItem('pendingTicketFileInfo');
+        
+        if (!pendingTicketFileInfo) {
+          showError('بيانات التذكرة مفقودة. يرجى إعادة ملء النموذج');
+          setTripData(null);
+          return;
+        }
+        
+        try {
+          // Note: In a real implementation, we would need to handle file upload after login
+          // For now, we'll show an error since we can't automatically upload the file
+          showError('يرجى إعادة تحميل تذكرة الطيران وإرسال الرحلة يدويًا');
+          setTripData(null);
+          
+          // Clear localStorage
+          localStorage.removeItem('pendingTripData');
+          localStorage.removeItem('pendingTicketFileInfo');
+        } catch (err: any) {
+          console.error('Error submitting pending trip:', err);
+          showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
+          setTripData(null);
+        }
+      }
+    };
+    
+    submitPendingTrip();
+  }, [user, tripData]);
 
   const ensureBucketExists = async () => {
     const { data, error } = await supabase.functions.invoke('create-trip-tickets-bucket');
@@ -102,7 +87,7 @@ const TravelerLanding = () => {
     const ext = file.name.split('.').pop() || 'pdf';
     const filePath = `${userId}/${Date.now()}-ticket.${ext}`;
     const { error: uploadError } = await supabase.storage
-      .from(BUCKET_NAME)
+      .from('trip-tickets')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false,
@@ -111,12 +96,14 @@ const TravelerLanding = () => {
       console.error('Ticket upload error:', uploadError);
       throw new Error(uploadError.message || 'Failed to upload ticket file.');
     }
-    const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+    const { data: publicUrlData } = supabase.storage.from('trip-tickets').getPublicUrl(filePath);
     return publicUrlData.publicUrl;
   };
 
-  const createTrip = async (values: z.infer<typeof formSchema>, ticketFile: File, userId: string) => {
+  const createTrip = async (values: any, ticketFile: File, userId: string) => {
     let charge_per_kg = 0;
+    // Import calculateTravelerProfit function
+    const { calculateTravelerProfit } = await import('@/lib/pricing');
     const profit = calculateTravelerProfit(values.from_country, values.to_country, values.free_kg);
     if (profit) {
       charge_per_kg = profit.pricePerKgUSD;
@@ -128,7 +115,7 @@ const TravelerLanding = () => {
       user_id: userId,
       from_country: values.from_country,
       to_country: values.to_country,
-      trip_date: format(values.trip_date, 'yyyy-MM-dd'),
+      trip_date: values.trip_date.toISOString().split('T')[0],
       free_kg: values.free_kg,
       traveler_location: values.traveler_location,
       notes: values.notes,
@@ -145,7 +132,7 @@ const TravelerLanding = () => {
     return true;
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: any, ticketFile: File | null) => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
@@ -181,21 +168,21 @@ const TravelerLanding = () => {
     // User is logged in - proceed with trip creation
     const isVerified = verificationInfo?.status === 'approved';
     if (!isVerified) {
-      showError(t('verificationRequiredTitle'));
+      showError('verificationRequiredTitle');
       navigate('/verification');
       setIsSubmitting(false);
       return;
     }
 
     if (!ticketFile) {
-      showError(t('ticketRequired'));
+      showError('ticketRequired');
       setIsSubmitting(false);
       return;
     }
 
     try {
       await createTrip(values, ticketFile, user.id);
-      showSuccess(t('tripAddedSuccessPending'));
+      showSuccess('tripAddedSuccessPending');
       
       // Invalidate queries to refresh the trips list
       queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
@@ -206,66 +193,11 @@ const TravelerLanding = () => {
       navigate('/my-flights');
     } catch (err: any) {
       console.error('Error creating trip:', err);
-      showError(err.message || t('tripAddedError'));
+      showError(err.message || 'tripAddedError');
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // Check for pending trip data after login
-  useEffect(() => {
-    if (user && !tripData) {
-      const pendingData = localStorage.getItem('pendingTripData');
-      const pendingTicketFileInfo = localStorage.getItem('pendingTicketFileInfo');
-      
-      if (pendingData && pendingTicketFileInfo) {
-        try {
-          const data = JSON.parse(pendingData);
-          const ticketFileInfo = JSON.parse(pendingTicketFileInfo);
-          
-          setTripData(data);
-          form.reset(data);
-          
-          // Show message that we're submitting the pending trip
-          showSuccess('جارٍ إرسال بيانات الرحلة...');
-        } catch (e) {
-          console.error('Error parsing pending trip data:', e);
-        }
-      }
-    }
-  }, [user, tripData, form]);
-
-  // Submit pending trip after login
-  useEffect(() => {
-    const submitPendingTrip = async () => {
-      if (user && tripData) {
-        const pendingTicketFileInfo = localStorage.getItem('pendingTicketFileInfo');
-        
-        if (!pendingTicketFileInfo) {
-          showError('بيانات التذكرة مفقودة. يرجى إعادة ملء النموذج');
-          setTripData(null);
-          return;
-        }
-        
-        try {
-          // Note: In a real implementation, we would need to handle file upload after login
-          // For now, we'll show an error since we can't automatically upload the file
-          showError('يرجى إعادة تحميل تذكرة الطيران وإرسال الرحلة يدويًا');
-          setTripData(null);
-          
-          // Clear localStorage
-          localStorage.removeItem('pendingTripData');
-          localStorage.removeItem('pendingTicketFileInfo');
-        } catch (err: any) {
-          console.error('Error submitting pending trip:', err);
-          showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
-          setTripData(null);
-        }
-      }
-    };
-    
-    submitPendingTrip();
-  }, [user, tripData]);
 
   if (isVerificationStatusLoading) {
     return (
@@ -277,259 +209,8 @@ const TravelerLanding = () => {
 
   return (
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-      {/* Form Section - Appears first without scrolling */}
-      <Card className="max-w-2xl mx-auto mb-12">
-        <CardHeader>
-          <CardTitle className="text-2xl md:text-3xl font-bold text-center">
-            أضف رحلتك الآن
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* From / To countries */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="from_country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('fromCountry')}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('selectCountry')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {countries.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              <div className="flex items-center gap-2">
-                                <CountryFlag country={c} />
-                                <span>{arabicCountries[c] || c}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="to_country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('toCountry')}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('selectCountry')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {countries.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              <div className="flex items-center gap-2">
-                                <CountryFlag country={c} />
-                                <span>{arabicCountries[c] || c}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Trip date */}
-              <FormField
-                control={form.control}
-                name="trip_date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>{t('tripDate')}</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={'outline'}
-                            className={cn(
-                              'w-full justify-between text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, 'PPP')
-                            ) : (
-                              <span>{t('selectDate')}</span>
-                            )}
-                            <CalendarIcon className="h-4 w-4 opacity-70" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Free kg slider */}
-              <FormField
-                control={form.control}
-                name="free_kg"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t('freeKg')} ({field.value} kg)
-                    </FormLabel>
-                    <FormControl>
-                      <div className="mt-2">
-                        <Slider
-                          min={MIN_KG}
-                          max={MAX_KG}
-                          step={1}
-                          value={[field.value]}
-                          onValueChange={(val) => field.onChange(val[0])}
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>1 kg</span>
-                          <span>50 kg</span>
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Traveler location */}
-              <FormField
-                control={form.control}
-                name="traveler_location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {t('travelerLocation')}
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder={t('travelerLocationPlaceholder')} {...field} />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      {t('travelerLocationDescription')}
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Notes */}
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <StickyNote className="h-4 w-4" />
-                      {t('notes')}
-                    </FormLabel>
-                    <FormControl>
-                      <Textarea rows={3} placeholder={t('notes')} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Ticket upload */}
-              <TicketUpload onFileSelected={setTicketFile} />
-
-              {/* Estimated profit (USD only) */}
-              {estimatedProfit && !estimatedProfit.error && (
-                <Card className="mt-4 border-primary/30 bg-primary/5">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                      {t('estimatedProfit')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm space-y-1">
-                    <p>
-                      {estimatedProfit.totalPriceUSD.toFixed(2)} USD
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('basedOnWeightAndDestination')}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Info about admin review */}
-              <p className="text-xs text-muted-foreground">
-                {t('tripPendingApprovalNote')}
-              </p>
-              <Button 
-                type="submit" 
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={isSubmitting || form.formState.isSubmitting}
-              >
-                {(isSubmitting || form.formState.isSubmitting) ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                إضافة رحلتي
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      {/* Benefits Section */}
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-center mb-8">ليش تنشر رحلتك؟</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="text-center p-6">
-            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <DollarSign className="h-8 w-8 text-blue-600" />
-            </div>
-            <h3 className="font-semibold text-lg mb-2">طلع فلوس من وزن الشنطة الفاضي</h3>
-            <p className="text-gray-600 text-sm">حول مساحتك الزائدة إلى دخل إضافي</p>
-          </Card>
-          <Card className="text-center p-6">
-            <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MapPin className="h-8 w-8 text-teal-600" />
-            </div>
-            <h3 className="font-semibold text-lg mb-2">ساعد الناس توصل أغراضها</h3>
-            <p className="text-gray-600 text-sm">ساهم في تسهيل حياة الآخرين</p>
-          </Card>
-          <Card className="text-center p-6">
-            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <StickyNote className="h-8 w-8 text-blue-600" />
-            </div>
-            <h3 className="font-semibold text-lg mb-2">الدفع محمي داخل الموقع</h3>
-            <p className="text-gray-600 text-sm">معاملات آمنة ومراقبة</p>
-          </Card>
-          <Card className="text-center p-6">
-            <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <div className="bg-teal-600 text-white rounded-full w-8 h-8 flex items-center justify-center">✓</div>
-            </div>
-            <h3 className="font-semibold text-lg mb-2">المسافرين والمُرسلين يتحققون من هويتهم</h3>
-            <p className="text-gray-600 text-sm">بيئة آمنة وموثوقة</p>
-          </Card>
-        </div>
-      </div>
+      <TripForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <BenefitsSection />
     </div>
   );
 };
