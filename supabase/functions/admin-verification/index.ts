@@ -1,41 +1,37 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-interface AdminVerificationPayload {
-  request_id: string;
-  user_id: string;
-  status: "approved" | "rejected";
-}
-
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
-      headers: corsHeaders,
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      },
     });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    // Get environment variables
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !serviceRoleKey) {
       return new Response(
-        JSON.stringify({ error: "Supabase environment not configured" }),
+        JSON.stringify({ error: "Server configuration error" }),
         {
           status: 500,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
+    // Create admin client
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -43,158 +39,181 @@ serve(async (req) => {
       },
     });
 
-    // 1) Authenticate caller
+    // Authenticate admin user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized: Missing Authorization header" }),
+        JSON.stringify({ error: "Missing authorization header" }),
         {
           status: 401,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await adminClient.auth.getUser(
-      token,
-    );
+    const { data: userData, error: userError } = await adminClient.auth.getUser(token);
 
     if (userError || !userData.user) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized: Invalid token" }),
+        JSON.stringify({ error: "Invalid authorization token" }),
         {
           status: 401,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
     const adminUserId = userData.user.id;
 
-    // 2) Ensure caller is admin
+    // Verify admin privileges
     const { data: adminProfile, error: profileError } = await adminClient
       .from("profiles")
       .select("is_admin")
       .eq("id", adminUserId)
-      .maybeSingle();
+      .single();
 
     if (profileError || !adminProfile?.is_admin) {
       return new Response(
-        JSON.stringify({ error: "Forbidden: Admin access required" }),
+        JSON.stringify({ error: "Insufficient privileges" }),
         {
           status: 403,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
-    // 3) Parse payload
-    const body = (await req.json()) as AdminVerificationPayload;
-    
-    if (!body.request_id || !body.user_id || !body.status) {
+    // Parse request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
       return new Response(
-        JSON.stringify({ error: "Invalid payload" }),
+        JSON.stringify({ error: "Invalid JSON in request body" }),
         {
           status: 400,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
     const { request_id, user_id, status } = body;
-    
-    if (status !== "approved" && status !== "rejected") {
+
+    // Validate request parameters
+    if (!request_id || !user_id || !status) {
       return new Response(
-        JSON.stringify({ error: "Invalid status value" }),
+        JSON.stringify({ error: "Missing required parameters: request_id, user_id, status" }),
         {
           status: 400,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
-    // 4) Update verification_requests row
-    const { error: requestError } = await adminClient
+    if (status !== "approved" && status !== "rejected") {
+      return new Response(
+        JSON.stringify({ error: "Invalid status. Must be 'approved' or 'rejected'" }),
+        {
+          status: 400,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Update verification request
+    const { error: updateError } = await adminClient
       .from("verification_requests")
       .update({
-        status,
+        status: status,
         updated_at: new Date().toISOString(),
       })
       .eq("id", request_id)
       .eq("user_id", user_id);
 
-    if (requestError) {
-      console.error("admin-verification: error updating verification_requests", requestError);
+    if (updateError) {
+      console.error("Error updating verification request:", updateError);
       return new Response(
         JSON.stringify({ error: "Failed to update verification request" }),
         {
           status: 500,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
-    // 5) Update profiles.is_verified accordingly
-    const shouldBeVerified = status === "approved";
+    // Update user profile verification status
     const { error: profileUpdateError } = await adminClient
       .from("profiles")
-      .update({ is_verified: shouldBeVerified })
+      .update({ 
+        is_verified: status === "approved",
+        updated_at: new Date().toISOString()
+      })
       .eq("id", user_id);
 
     if (profileUpdateError) {
-      console.error("admin-verification: error updating profiles.is_verified", profileUpdateError);
+      console.error("Error updating profile:", profileUpdateError);
       return new Response(
-        JSON.stringify({ error: "Failed to update profile verification flag" }),
+        JSON.stringify({ error: "Failed to update user profile" }),
         {
           status: 500,
           headers: {
-            ...corsHeaders,
+            "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json",
           },
-        },
+        }
       );
     }
 
+    // Return success response
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ 
+        success: true,
+        message: `Verification request ${status} successfully`
+      }),
       {
         status: 200,
         headers: {
-          ...corsHeaders,
+          "Access-Control-Allow-Origin": "*",
           "Content-Type": "application/json",
         },
-      },
+      }
     );
+
   } catch (error) {
-    console.error("admin-verification: unexpected error", error);
+    console.error("Unexpected error in admin-verification function:", error);
     return new Response(
-      JSON.stringify({ error: (error as Error).message }),
+      JSON.stringify({ 
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error occurred"
+      }),
       {
         status: 500,
         headers: {
-          ...corsHeaders,
+          "Access-Control-Allow-Origin": "*",
           "Content-Type": "application/json",
         },
-      },
+      }
     );
   }
 });
