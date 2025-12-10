@@ -11,28 +11,9 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import CountryFlag from '@/components/CountryFlag';
@@ -41,6 +22,7 @@ import { DollarSign, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
+import { arabicCountries } from '@/lib/countries-ar';
 
 const orderSchema = z.object({
   from_country: z.string().min(1, { message: 'requiredField' }),
@@ -62,10 +44,7 @@ const PlaceOrder = () => {
 
   useEffect(() => {
     const key = 'hasSeenHelper_placeOrder';
-    const seen =
-      typeof window !== 'undefined'
-        ? window.localStorage.getItem(key)
-        : 'true';
+    const seen = typeof window !== 'undefined' ? window.localStorage.getItem(key) : 'true';
     if (!seen) {
       setShowHelper(true);
     }
@@ -95,9 +74,7 @@ const PlaceOrder = () => {
     if (from_country && from_country !== 'Iraq' && to_country !== 'Iraq') {
       form.setValue('to_country', 'Iraq');
     } else if (
-      to_country &&
-      to_country !== 'Iraq' &&
-      from_country !== 'Iraq'
+      to_country && to_country !== 'Iraq' && from_country !== 'Iraq'
     ) {
       form.setValue('from_country', 'Iraq');
     } else if (from_country === 'Iraq' && to_country === 'Iraq') {
@@ -164,8 +141,7 @@ const PlaceOrder = () => {
           <CardHeader>
             <CardTitle className="text-2xl">{t('placeOrder')}</CardTitle>
             <CardDescription>
-              {t('orderDescriptionPlaceholder') ||
-                'أنشئ طلب شحن عام ليتم مطابقته تلقائياً مع رحلات مناسبة.'}
+              {t('orderDescriptionPlaceholder') || 'أنشئ طلب شحن عام ليتم مطابقته تلقائياً مع رحلات مناسبة.'}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -175,9 +151,7 @@ const PlaceOrder = () => {
             <div className="flex-1">
               <p className="font-semibold">ما هو طلب الشحن العام؟</p>
               <p className="text-muted-foreground mt-1">
-                عند إنشاء &quot;طلب شحن عام&quot;، سيبحث النظام تلقائياً عن
-                رحلات مطابقة من وإلى نفس الدول، ويقوم بإنشاء طلب عادي مع
-                المسافر المناسب. يمكنك متابعة هذه الطلبات من صفحة &quot;طلباتي&quot;.
+                عند إنشاء "طلب شحن عام"، سيبحث النظام تلقائياً عن رحلات مطابقة من وإلى نفس الدول، ويقوم بإنشاء طلب عادي مع المسافر المناسب. يمكنك متابعة هذه الطلبات من صفحة "طلباتي".
               </p>
             </div>
             <button
@@ -198,10 +172,7 @@ const PlaceOrder = () => {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* من / إلى الدول */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -210,15 +181,10 @@ const PlaceOrder = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('fromCountry')}</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue
-                                placeholder={t('selectCountry')}
-                              />
+                              <SelectValue placeholder={t('selectCountry')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -226,7 +192,7 @@ const PlaceOrder = () => {
                               <SelectItem key={c} value={c}>
                                 <div className="flex items-center gap-2">
                                   <CountryFlag country={c} />
-                                  <span>{c}</span>
+                                  <span>{arabicCountries[c] || c}</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -242,15 +208,10 @@ const PlaceOrder = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('toCountry')}</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue
-                                placeholder={t('selectCountry')}
-                              />
+                              <SelectValue placeholder={t('selectCountry')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -258,7 +219,7 @@ const PlaceOrder = () => {
                               <SelectItem key={c} value={c}>
                                 <div className="flex items-center gap-2">
                                   <CountryFlag country={c} />
-                                  <span>{c}</span>
+                                  <span>{arabicCountries[c] || c}</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -281,8 +242,7 @@ const PlaceOrder = () => {
                         <Textarea
                           rows={4}
                           placeholder={
-                            t('orderDescriptionPlaceholder') ||
-                            'مثال: ملابس، أجهزة إلكترونية خفيفة، هدايا، كتب...'
+                            t('orderDescriptionPlaceholder') || 'مثال: ملابس، أجهزة إلكترونية خفيفة، هدايا، كتب...'
                           }
                           {...field}
                         />
@@ -332,9 +292,7 @@ const PlaceOrder = () => {
                         </p>
                         {(!baseCost || baseCost.error) && (
                           <p className="text-xs text-destructive mt-1">
-                            {baseCost?.error ||
-                              t('eitherFromOrToIraq') ||
-                              'اختر من/إلى بلد واحد على الأقل العراق واحرص على إدخال وزن صحيح.'}
+                            {baseCost?.error || t('eitherFromOrToIraq') || 'اختر من/إلى بلد واحد على الأقل العراق واحرص على إدخال وزن صحيح.'}
                           </p>
                         )}
                         {baseCost && !baseCost.error && (
@@ -371,14 +329,8 @@ const PlaceOrder = () => {
                   </button>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting
-                    ? t('loading') || 'جاري الإرسال...'
-                    : t('submit') || 'إرسال الطلب'}
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? t('loading') || 'جاري الإرسال...' : t('submit') || 'إرسال الطلب'}
                 </Button>
               </form>
             </Form>
