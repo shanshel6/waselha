@@ -95,12 +95,15 @@ const AppContent = () => {
 };
 
 const App = () => {
+  // Use VITE_APP_BASE_PATH environment variable if available, otherwise default to '/'
+  const basename = import.meta.env.VITE_APP_BASE_PATH || '/';
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename={basename}>
           <SessionContextProvider>
             <AppContent />
           </SessionContextProvider>
