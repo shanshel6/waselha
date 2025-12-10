@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +19,6 @@ import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import { calculateTravelerProfit } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
-import TicketUpload from '@/components/TicketUpload';
 import { arabicCountries } from '@/lib/countries-ar';
 
 const MIN_KG = 1;
@@ -38,13 +37,12 @@ const formSchema = z.object({
 });
 
 interface TripFormProps {
-  onSubmit: (values: z.infer<typeof formSchema>, ticketFile: File | null) => void;
+  onSubmit: (values: z.infer<typeof formSchema>) => void;
   isSubmitting: boolean;
 }
 
 export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) => {
   const { t } = useTranslation();
-  const [ticketFile, setTicketFile] = useState<File | null>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,10 +75,6 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
     return null;
   }, [from_country, to_country, free_kg]);
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    onSubmit(values, ticketFile);
-  };
-
   return (
     <Card className="max-w-2xl mx-auto mb-12">
       <CardHeader>
@@ -90,7 +84,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* From / To countries */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -257,9 +251,6 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
                 </FormItem>
               )}
             />
-
-            {/* Ticket upload */}
-            <TicketUpload onFileSelected={setTicketFile} />
 
             {/* Estimated profit (USD only) */}
             {estimatedProfit && !estimatedProfit.error && (
