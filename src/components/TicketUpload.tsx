@@ -54,7 +54,8 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onFileSelected, existingFil
     setProgress(0);
 
     try {
-      // Create a local preview URL if (previewUrl && !existingFileUrl) {
+      // Create a local preview URL
+      if (previewUrl && !existingFileUrl) {
         URL.revokeObjectURL(previewUrl);
       }
       const localUrl = URL.createObjectURL(file);
@@ -88,7 +89,7 @@ const TicketUpload: React.FC<TicketUploadProps> = ({ onFileSelected, existingFil
     <div className="space-y-4">
       <div className="font-medium flex items-center gap-2">
         <FileText className="h-5 w-5" />
-        {"تحميل تذكرة السفر"}
+        {"تحميل تذكرة الطيران"}
       </div>
       {hasFile && previewUrl ? (
         <div className="border rounded-lg p-4">
