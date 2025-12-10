@@ -10,6 +10,7 @@ const Index = () => {
   const { t } = useTranslation();
   const { user } = useSession();
   const { data: verificationInfo } = useVerificationStatus();
+  
   const isLoggedIn = !!user;
   const isVerified = verificationInfo?.status === 'approved';
 
@@ -47,31 +48,26 @@ const Index = () => {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="relative z-20 max-w-4xl p-4">
-          <h1
-            className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight"
-            style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}
-          >
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight tracking-tight" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
             {t('welcome')}
           </h1>
-          <p
-            className="text-lg md:text-xl text-neutral-200 mb-8"
-            style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}
-          >
+          <p className="text-lg md:text-xl text-neutral-200 mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}>
             اربط بين المسافرين والمرسلين لشحن الطرود بطريقة أسهل وأرخص من شركات الشحن التقليدية.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-4">
             <Link to="/add-trip">
               <Button size="lg" className="w-full text-lg py-6">
-                <Plane className="mr-2 h-5 w-5" /> {t('imATraveler')}
+                <Plane className="mr-2 h-5 w-5" />
+                {t('imATraveler')}
               </Button>
             </Link>
             <Link to="/trips">
               <Button size="lg" variant="secondary" className="w-full text-lg py-6">
-                <Package className="mr-2 h-5 w-5" /> {t('iWantToSendPackage')}
+                <Package className="mr-2 h-5 w-5" />
+                {t('iWantToSendPackage')}
               </Button>
             </Link>
           </div>
-
           {isLoggedIn && !isVerified && (
             <div className="max-w-2xl mx-auto mt-2">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2 rounded-lg bg-yellow-50/90 text-yellow-900 px-3 py-2 text-xs sm:text-sm shadow-sm">
