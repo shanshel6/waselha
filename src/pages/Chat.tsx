@@ -383,34 +383,43 @@ const Chat: React.FC = () => {
               {t('packageDetails')}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-xs">
-            <p className="font-medium">{requestData.description}</p>
-            <p className="text-muted-foreground flex items-center gap-1">
-              <Plane className="h-3 w-3" />
-              {requestData.weight_kg} kg
-            </p>
-            <p className="text-muted-foreground flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {requestData.destination_city}
-            </p>
-            <p className="text-muted-foreground flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {requestData.receiver_details}
-            </p>
+          <CardContent className="space-y-3 text-xs">
+            <div>
+              <p className="font-medium text-xs mb-1">{t('packageContents')}</p>
+              <p className="text-muted-foreground">{requestData.description}</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-1">
+                <Plane className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground">{requestData.weight_kg} kg</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground truncate">{requestData.destination_city}</span>
+              </div>
+            </div>
+            
+            <div>
+              <p className="font-medium text-xs mb-1">{t('receiverDetails')}</p>
+              <p className="text-muted-foreground">{requestData.receiver_details}</p>
+            </div>
             
             {/* Phone number of the other party */}
             {otherProfile?.phone && (
-              <div className="pt-2 border-t mt-2">
-                <p className="font-medium flex items-center gap-1">
-                  <Phone className="h-3 w-3" />
-                  {t('phone')}
-                </p>
-                <p className="text-muted-foreground text-xs mt-1">
-                  {otherProfile.phone}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {t('youCanCallThisNumber')}
-                </p>
+              <div className="pt-2 border-t border-border">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md p-3">
+                  <p className="font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-1 mb-1">
+                    <Phone className="h-3 w-3" />
+                    {t('phone')}
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300 font-medium text-sm">
+                    {otherProfile.phone}
+                  </p>
+                  <p className="text-blue-600 dark:text-blue-400 text-[10px] mt-1">
+                    {t('youCanCallThisNumber')}
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
