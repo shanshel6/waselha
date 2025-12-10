@@ -1,34 +1,11 @@
 "use client";
-
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  ChevronDown,
-  ChevronUp,
-  Plane,
-  Trash2,
-  MessageSquare,
-  BadgeCheck,
-  CalendarDays,
-  MapPin,
-  User,
-  Phone,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Pencil,
-  Camera,
-  PackageCheck,
-  Weight,
-  DollarSign,
-  Wallet,
-  AlertTriangle,
-  ImageIcon,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Plane, Trash2, MessageSquare, BadgeCheck, CalendarDays, MapPin, User, Phone, CheckCircle, XCircle, Clock, Pencil, Camera, PackageCheck, Weight, DollarSign, Wallet, AlertTriangle, ImageIcon } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
 import { RequestTrackingStatus, TRACKING_STAGES } from '@/lib/tracking-stages';
@@ -36,14 +13,7 @@ import { cn } from '@/lib/utils';
 import { calculateShippingCost } from '@/lib/pricing';
 import { useChatReadStatus } from '@/hooks/use-chat-read-status';
 import VerifiedBadge from '@/components/VerifiedBadge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
@@ -168,49 +138,42 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const { user } = useSession();
   const hasNewMessage = req.status === 'accepted' && chatStatus?.hasUnread;
 
-  const travelerName =
-    `${req.traveler_profile?.first_name || ''} ${req.traveler_profile?.last_name || ''}`.trim() ||
-    t('traveler');
+  const travelerName = `${req.traveler_profile?.first_name || ''} ${req.traveler_profile?.last_name || ''}`.trim() || t('traveler');
   const travelerIsVerified = !!req.traveler_profile?.is_verified;
+
   const fromCountry = req.trips?.from_country || 'N/A';
   const toCountry = req.trips?.to_country || 'N/A';
   const tripDate = req.trips?.trip_date;
+
   const isRejected = req.status === 'rejected';
   const currentTrackingStatus = req.tracking_status;
   const hasPendingChanges = !!req.proposed_changes;
   const isGeneralOrderMatch = !!req.general_order_id;
-
   const paymentStatus = req.payment_status || 'unpaid';
-  const showPayButton =
-    req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
-
+  const showPayButton = req.status === 'accepted' && (paymentStatus === 'unpaid' || paymentStatus === 'rejected');
+  
   const paymentDoneStage = TRACKING_STAGES.find((s) => s.key === 'payment_done');
-  const travelerInspectionStage = TRACKING_STAGES.find(
-    (s) => s.key === 'traveler_inspection_complete'
-  );
+  const travelerInspectionStage = TRACKING_STAGES.find((s) => s.key === 'traveler_inspection_complete');
   const currentStage = TRACKING_STAGES.find((s) => s.key === currentTrackingStatus);
-
-  const canShowSenderUploadButton =
-    req.status === 'accepted' &&
-    !!paymentDoneStage &&
-    !!travelerInspectionStage &&
-    !!currentStage &&
-    currentStage.order >= paymentDoneStage.order &&
+  
+  const canShowSenderUploadButton = req.status === 'accepted' && 
+    !!paymentDoneStage && 
+    !!travelerInspectionStage && 
+    !!currentStage && 
+    currentStage.order >= paymentDoneStage.order && 
     currentStage.order < travelerInspectionStage.order &&
     (!req.sender_item_photos || req.sender_item_photos.length === 0);
-
-  const canUpdateToCompleted =
-    req.status === 'accepted' && currentTrackingStatus === 'delivered';
+    
+  const canUpdateToCompleted = req.status === 'accepted' && currentTrackingStatus === 'delivered';
+  const isCompleted = currentTrackingStatus === 'completed';
 
   // === إلغاء مشترك: هل الطرف الآخر هو الذي طلب الإلغاء؟ ===
-  const otherPartyRequestedCancellation =
-    req.status === 'accepted' &&
-    !!req.cancellation_requested_by &&
-    user?.id &&
+  const otherPartyRequestedCancellation = req.status === 'accepted' && 
+    !!req.cancellation_requested_by && 
+    user?.id && 
     req.cancellation_requested_by !== user.id;
 
   // === Reporting state (كما في الكود السابق) ===
-  const isCompleted = currentTrackingStatus === 'completed';
   const [reportOpen, setReportOpen] = useState(false);
   const [reportText, setReportText] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
@@ -258,20 +221,21 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
   const handleReportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     if (!file) return;
-
+    
     if (!file.type.startsWith('image/')) {
       showError(t('invalidFileType'));
       return;
     }
+    
     if (file.size > 10 * 1024 * 1024) {
       showError(t('fileTooLarge'));
       return;
     }
-
+    
     if (reportPreviewUrl) {
       URL.revokeObjectURL(reportPreviewUrl);
     }
-
+    
     const url = URL.createObjectURL(file);
     setReportPreviewUrl(url);
     setReportFile(file);
@@ -283,6 +247,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
       console.error('Error ensuring report-photos bucket:', error);
       throw new Error(error.message || 'Failed to prepare storage for report photos.');
     }
+    
     if (!data?.success) {
       console.error('create-report-photos-bucket returned non-success payload:', data);
       throw new Error('Failed to prepare storage for report photos.');
@@ -291,28 +256,28 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
   const uploadReportPhoto = async (): Promise<string | null> => {
     if (!reportFile) return null;
-
+    
     await ensureReportBucket();
-
+    
     const ext = reportFile.name.split('.').pop() || 'jpg';
     const path = `${req.id}/${Date.now()}-problem.${ext}`;
-
+    
     const { error: uploadError } = await supabase.storage
       .from(REPORT_BUCKET)
       .upload(path, reportFile, {
         cacheControl: '3600',
         upsert: false,
       });
-
+      
     if (uploadError) {
       console.error('Report photo upload error:', uploadError);
       throw new Error(uploadError.message || 'Failed to upload report photo.');
     }
-
+    
     const { data: publicUrlData } = supabase.storage
       .from(REPORT_BUCKET)
       .getPublicUrl(path);
-
+      
     return publicUrlData.publicUrl;
   };
 
@@ -321,11 +286,12 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
       showError(t('requiredField'));
       return;
     }
-
+    
     setSendingReport(true);
+    
     try {
       const photoUrl = await uploadReportPhoto();
-
+      
       const { error: insertError } = await supabase
         .from('reports')
         .insert({
@@ -333,14 +299,14 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
           description: reportText.trim(),
           problem_photo_url: photoUrl ?? null,
         });
-
+        
       if (insertError) {
         console.error('Insert report RLS error:', insertError);
         showError(insertError.message || 'تعذر حفظ البلاغ في قاعدة البيانات.');
         setSendingReport(false);
         return;
       }
-
+      
       const { error: fnError } = await supabase.functions.invoke('report-order-issue', {
         body: {
           request_id: req.id,
@@ -348,19 +314,21 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
           problem_photo_url: photoUrl ?? null,
         },
       });
-
+      
       if (fnError) {
         console.error('report-order-issue function error:', fnError);
         showError('تم حفظ البلاغ، ولكن حدث خطأ في إرسال الإشعار للمسؤول.');
       } else {
         showSuccess('تم إرسال البلاغ، سنراجع مشكلتك قريباً.');
       }
-
+      
       setReportOpen(false);
       setReportText('');
+      
       if (reportPreviewUrl) {
         URL.revokeObjectURL(reportPreviewUrl);
       }
+      
       setReportPreviewUrl(null);
       setReportFile(null);
     } catch (e: any) {
@@ -373,14 +341,11 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
 
   return (
     <>
-      <Card
-        className={cn(
-          getStatusCardClass(req.status),
-          isGeneralOrderMatch &&
-            'border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20',
-          hasNewMessage && 'border-primary shadow-md'
-        )}
-      >
+      <Card className={cn(
+        getStatusCardClass(req.status),
+        isGeneralOrderMatch && 'border-2 border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20',
+        hasNewMessage && 'border-primary shadow-md'
+      )}>
         <CardHeader className="p-4 pb-2 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -421,7 +386,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
             </div>
           </div>
         </CardHeader>
-
+        
         {expanded && (
           <CardContent className="p-4 pt-0 space-y-4">
             {/* تنبيه أن الطرف الآخر طلب الإلغاء */}
@@ -448,11 +413,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                   <span>تم إكمال الطلب بنجاح.</span>
                 </div>
                 <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setReportOpen(true)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => setReportOpen(true)}>
                     <AlertTriangle className="mr-2 h-4 w-4" />
                     الإبلاغ عن مشكلة
                   </Button>
@@ -486,12 +447,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 )}
 
                 <div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-between text-xs"
-                    onClick={() => setDetailsExpanded((v) => !v)}
-                  >
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-xs" onClick={() => setDetailsExpanded((v) => !v)}>
                     <span>{t('viewDetails')}</span>
                     {detailsExpanded ? (
                       <ChevronUp className="h-3 w-3" />
@@ -499,7 +455,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                       <ChevronDown className="h-3 w-3" />
                     )}
                   </Button>
-
+                  
                   {detailsExpanded && (
                     <div className="mt-2 p-3 bg-muted rounded-md space-y-2 text-sm">
                       <div className="flex items-center gap-2">
@@ -529,75 +485,47 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
                 </div>
 
                 <div className="flex flex-wrap justify-between items-center gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleOpenChat}
-                    className={cn(hasNewMessage && 'border-red-500 text-red-500')}
-                  >
+                  <Button size="sm" variant="outline" onClick={handleOpenChat} className={cn(hasNewMessage && 'border-red-500 text-red-500')}>
                     <MessageSquare className="mr-2 h-4 w-4" />
                     {t('viewChat')}
                   </Button>
-
+                  
                   <div className="flex flex-wrap gap-2 justify-end">
                     {showPayButton && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => onOpenPaymentDialog(req)}
-                      >
+                      <Button size="sm" variant="secondary" onClick={() => onOpenPaymentDialog(req)}>
                         <Wallet className="mr-2 h-4 w-4" />
                         إرسال إثبات الدفع
                       </Button>
                     )}
-
+                    
                     {canShowSenderUploadButton && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={handleUploadPhotos}
-                        disabled={trackingUpdateMutation.isPending}
-                      >
+                      <Button size="sm" variant="secondary" onClick={handleUploadPhotos} disabled={trackingUpdateMutation.isPending}>
                         <Camera className="mr-2 h-4 w-4" />
                         {t('uploadItemPhotos')}
                       </Button>
                     )}
-
+                    
                     {canUpdateToCompleted && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => onTrackingUpdate(req, 'completed')}
-                        disabled={trackingUpdateMutation.isPending}
-                      >
+                      <Button size="sm" variant="default" onClick={() => onTrackingUpdate(req, 'completed')} disabled={trackingUpdateMutation.isPending}>
                         <PackageCheck className="mr-2 h-4 w-4" />
                         {t('markAsCompleted')}
                       </Button>
                     )}
-
+                    
                     {req.status === 'pending' && !hasPendingChanges && (
                       <Button size="sm" variant="secondary" onClick={handleEdit}>
                         <Pencil className="mr-2 h-4 w-4" />
                         {t('editRequest')}
                       </Button>
                     )}
-
+                    
                     {req.status === 'accepted' ? (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleCancelAccepted}
-                      >
+                      <Button size="sm" variant="destructive" onClick={handleCancelAccepted}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         {t('requestCancellation')}
                       </Button>
                     ) : (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={handleCancel}
-                        disabled={deleteRequestMutation.isPending}
-                      >
+                      <Button size="sm" variant="destructive" onClick={handleCancel} disabled={deleteRequestMutation.isPending}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         {t('cancelRequest')}
                       </Button>
@@ -621,16 +549,18 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
               صف المشكلة التي واجهتها مع هذا الطلب بالتفصيل، ويمكنك أيضاً إرفاق صورة توضّح المشكلة (مثلاً صورة الطرد عند الاستلام).
             </DialogDescription>
           </DialogHeader>
+          
           <div className="space-y-4">
             <div className="space-y-1">
               <p className="text-xs font-medium">وصف المشكلة</p>
-              <Textarea
-                rows={5}
-                placeholder="اكتب وصفاً كاملاً للمشكلة، مثلاً: لم يصل الطرد، أو حدث خلاف مع المسافر، أو حالة الطرد سيئة عند الاستلام..."
-                value={reportText}
-                onChange={(e) => setReportText(e.target.value)}
+              <Textarea 
+                rows={5} 
+                placeholder="اكتب وصفاً كاملاً للمشكلة، مثلاً: لم يصل الطرد، أو حدث خلاف مع المسافر، أو حالة الطرد سيئة عند الاستلام..." 
+                value={reportText} 
+                onChange={(e) => setReportText(e.target.value)} 
               />
             </div>
+            
             <div className="space-y-1">
               <p className="text-xs font-medium flex items-center gap-1">
                 <ImageIcon className="h-3 w-3" />
@@ -639,11 +569,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
               <Input type="file" accept="image/*" onChange={handleReportFileChange} />
               {reportPreviewUrl && (
                 <div className="mt-2">
-                  <img
-                    src={reportPreviewUrl}
-                    alt="Problem preview"
-                    className="w-full max-h-48 object-contain rounded border"
-                  />
+                  <img src={reportPreviewUrl} alt="Problem preview" className="w-full max-h-48 object-contain rounded border" />
                 </div>
               )}
               <p className="text-[11px] text-muted-foreground">
@@ -651,6 +577,7 @@ const TripRequestCard: React.FC<TripRequestCardProps> = ({
               </p>
             </div>
           </div>
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportOpen(false)}>
               {t('cancel')}

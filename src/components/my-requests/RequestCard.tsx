@@ -1,22 +1,11 @@
 "use client";
-
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Plane, 
-  Weight, 
-  MapPin, 
-  User,
-  Clock,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, Plane, Weight, MapPin, User, Clock, CheckCircle, XCircle } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 import RequestTracking from '@/components/RequestTracking';
 import { cn } from '@/lib/utils';
@@ -99,25 +88,34 @@ const RequestCard: React.FC<RequestCardProps> = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'accepted': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'rejected': return <XCircle className="h-4 w-4 text-red-500" />;
-      default: return <Clock className="h-4 w-4 text-yellow-500" />;
+      case 'accepted':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-yellow-500" />;
     }
   };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'accepted': return 'default';
-      case 'rejected': return 'destructive';
-      default: return 'secondary';
+      case 'accepted':
+        return 'default';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'secondary';
     }
   };
 
   const getStatusCardClass = (status: string) => {
     switch (status) {
-      case 'accepted': return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
-      case 'rejected': return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
-      default: return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
+      case 'accepted':
+        return 'border-green-500/30 bg-green-50 dark:bg-green-900/20';
+      case 'rejected':
+        return 'border-red-500/30 bg-red-50 dark:bg-red-900/20';
+      default:
+        return 'border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/20';
     }
   };
 
@@ -138,6 +136,7 @@ const RequestCard: React.FC<RequestCardProps> = ({
   const currentTrackingStatus = request.tracking_status;
   const hasPendingChanges = !!request.proposed_changes;
   const isGeneralOrderMatch = !!request.general_order_id;
+  const isCompleted = currentTrackingStatus === 'completed';
 
   return (
     <Card className={cn(
@@ -150,9 +149,7 @@ const RequestCard: React.FC<RequestCardProps> = ({
             {getStatusIcon(request.status)}
             <div>
               <h3 className="text-base font-semibold">
-                {isSenderView 
-                  ? `${t('requestTo')} ${travelerName}` 
-                  : `${t('requestFrom')} ${senderName}`}
+                {isSenderView ? `${t('requestTo')} ${travelerName}` : `${t('requestFrom')} ${senderName}`}
                 {isGeneralOrderMatch && (
                   <span className="text-xs text-blue-600 dark:text-blue-400 ml-2">
                     ({t('generalOrderTitle')})
@@ -187,10 +184,7 @@ const RequestCard: React.FC<RequestCardProps> = ({
           {/* Tracking Status */}
           {request.status !== 'pending' && (
             <div className="pt-2">
-              <RequestTracking 
-                currentStatus={currentTrackingStatus} 
-                isRejected={isRejected} 
-              />
+              <RequestTracking currentStatus={currentTrackingStatus} isRejected={isRejected} />
             </div>
           )}
 
@@ -219,16 +213,19 @@ const RequestCard: React.FC<RequestCardProps> = ({
             </div>
           )}
 
+          {/* Special handling for completed orders */}
+          {isCompleted && (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md flex items-center gap-2 text-sm">
+              <CheckCircle className="h-4 w-4 text-emerald-600" />
+              <span>{t('trackingCompleted')}</span>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex justify-between items-center">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onViewDetails}
-            >
+            <Button variant="ghost" size="sm" onClick={onViewDetails}>
               {t('viewDetails')}
             </Button>
-            
             {/* Action buttons would go here in a real implementation */}
           </div>
         </CardContent>
