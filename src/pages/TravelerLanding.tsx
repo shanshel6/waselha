@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+"use client";
+import React, { useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plane, DollarSign, Handshake, ShieldCheck, Package } from 'lucide-react';
+import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -13,369 +15,462 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { countries } from '@/lib/countries';
+import { calculateTravelerProfit } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import { useQueryClient } from '@tanstack/react-query';
 import { Slider } from '@/components/ui/slider';
+import TicketUpload from '@/components/TicketUpload';
+import { useVerificationStatus } from '@/hooks/use-verification-status';
+import { arabicCountries } from '@/lib/countries-ar';
+
+const MIN_KG = 1;
+const MAX_KG = 50;
 
 const formSchema = z.object({
   from_country: z.string().min(1, { message: 'requiredField' }),
   to_country: z.string().min(1, { message: 'requiredField' }),
   trip_date: z.date({ required_error: 'dateRequired' }),
-  free_kg: z.coerce.number().min(1, { message: 'minimumWeight' }).max(50, { message: 'maxWeight' }),
-  charge_per_kg: z.coerce.number().min(0, { message: 'invalidNumber' }),
+  free_kg: z
+    .coerce.number()
+    .min(MIN_KG, { message: 'minimumWeight' })
+    .max(MAX_KG, { message: 'maxWeight' }),
+  traveler_location: z.string().min(1, { message: 'requiredField' }),
   notes: z.string().optional(),
 });
 
+const BUCKET_NAME = 'trip-tickets';
+
 const TravelerLanding = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
+  const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(false);
+  const [ticketFile, setTicketFile] = useState<File | null>(null);
+  const [tripData, setTripData] = useState<z.infer<typeof formSchema> | null>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       from_country: 'Iraq',
       to_country: '',
-      free_kg: 5,
-      charge_per_kg: 5,
+      free_kg: MIN_KG,
+      traveler_location: '',
       notes: '',
     },
   });
 
-  const { free_kg, charge_per_kg } = form.watch();
+  const { from_country, to_country, free_kg } = form.watch();
+
+  useEffect(() => {
+    if (from_country && from_country !== 'Iraq' && to_country !== 'Iraq') {
+      form.setValue('to_country', 'Iraq');
+    } else if (to_country && to_country !== 'Iraq' && from_country !== 'Iraq') {
+      form.setValue('from_country', 'Iraq');
+    } else if (from_country === 'Iraq' && to_country === 'Iraq') {
+      form.setValue('to_country', '');
+    }
+  }, [from_country, to_country, form]);
+
+  const estimatedProfit = useMemo(() => {
+    if (from_country && to_country && free_kg > 0) {
+      return calculateTravelerProfit(from_country, to_country, free_kg);
+    }
+    return null;
+  }, [from_country, to_country, free_kg]);
+
+  const ensureBucketExists = async () => {
+    const { data, error } = await supabase.functions.invoke('create-trip-tickets-bucket');
+    if (error) {
+      console.error('Bucket ensure error (edge function):', error);
+      throw new Error(error.message || 'Failed to prepare storage bucket for tickets.');
+    }
+    if (!data?.success) {
+      console.error('Bucket ensure error: function returned non-success payload', data);
+      throw new Error('Failed to prepare storage bucket for tickets.');
+    }
+  };
+
+  const uploadTicketAndGetUrl = async (file: File, userId: string) => {
+    await ensureBucketExists();
+    const ext = file.name.split('.').pop() || 'pdf';
+    const filePath = `${userId}/${Date.now()}-ticket.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+    if (uploadError) {
+      console.error('Ticket upload error:', uploadError);
+      throw new Error(uploadError.message || 'Failed to upload ticket file.');
+    }
+    const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+    return publicUrlData.publicUrl;
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // If user is not logged in, save data and redirect to login
     if (!user) {
-      showError('Please log in to register your trip');
+      setTripData(values);
+      localStorage.setItem('pendingTripData', JSON.stringify(values));
+      localStorage.setItem('pendingTicketFileName', ticketFile?.name || '');
+      showError(t('mustBeLoggedIn'));
       navigate('/login');
       return;
     }
 
-    setIsLoading(true);
-    
+    const isVerified = verificationInfo?.status === 'approved';
+    if (!isVerified) {
+      showError(t('verificationRequiredTitle'));
+      navigate('/verification');
+      return;
+    }
+
+    if (!ticketFile) {
+      showError(t('ticketRequired'));
+      return;
+    }
+
     try {
+      const ticketUrl = await uploadTicketAndGetUrl(ticketFile, user.id);
+      let charge_per_kg = 0;
+      if (estimatedProfit) {
+        charge_per_kg = estimatedProfit.pricePerKgUSD;
+      }
+
       const { error } = await supabase.from('trips').insert({
         user_id: user.id,
         from_country: values.from_country,
         to_country: values.to_country,
         trip_date: format(values.trip_date, 'yyyy-MM-dd'),
         free_kg: values.free_kg,
-        charge_per_kg: values.charge_per_kg,
+        traveler_location: values.traveler_location,
         notes: values.notes,
+        charge_per_kg: charge_per_kg,
+        ticket_file_url: ticketUrl,
         is_approved: false,
       });
 
       if (error) {
         console.error('Error adding trip:', error);
-        showError('Failed to register trip. Please try again.');
+        showError(t('tripAddedError'));
       } else {
-        showSuccess('Trip registered successfully! Our team will review it shortly.');
+        showSuccess(t('tripAddedSuccessPending'));
         queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
         queryClient.invalidateQueries({ queryKey: ['trips'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
         navigate('/my-flights');
       }
     } catch (err: any) {
-      console.error('Error registering trip:', err);
-      showError(err.message || 'Failed to register trip');
-    } finally {
-      setIsLoading(false);
+      console.error('Error uploading ticket or adding trip:', err);
+      showError(err.message || t('tripAddedError'));
     }
   };
 
+  // Check for pending trip data after login
+  useEffect(() => {
+    if (user && !tripData) {
+      const pendingData = localStorage.getItem('pendingTripData');
+      const pendingTicketFileName = localStorage.getItem('pendingTicketFileName');
+      
+      if (pendingData) {
+        try {
+          const data = JSON.parse(pendingData);
+          setTripData(data);
+          form.reset(data);
+          
+          // Clear localStorage
+          localStorage.removeItem('pendingTripData');
+          localStorage.removeItem('pendingTicketFileName');
+          
+          // Show message that we're submitting the pending trip
+          showSuccess('جارٍ إرسال بيانات الرحلة...');
+        } catch (e) {
+          console.error('Error parsing pending trip data:', e);
+        }
+      }
+    }
+  }, [user, tripData, form]);
+
+  // Submit pending trip after login
+  useEffect(() => {
+    if (user && tripData) {
+      // In a real implementation, we would need to handle file upload after login
+      // For now, we'll just show a message that login is required for submission
+      showSuccess('تم تسجيل الدخول. يرجى إعادة تحميل تذكرة الطيران وإرسال الرحلة.');
+      setTripData(null);
+    }
+  }, [user, tripData]);
+
+  if (isVerificationStatusLoading) {
+    return (
+      <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-teal-50">
-      {/* Hero Section */}
-      <section className="py-12 px-4 text-center">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Traveling Soon? Turn Your Free Luggage Space Into Cash.
-          </h1>
-          <p className="text-lg text-gray-700 mb-8">
-            Share your empty baggage space and get paid for every kilo you carry.
-          </p>
-          <Button 
-            size="lg" 
-            className="bg-teal-600 hover:bg-teal-700 text-white text-lg py-6 px-8 rounded-full shadow-lg"
-            onClick={() => {
-              const element = document.getElementById('register-form');
-              if (element) {
-                element.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-          >
-            Register Your Trip Now
-          </Button>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-12 px-4 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12 text-gray-900">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Plane className="h-8 w-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Add your trip details</h3>
-              <p className="text-gray-600 text-sm">Share your travel plans with us</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <DollarSign className="h-8 w-8 text-teal-600" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Set your price per kilo</h3>
-              <p className="text-gray-600 text-sm">Decide how much you want to earn</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Handshake className="h-8 w-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Travelers contact you</h3>
-              <p className="text-gray-600 text-sm">Connect with people who need your service</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Package className="h-8 w-8 text-teal-600" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Earn money when you deliver</h3>
-              <p className="text-gray-600 text-sm">Get paid after successful delivery</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits */}
-      <section className="py-12 px-4 bg-gradient-to-r from-blue-500 to-teal-500 text-white">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">Benefits for Travelers</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="bg-white/10 border-none text-white">
-              <CardContent className="p-6 text-center">
-                <DollarSign className="h-10 w-10 mx-auto mb-4 text-yellow-300" />
-                <h3 className="font-semibold text-lg mb-2">Make extra money easily</h3>
-                <p className="text-sm">Turn your unused luggage space into cash</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/10 border-none text-white">
-              <CardContent className="p-6 text-center">
-                <Plane className="h-10 w-10 mx-auto mb-4 text-yellow-300" />
-                <h3 className="font-semibold text-lg mb-2">No effort, you're already traveling</h3>
-                <p className="text-sm">Just carry items you'd normally pack</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/10 border-none text-white">
-              <CardContent className="p-6 text-center">
-                <ShieldCheck className="h-10 w-10 mx-auto mb-4 text-yellow-300" />
-                <h3 className="font-semibold text-lg mb-2">Safe & verified senders</h3>
-                <p className="text-sm">All users are verified for your safety</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/10 border-none text-white">
-              <CardContent className="p-6 text-center">
-                <Handshake className="h-10 w-10 mx-auto mb-4 text-yellow-300" />
-                <h3 className="font-semibold text-lg mb-2">Payments protected</h3>
-                <p className="text-sm">Secure transactions inside the platform</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Quick Form */}
-      <section id="register-form" className="py-12 px-4 bg-white">
-        <div className="max-w-2xl mx-auto">
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold text-center mb-6 text-gray-900">Register Your Trip</h2>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  {/* From / To countries */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="from_country"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>From Country</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select country" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {countries.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                  <div className="flex items-center gap-2">
-                                    <CountryFlag country={c} />
-                                    <span>{c}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="to_country"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>To Country</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select country" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {countries.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                  <div className="flex items-center gap-2">
-                                    <CountryFlag country={c} />
-                                    <span>{c}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Trip date */}
-                  <FormField
-                    control={form.control}
-                    name="trip_date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Trip Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={'outline'}
-                                className={cn(
-                                  'w-full justify-between text-left font-normal',
-                                  !field.value && 'text-muted-foreground'
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, 'PPP')
-                                ) : (
-                                  <span>Select date</span>
-                                )}
-                                <CalendarIcon className="h-4 w-4 opacity-70" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Free kg slider */}
-                  <FormField
-                    control={form.control}
-                    name="free_kg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Free Weight ({field.value} kg)
-                        </FormLabel>
+    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
+      {/* Form Section - Appears first without scrolling */}
+      <Card className="max-w-2xl mx-auto mb-12">
+        <CardHeader>
+          <CardTitle className="text-2xl md:text-3xl font-bold text-center">
+            أضف رحلتك الآن
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* From / To countries */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="from_country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('fromCountry')}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <div className="mt-2">
-                            <Slider
-                              min={1}
-                              max={50}
-                              step={1}
-                              value={[field.value]}
-                              onValueChange={(val) => field.onChange(val[0])}
-                            />
-                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                              <span>1 kg</span>
-                              <span>50 kg</span>
-                            </div>
-                          </div>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectCountry')} />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Price per kg */}
-                  <FormField
-                    control={form.control}
-                    name="charge_per_kg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Price per kg ($)</FormLabel>
+                        <SelectContent>
+                          {countries.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              <div className="flex items-center gap-2">
+                                <CountryFlag country={c} />
+                                <span>{arabicCountries[c] || c}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="to_country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('toCountry')}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="5" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          />
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectCountry')} />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                        <SelectContent>
+                          {countries.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              <div className="flex items-center gap-2">
+                                <CountryFlag country={c} />
+                                <span>{arabicCountries[c] || c}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                  {/* Notes */}
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes (Optional)</FormLabel>
+              {/* Trip date */}
+              <FormField
+                control={form.control}
+                name="trip_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>{t('tripDate')}</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Any additional information about your trip..." 
-                            className="resize-none" 
-                            {...field} 
-                          />
+                          <Button
+                            variant={'outline'}
+                            className={cn(
+                              'w-full justify-between text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, 'PPP')
+                            ) : (
+                              <span>{t('selectDate')}</span>
+                            )}
+                            <CalendarIcon className="h-4 w-4 opacity-70" />
+                          </Button>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Registering Trip...' : 'Register Your Trip'}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
+              {/* Free kg slider */}
+              <FormField
+                control={form.control}
+                name="free_kg"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('freeKg')} ({field.value} kg)
+                    </FormLabel>
+                    <FormControl>
+                      <div className="mt-2">
+                        <Slider
+                          min={MIN_KG}
+                          max={MAX_KG}
+                          step={1}
+                          value={[field.value]}
+                          onValueChange={(val) => field.onChange(val[0])}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>1 kg</span>
+                          <span>50 kg</span>
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Traveler location */}
+              <FormField
+                control={form.control}
+                name="traveler_location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {t('travelerLocation')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('travelerLocationPlaceholder')} {...field} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t('travelerLocationDescription')}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Notes */}
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <StickyNote className="h-4 w-4" />
+                      {t('notes')}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea rows={3} placeholder={t('notes')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Ticket upload */}
+              <TicketUpload onFileSelected={setTicketFile} />
+
+              {/* Estimated profit (USD only) */}
+              {estimatedProfit && !estimatedProfit.error && (
+                <Card className="mt-4 border-primary/30 bg-primary/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                      {t('estimatedProfit')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1">
+                    <p>
+                      {estimatedProfit.totalPriceUSD.toFixed(2)} USD
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('basedOnWeightAndDestination')}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Info about admin review */}
+              <p className="text-xs text-muted-foreground">
+                {t('tripPendingApprovalNote')}
+              </p>
+              <Button 
+                type="submit" 
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                إضافة رحلتي
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      {/* Benefits Section */}
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-2xl font-bold text-center mb-8">ليش تنشر رحلتك؟</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="text-center p-6">
+            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <DollarSign className="h-8 w-8 text-blue-600" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">طلع فلوس من وزن الشنطة الفاضي</h3>
+            <p className="text-gray-600 text-sm">حول مساحتك الزائدة إلى دخل إضافي</p>
+          </Card>
+          <Card className="text-center p-6">
+            <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <MapPin className="h-8 w-8 text-teal-600" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">ساعد الناس توصل أغراضها</h3>
+            <p className="text-gray-600 text-sm">ساهم في تسهيل حياة الآخرين</p>
+          </Card>
+          <Card className="text-center p-6">
+            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <StickyNote className="h-8 w-8 text-blue-600" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">الدفع محمي داخل الموقع</h3>
+            <p className="text-gray-600 text-sm">معاملات آمنة ومراقبة</p>
+          </Card>
+          <Card className="text-center p-6">
+            <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="bg-teal-600 text-white rounded-full w-8 h-8 flex items-center justify-center">✓</div>
+            </div>
+            <h3 className="font-semibold text-lg mb-2">المسافرين والمُرسلين يتحققون من هويتهم</h3>
+            <p className="text-gray-600 text-sm">بيئة آمنة وموثوقة</p>
           </Card>
         </div>
-      </section>
+      </div>
     </div>
   );
 };
