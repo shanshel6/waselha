@@ -8,19 +8,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import { Phone, User } from 'lucide-react';
+import { Phone, User, MapPin } from 'lucide-react';
 
 const signUpSchema = z.object({
   full_name: z.string().min(1, { message: 'requiredField' }),
   phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
-  password: z.string().min(6, { message: 'passwordMustBe6Digits' }).max(6, { message: 'passwordMustBe6Digits' }).regex(/^\d+$/, { message: 'passwordMustBeNumbers' }),
-  confirm_password: z.string()
-}).refine((data) => data.password === data.confirm_password, {
-  message: "كلمات المرور غير متطابقة",
-  path: ["confirm_password"],
+  address: z.string().min(1, { message: 'requiredField' }),
 });
 
 const SignUp = () => {
@@ -32,23 +29,26 @@ const SignUp = () => {
     defaultValues: {
       full_name: '',
       phone: '',
-      password: '',
-      confirm_password: '',
+      address: '',
     },
   });
 
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     try {
+      // Generate a 6-digit password
+      const password = Math.floor(100000 + Math.random() * 900000).toString();
+      
       // Create email from phone number
       const email = `user+${values.phone.replace(/\+/g, '')}@waslaha.app`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
-        password: values.password,
+        password,
         options: {
           data: {
             full_name: values.full_name,
             phone: values.phone,
+            address: values.address,
             role: 'both'
           }
         }
@@ -58,7 +58,11 @@ const SignUp = () => {
         throw error;
       }
 
-      showSuccess('تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.');
+      // In a real implementation, you would send the password via SMS here
+      // For now, we'll log it to the console
+      console.log(`Password for ${values.phone}: ${password}`);
+      
+      showSuccess('تم إنشاء الحساب بنجاح! سيتم إرسال كلمة المرور إلى رقم هاتفك خلال 30 دقيقة.');
       navigate('/login');
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -116,33 +120,25 @@ const SignUp = () => {
                 />
                 <FormField
                   control={form.control}
-                  name="password"
+                  name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>كلمة المرور</FormLabel>
+                      <FormLabel className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        العنوان
+                      </FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="6 أرقام" {...field} maxLength={6} dir="ltr" />
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        يجب أن تكون كلمة المرور مكونة من 6 أرقام
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="confirm_password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>تأكيد كلمة المرور</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="6 أرقام" {...field} maxLength={6} dir="ltr" />
+                        <Textarea placeholder="أدخل عنوانك الكامل" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    تأكد من صحة رقم هاتفك، سيتم إرسال رسالة نصية تحتوي على كلمة المرور خلال 30 دقيقة من التسجيل
+                  </p>
+                </div>
                 <Button type="submit" className="w-full h-12 text-lg" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'جاري إنشاء الحساب...' : 'إنشاء الحساب'}
                 </Button>

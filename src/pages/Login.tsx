@@ -126,7 +126,7 @@ function Login() {
                   dir="ltr"
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  أدخل كلمة المرور المكونة من 6 أرقام
+                  أدخل كلمة المرور المكونة من 6 أرقام التي استلمتها عبر رسالة نصية
                 </p>
               </div>
               <Button
