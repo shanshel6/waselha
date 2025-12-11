@@ -16,7 +16,6 @@ const TravelerLanding = () => {
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasSubmittedPending, setHasSubmittedPending] = useState(false);
 
   const handleSubmit = async (values: any) => {
     if (isSubmitting) return;
@@ -27,8 +26,6 @@ const TravelerLanding = () => {
       try {
         // Store form data in localStorage
         localStorage.setItem('pendingTripData', JSON.stringify(values));
-        // Store the intended redirect path
-        localStorage.setItem('postLoginRedirect', '/my-flights');
         showSuccess('يرجى تسجيل الدخول لإكمال إضافة الرحلة');
         navigate('/login');
       } catch (err: any) {
@@ -90,26 +87,28 @@ const TravelerLanding = () => {
       setIsSubmitting(false);
       // Clear pending data
       localStorage.removeItem('pendingTripData');
-      localStorage.removeItem('postLoginRedirect');
     }
   };
 
-  // Submit pending trip after login - run only once
+  // Submit pending trip after login
   useEffect(() => {
     const submitPendingTrip = async () => {
-      // Only run if user is logged in, hasn't submitted yet, and there's pending data
-      if (user && !hasSubmittedPending) {
+      if (user) {
         const pendingData = localStorage.getItem('pendingTripData');
         if (pendingData) {
           try {
-            setHasSubmittedPending(true); // Mark as submitted to prevent multiple runs
             const data = JSON.parse(pendingData);
-            const isVerified = verificationInfo?.status === 'approved';
+            
+            // Check if user is verified
+            const { data: verificationData } = await supabase
+              .from('profiles')
+              .select('is_verified')
+              .eq('id', user.id)
+              .single();
+            
+            const isVerified = verificationData?.is_verified;
             if (!isVerified) {
               showError('verificationRequiredTitle');
-              // Clear pending data before redirecting
-              localStorage.removeItem('pendingTripData');
-              localStorage.removeItem('postLoginRedirect');
               navigate('/verification');
               return;
             }
@@ -140,7 +139,6 @@ const TravelerLanding = () => {
 
             // Clear localStorage after successful submission
             localStorage.removeItem('pendingTripData');
-            localStorage.removeItem('postLoginRedirect');
             showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
 
             // Invalidate queries to refresh the trips list
@@ -157,14 +155,13 @@ const TravelerLanding = () => {
             showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
             // Clear pending data on error to prevent infinite loop
             localStorage.removeItem('pendingTripData');
-            localStorage.removeItem('postLoginRedirect');
           }
         }
       }
     };
 
     submitPendingTrip();
-  }, [user, navigate, queryClient, verificationInfo, hasSubmittedPending]);
+  }, [user, navigate, queryClient]);
 
   if (isSessionLoading || isVerificationStatusLoading) {
     return (

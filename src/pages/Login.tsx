@@ -19,12 +19,13 @@ function Login() {
   // Handle post-login redirection
   useEffect(() => {
     if (user) {
-      // Check if there's a post-login redirect path stored
-      const postLoginRedirect = localStorage.getItem('postLoginRedirect');
-      if (postLoginRedirect) {
-        // Don't remove the redirect path yet - it will be handled by TravelerLanding
-        navigate(postLoginRedirect, { replace: true });
+      // Check if there's pending trip data to submit
+      const pendingData = localStorage.getItem('pendingTripData');
+      if (pendingData) {
+        // Redirect to traveler landing page to handle the submission
+        navigate('/traveler-landing', { replace: true });
       } else {
+        // No pending data, go to home
         navigate('/', { replace: true });
       }
     }
