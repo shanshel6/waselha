@@ -53,36 +53,21 @@ const SignUp = () => {
     return cleanPhone;
   };
 
-  const generateEmailFromPhone = (phone: string): string => {
-    const cleanPhone = formatPhoneNumber(phone);
-    // Ensure we have a valid 10-digit Iraqi phone number
-    if (cleanPhone.length === 10 && cleanPhone.startsWith('7')) {
-      return `user-${cleanPhone}@waslaha.app`;
-    }
-    // If it's not a standard format, use the cleaned version with prefix
-    return `user-${cleanPhone}@waslaha.app`;
-  };
-
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     try {
+      // Format the phone number
+      const formattedPhone = formatPhoneNumber(values.phone);
+      const fullPhone = `+964${formattedPhone}`;
+      
       // Generate a 6-digit password
       const password = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Generate valid email from phone number
-      const email = generateEmailFromPhone(values.phone);
-      
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new Error('Invalid email format generated: ' + email);
-      }
+      console.log('Attempting to sign up with phone:', fullPhone);
 
-      console.log('Attempting to sign up with email:', email);
-
-      // Sign up the user
+      // Sign up the user with phone number
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        phone: fullPhone,
+        password: password,
         options: {
           data: {
             full_name: values.full_name,
