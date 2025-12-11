@@ -261,6 +261,8 @@ function Login() {
                         },
                       },
                     }}
+                    // Disable email confirmation
+                    magicLink={false}
                   />
                 </div>
 

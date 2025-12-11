@@ -58,7 +58,7 @@ const TravelerLanding = () => {
     const email = `user+${phone.replace(/\+/g, '')}@waslaha.app`;
     
     try {
-      // Try to sign up the user
+      // Sign up the user without email confirmation
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -68,7 +68,8 @@ const TravelerLanding = () => {
             phone: phone,
             role: 'traveler',
             is_temporary: true
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/`
         }
       });
 
@@ -76,8 +77,25 @@ const TravelerLanding = () => {
         throw new Error(error.message);
       }
 
+      // If user already exists, try to sign in
+      if (data.user && !data.session) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+        
+        if (signInError) {
+          throw new Error(signInError.message);
+        }
+        
+        return signInData;
+      }
+
       // Update profile with phone number
       if (data.user) {
+        // Small delay to ensure user is created in profiles table
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ phone: phone })

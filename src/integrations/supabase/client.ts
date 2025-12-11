@@ -5,4 +5,11 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = 'https://wqcmmjggxsducsbtyjaz.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxY21tamdneHNkdWNzYnR5amF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MzMzODgsImV4cCI6MjA4MDUwOTM4OH0.zXuyvjEmAswA9bDbRVbtrJZl1i9d-ZbRiufsTH4Idxo';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'implicit' // This allows signing in without email confirmation
+  }
+});
