@@ -228,6 +228,26 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
               )}
             />
 
+            {/* Estimated profit (USD only) */}
+            {estimatedProfit && !estimatedProfit.error && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    {t('estimatedProfit')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-1">
+                  <p>
+                    {estimatedProfit.totalPriceUSD.toFixed(2)} USD
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('basedOnWeightAndDestination')}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Traveler location */}
             <FormField
               control={form.control}
@@ -286,26 +306,6 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
                 </FormItem>
               )}
             />
-
-            {/* Estimated profit (USD only) */}
-            {estimatedProfit && !estimatedProfit.error && (
-              <Card className="mt-4 border-primary/30 bg-primary/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-primary" />
-                    {t('estimatedProfit')}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-1">
-                  <p>
-                    {estimatedProfit.totalPriceUSD.toFixed(2)} USD
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t('basedOnWeightAndDestination')}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Info about admin review */}
             <p className="text-xs text-muted-foreground">
