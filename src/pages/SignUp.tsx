@@ -64,7 +64,7 @@ const SignUp = () => {
       
       console.log('Attempting to sign up with phone:', fullPhone);
 
-      // Sign up the user with phone number and password
+      // Sign up the user with phone number and password (no auto-login)
       const { data, error } = await supabase.auth.signUp({
         phone: fullPhone,
         password: randomPassword,
@@ -98,6 +98,7 @@ const SignUp = () => {
       }
 
       showSuccess('تم إنشاء الحساب بنجاح! سيتم إرسال كلمة المرور إلى رقم هاتفك من قبل الإدارة.');
+      // Redirect to login page instead of auto-logging in
       navigate('/login');
     } catch (error: any) {
       console.error('Sign up error:', error);
