@@ -50,72 +50,72 @@ const TravelerLanding = () => {
     return publicUrlData.publicUrl;
   };
 
+  const createTemporaryUser = async (phone: string, fullName: string) => {
+    // Generate a simple password
+    const password = Math.random().toString(36).slice(-8);
+    
+    // Create the user with phone as email (Supabase requires email)
+    const { data, error } = await supabase.auth.signUp({
+      email: `${phone}@waslaha.app`, // Using phone as email
+      password: password,
+      options: {
+        data: {
+          full_name: fullName,
+          phone: phone,
+          role: 'traveler',
+          is_temporary: true
+        }
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // Send password to admin dashboard (in a real app, this would be sent via SMS or email)
+    // For now, we'll just log it
+    console.log(`Temporary password for ${phone}: ${password}`);
+    
+    return data;
+  };
+
   const handleSubmit = async (values: any) => {
     // Prevent multiple submissions
     if (isSubmitting || hasSubmittedRef.current) return;
-    
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
 
-    // If user is not logged in, save data and redirect to login
-    if (!user) {
-      try {
-        // Store form data in localStorage
-        localStorage.setItem('pendingTripData', JSON.stringify({
-          ...values,
-          ticket_file: null // Don't store the file object
-        }));
-        
-        // Store the file separately as a blob URL if it exists
-        if (values.ticket_file) {
-          const fileReader = new FileReader();
-          fileReader.onload = function() {
-            localStorage.setItem('pendingTripFile', JSON.stringify({
-              name: values.ticket_file.name,
-              type: values.ticket_file.type,
-              size: values.ticket_file.size,
-              data: fileReader.result
-            }));
-            showSuccess('يرجى تسجيل الدخول لإكمال إضافة الرحلة');
-            navigate('/login');
-          };
-          fileReader.readAsDataURL(values.ticket_file);
-        } else {
-          showSuccess('يرجى تسجيل الدخول لإكمال إضافة الرحلة');
-          navigate('/login');
-        }
-      } catch (err: any) {
-        console.error('Error saving pending trip data:', err);
-        showError('حدث خطأ أثناء حفظ بيانات الرحلة');
-      } finally {
-        setIsSubmitting(false);
-        hasSubmittedRef.current = false; // Reset on error
-      }
-      return;
-    }
-
-    // User is logged in - proceed with trip creation
-    const isVerified = verificationInfo?.status === 'approved';
-    if (!isVerified) {
-      showError('verificationRequiredTitle');
-      navigate('/verification');
-      setIsSubmitting(false);
-      hasSubmittedRef.current = false; // Reset so user can try again after verification
-      return;
-    }
-
-    // Check if ticket file is provided
-    if (!values.ticket_file) {
-      showError('يرجى تحميل تذكرة الطيران');
-      setIsSubmitting(false);
-      hasSubmittedRef.current = false;
-      return;
-    }
-
     try {
-      // Upload ticket and get URL
-      const ticketUrl = await uploadTicketAndGetUrl(values.ticket_file, user.id);
+      let currentUser = user;
       
+      // If user is not logged in, create a temporary user
+      if (!currentUser) {
+        const userData = await createTemporaryUser(values.phone, values.full_name);
+        currentUser = userData.user;
+        
+        // Show success message about account creation
+        showSuccess('تم إنشاء حساب مؤقت لك. سيتم إرسال كلمة المرور إلى المسؤول.');
+      }
+
+      // Check if user is verified (if logged in)
+      let isVerified = false;
+      if (currentUser) {
+        const { data: verificationData } = await supabase
+          .from('profiles')
+          .select('is_verified')
+          .eq('id', currentUser.id)
+          .single();
+        isVerified = verificationData?.is_verified || false;
+      }
+
+      // Check if ticket file is provided
+      if (!values.ticket_file) {
+        throw new Error('يرجى تحميل تذكرة الطيران');
+      }
+
+      // Upload ticket and get URL
+      const ticketUrl = await uploadTicketAndGetUrl(values.ticket_file, currentUser!.id);
+
       let charge_per_kg = 0;
       const { calculateTravelerProfit } = await import('@/lib/pricing');
       const profit = calculateTravelerProfit(values.from_country, values.to_country, values.free_kg);
@@ -124,7 +124,7 @@ const TravelerLanding = () => {
       }
 
       const { error } = await supabase.from('trips').insert({
-        user_id: user.id,
+        user_id: currentUser!.id,
         from_country: values.from_country,
         to_country: values.to_country,
         trip_date: values.trip_date,
@@ -144,7 +144,7 @@ const TravelerLanding = () => {
       showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
 
       // Invalidate queries to refresh the trips list
-      queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['userTrips', currentUser!.id] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
 
@@ -152,7 +152,7 @@ const TravelerLanding = () => {
       navigate('/my-flights');
     } catch (err: any) {
       console.error('Error creating trip:', err);
-      showError(err.message || 'tripAddedError');
+      showError(err.message || 'حدث خطأ أثناء إضافة الرحلة');
       hasSubmittedRef.current = false; // Reset on error
     } finally {
       setIsSubmitting(false);
@@ -166,32 +166,31 @@ const TravelerLanding = () => {
   useEffect(() => {
     // Only run if user is logged in and we have pending data
     if (!user) return;
-    
     const pendingData = localStorage.getItem('pendingTripData');
     const pendingFileData = localStorage.getItem('pendingTripFile');
-    
+
     // If no pending data, nothing to do
     if (!pendingData || !pendingFileData) return;
-    
+
     // If already submitted, don't run again
     if (hasSubmittedRef.current) return;
-    
+
     // Mark as submitted to prevent multiple runs
     hasSubmittedRef.current = true;
-    
+
     const submitPendingTrip = async () => {
       try {
         const data = JSON.parse(pendingData);
         const fileData = JSON.parse(pendingFileData);
-        
+
         // Check if user is verified
         const { data: verificationData } = await supabase
           .from('profiles')
           .select('is_verified')
           .eq('id', user.id)
           .single();
-        
         const isVerified = verificationData?.is_verified;
+
         if (!isVerified) {
           showError('verificationRequiredTitle');
           navigate('/verification');
@@ -201,11 +200,13 @@ const TravelerLanding = () => {
 
         // Reconstruct the file from stored data
         const blob = await fetch(fileData.data).then(res => res.blob());
-        const file = new File([blob], fileData.name, { type: fileData.type });
-        
+        const file = new File([blob], fileData.name, {
+          type: fileData.type
+        });
+
         // Upload ticket and get URL
         const ticketUrl = await uploadTicketAndGetUrl(file, user.id);
-        
+
         let charge_per_kg = 0;
         const { calculateTravelerProfit } = await import('@/lib/pricing');
         const profit = calculateTravelerProfit(data.from_country, data.to_country, data.free_kg);
@@ -234,6 +235,7 @@ const TravelerLanding = () => {
         // Clear localStorage after successful submission
         localStorage.removeItem('pendingTripData');
         localStorage.removeItem('pendingTripFile');
+
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
 
         // Invalidate queries to refresh the trips list
@@ -256,7 +258,7 @@ const TravelerLanding = () => {
     };
 
     submitPendingTrip();
-    
+
     // Cleanup function
     return () => {
       hasSubmittedRef.current = false;

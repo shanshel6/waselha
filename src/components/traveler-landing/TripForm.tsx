@@ -1,11 +1,11 @@
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote, FileText } from 'lucide-react';
+import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote, FileText, User, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -27,6 +27,8 @@ const MAX_KG = 50;
 
 // Schema that converts date to string for storage
 const formSchema = z.object({
+  full_name: z.string().min(1, { message: 'requiredField' }),
+  phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }),
   from_country: z.string().min(1, { message: 'requiredField' }),
   to_country: z.string().min(1, { message: 'requiredField' }),
   trip_date: z.string({ required_error: 'dateRequired' }), // Store as string
@@ -49,6 +51,8 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      full_name: '',
+      phone: '',
       from_country: 'Iraq',
       to_country: '',
       trip_date: '', // Initialize as empty string
@@ -100,6 +104,45 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+            {/* Full Name */}
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    الاسم الكامل
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="أدخل اسمك الكامل" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Phone Number */}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    رقم الهاتف
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="مثال: 07701234567" {...field} />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    سيتم استخدام هذا الرقم كاسم مستخدم وكلمة المرور سيتم إرسالها عبر الرسائل القصيرة
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* From / To countries */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
