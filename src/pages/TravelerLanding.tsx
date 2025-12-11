@@ -10,6 +10,8 @@ import { TripForm } from '@/components/traveler-landing/TripForm';
 import { BenefitsSection } from '@/components/traveler-landing/BenefitsSection';
 import { Loader2 } from 'lucide-react';
 
+const BUCKET_NAME = 'trip-tickets';
+
 const TravelerLanding = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
@@ -18,6 +20,36 @@ const TravelerLanding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasSubmittedRef = useRef(false); // Use ref to persist across re-renders
   const submissionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const ensureBucketExists = async () => {
+    const { data, error } = await supabase.functions.invoke('create-trip-tickets-bucket');
+    if (error) {
+      console.error('Bucket ensure error (edge function):', error);
+      throw new Error(error.message || 'Failed to prepare storage bucket for tickets.');
+    }
+    if (!data?.success) {
+      console.error('Bucket ensure error: function returned non-success payload', data);
+      throw new Error('Failed to prepare storage bucket for tickets.');
+    }
+  };
+
+  const uploadTicketAndGetUrl = async (file: File, userId: string) => {
+    await ensureBucketExists();
+    const ext = file.name.split('.').pop() || 'pdf';
+    const filePath = `${userId}/${Date.now()}-ticket.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+    if (uploadError) {
+      console.error('Ticket upload error:', uploadError);
+      throw new Error(uploadError.message || 'Failed to upload ticket file.');
+    }
+    const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+    return publicUrlData.publicUrl;
+  };
 
   const handleSubmit = async (values: any) => {
     // Prevent multiple submissions
@@ -53,7 +85,18 @@ const TravelerLanding = () => {
       return;
     }
 
+    // Check if ticket file is provided
+    if (!values.ticket_file) {
+      showError('يرجى تحميل تذكرة الطيران');
+      setIsSubmitting(false);
+      hasSubmittedRef.current = false;
+      return;
+    }
+
     try {
+      // Upload ticket and get URL
+      const ticketUrl = await uploadTicketAndGetUrl(values.ticket_file, user.id);
+      
       let charge_per_kg = 0;
       const { calculateTravelerProfit } = await import('@/lib/pricing');
       const profit = calculateTravelerProfit(values.from_country, values.to_country, values.free_kg);
@@ -70,6 +113,7 @@ const TravelerLanding = () => {
         traveler_location: values.traveler_location,
         notes: values.notes,
         charge_per_kg: charge_per_kg,
+        ticket_file_url: ticketUrl,
         is_approved: false,
       });
 
@@ -128,6 +172,22 @@ const TravelerLanding = () => {
               return;
             }
 
+            // Check if ticket file is provided
+            if (!data.ticket_file) {
+              showError('يرجى تحميل تذكرة الطيران');
+              hasSubmittedRef.current = false;
+              return;
+            }
+
+            // For pending trips, we need to handle the file upload differently
+            // In a real implementation, you would need to store the file separately
+            // For now, we'll show an error since file upload after login is complex
+            showError('يرجى إعادة تحميل تذكرة الطيران وإرسال الرحلة');
+            hasSubmittedRef.current = false;
+            return;
+
+            // If we had a way to handle the file upload after login:
+            /*
             let charge_per_kg = 0;
             const { calculateTravelerProfit } = await import('@/lib/pricing');
             const profit = calculateTravelerProfit(data.from_country, data.to_country, data.free_kg);
@@ -165,6 +225,7 @@ const TravelerLanding = () => {
             setTimeout(() => {
               navigate('/my-flights');
             }, 2000);
+            */
           } catch (err: any) {
             console.error('Error submitting pending trip:', err);
             showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');

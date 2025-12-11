@@ -1,11 +1,11 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote } from 'lucide-react';
+import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,6 +20,7 @@ import { countries } from '@/lib/countries';
 import { calculateTravelerProfit } from '@/lib/pricing';
 import CountryFlag from '@/components/CountryFlag';
 import { arabicCountries } from '@/lib/countries-ar';
+import TicketUpload from '@/components/TicketUpload';
 
 const MIN_KG = 1;
 const MAX_KG = 50;
@@ -35,6 +36,7 @@ const formSchema = z.object({
     .max(MAX_KG, { message: 'maxWeight' }),
   traveler_location: z.string().min(1, { message: 'requiredField' }),
   notes: z.string().optional(),
+  ticket_file: z.instanceof(File).nullable(), // Add ticket file field
 });
 
 interface TripFormProps {
@@ -44,7 +46,6 @@ interface TripFormProps {
 
 export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) => {
   const { t } = useTranslation();
-  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,6 +55,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
       free_kg: MIN_KG,
       traveler_location: '',
       notes: '',
+      ticket_file: null,
     },
   });
 
@@ -81,11 +83,11 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
     // Format date to YYYY-MM-DD string
     const formattedDate = format(new Date(values.trip_date), 'yyyy-MM-dd');
-    
-    onSubmit({
-      ...values,
-      trip_date: formattedDate
-    });
+    onSubmit({ ...values, trip_date: formattedDate });
+  };
+
+  const handleTicketFileSelected = (file: File | null) => {
+    form.setValue('ticket_file', file);
   };
 
   return (
@@ -265,6 +267,26 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
               )}
             />
 
+            {/* Ticket upload */}
+            <FormField
+              control={form.control}
+              name="ticket_file"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    تحميل تذكرة الطيران
+                  </FormLabel>
+                  <FormControl>
+                    <TicketUpload 
+                      onFileSelected={handleTicketFileSelected} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Estimated profit (USD only) */}
             {estimatedProfit && !estimatedProfit.error && (
               <Card className="mt-4 border-primary/30 bg-primary/5">
@@ -289,6 +311,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
             <p className="text-xs text-muted-foreground">
               {t('tripPendingApprovalNote')}
             </p>
+
             <Button 
               type="submit" 
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
