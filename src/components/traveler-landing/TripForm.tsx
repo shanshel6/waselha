@@ -104,45 +104,6 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-            {/* Full Name */}
-            <FormField
-              control={form.control}
-              name="full_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    الاسم الكامل
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="أدخل اسمك الكامل" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Phone Number */}
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    رقم الهاتف
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="مثال: 07701234567" {...field} />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">
-                    سيتم استخدام هذا الرقم كاسم مستخدم وكلمة المرور سيتم إرسالها عبر الرسائل القصيرة
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             {/* From / To countries */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -309,6 +270,45 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
                     {t('travelerLocationDescription')}
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Full Name */}
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    الاسم الكامل
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="أدخل اسمك الكامل" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Phone Number */}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    رقم الهاتف
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="مثال: 07701234567" {...field} />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    سيتم استخدام هذا الرقم كاسم مستخدم وكلمة المرور سيتم إرسالها عبر الرسائل القصيرة
                   </p>
                   <FormMessage />
                 </FormItem>
