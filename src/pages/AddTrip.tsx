@@ -428,7 +428,9 @@ const AddTrip = () => {
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
                     <p>
-                      ${estimatedProfit.totalPriceUSD.toFixed(2)} - ${(estimatedProfit.totalPriceUSD + 50).toFixed(2)} USD
+                      {free_kg <= 3
+                        ? `$${estimatedProfit.totalPriceUSD.toFixed(2)} USD`
+                        : `$${estimatedProfit.totalPriceUSD.toFixed(2)} - $${(estimatedProfit.totalPriceUSD + 50).toFixed(2)} USD`}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t('basedOnWeightAndDestination')}
