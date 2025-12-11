@@ -107,6 +107,9 @@ const TravelerLanding = () => {
             const isVerified = verificationInfo?.status === 'approved';
             if (!isVerified) {
               showError('verificationRequiredTitle');
+              // Clear pending data before redirecting
+              localStorage.removeItem('pendingTripData');
+              localStorage.removeItem('postLoginRedirect');
               navigate('/verification');
               return;
             }

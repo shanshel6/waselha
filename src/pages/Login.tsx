@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,17 +13,16 @@ import { LogIn, Mail, Facebook, Loader2 } from 'lucide-react';
 function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useSession();
   const [redirectTo, setRedirectTo] = useState('');
 
-  // If user is already logged in, redirect appropriately
+  // Handle post-login redirection
   useEffect(() => {
     if (user) {
       // Check if there's a post-login redirect path stored
       const postLoginRedirect = localStorage.getItem('postLoginRedirect');
       if (postLoginRedirect) {
-        localStorage.removeItem('postLoginRedirect');
+        // Don't remove the redirect path yet - it will be handled by TravelerLanding
         navigate(postLoginRedirect, { replace: true });
       } else {
         navigate('/', { replace: true });
