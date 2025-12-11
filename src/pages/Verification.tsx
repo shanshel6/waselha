@@ -41,10 +41,7 @@ const verificationSchema = z.object({
   id_back_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
-  residential_card_front_file: z
-    .instanceof(File)
-    .refine((f) => f.size > 0, { message: 'uploadRequired' }),
-  residential_card_back_file: z
+  residential_card_file: z
     .instanceof(File)
     .refine((f) => f.size > 0, { message: 'uploadRequired' }),
   photo_id_file: z
@@ -166,7 +163,20 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({ label, required, valu
   );
 };
 
+const ensureVerificationBucket = async () => {
+    const { data, error } = await supabase.functions.invoke('create-verification-documents-bucket');
+    if (error) {
+      console.error('Error ensuring verification-documents bucket:', error);
+      throw new Error(error.message || 'Failed to prepare storage for verification documents.');
+    }
+    if (!data?.success) {
+      console.error('create-verification-documents-bucket returned non-success payload:', data);
+      throw new Error('Failed to prepare storage for verification documents.');
+    }
+};
+
 const uploadVerificationFile = async (file: File, userId: string, key: string) => {
+  await ensureVerificationBucket();
   const ext = file.name.split('.').pop() || 'jpg';
   const filePath = `${userId}/${key}-${Date.now()}.${ext}`;
   
@@ -205,8 +215,7 @@ const Verification = () => {
       address: '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
-      residential_card_front_file: undefined as unknown as File,
-      residential_card_back_file: undefined as unknown as File,
+      residential_card_file: undefined as unknown as File,
       photo_id_file: undefined as unknown as File,
     },
     values: useMemo(() => ({
@@ -216,8 +225,7 @@ const Verification = () => {
       address: profile?.address || '',
       id_front_file: undefined as unknown as File,
       id_back_file: undefined as unknown as File,
-      residential_card_front_file: undefined as unknown as File,
-      residential_card_back_file: undefined as unknown as File,
+      residential_card_file: undefined as unknown as File,
       photo_id_file: undefined as unknown as File,
     }), [profile])
   });
@@ -262,14 +270,12 @@ const Verification = () => {
       const [
         idFrontUrl,
         idBackUrl,
-        residentialFrontUrl,
-        residentialBackUrl,
+        residentialCardUrl,
         photoIdUrl
       ] = await Promise.all([
         uploadVerificationFile(values.id_front_file, user.id, 'id-front'),
         uploadVerificationFile(values.id_back_file, user.id, 'id-back'),
-        uploadVerificationFile(values.residential_card_front_file, user.id, 'housing-card-front'),
-        uploadVerificationFile(values.residential_card_back_file, user.id, 'housing-card-back'),
+        uploadVerificationFile(values.residential_card_file, user.id, 'housing-card'),
         uploadVerificationFile(values.photo_id_file, user.id, 'photo-id')
       ]);
 
@@ -277,7 +283,7 @@ const Verification = () => {
         user_id: user.id,
         id_front_url: idFrontUrl,
         id_back_url: idBackUrl,
-        residential_card_url: residentialFrontUrl || residentialBackUrl, // Assuming one URL for residential card
+        residential_card_url: residentialCardUrl,
         photo_id_url: photoIdUrl,
         status: 'pending'
       });
@@ -425,29 +431,17 @@ const Verification = () => {
                 />
               </div>
 
-              {/* Housing card front/back */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="residential_card_front_file"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FileUploadField label={t('residentCardFront')} required value={field.value} onChange={field.onChange} />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="residential_card_back_file"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FileUploadField label={t('residentCardBack')} required value={field.value} onChange={field.onChange} />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {/* Housing card */}
+              <FormField
+                control={form.control}
+                name="residential_card_file"
+                render={({ field }) => (
+                  <FormItem>
+                    <FileUploadField label={t('residentCard')} required value={field.value} onChange={field.onChange} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Selfie with ID */}
               <div className="space-y-3">
