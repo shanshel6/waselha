@@ -204,11 +204,7 @@ const AdminVerificationDashboard = () => {
     queryKey: ['verificationRequests'],
     queryFn: async () => {
       const { data: requestsData, error: requestsError } = await supabase
-        .from('verification_requests')
-        .select(
-          'id, user_id, status, id_front_url, id_back_url, residential_card_url, photo_id_url, created_at, updated_at'
-        )
-        .order('created_at', { ascending: true });
+        .rpc('get_all_verification_requests');
 
       if (requestsError) {
         throw new Error(requestsError.message);
