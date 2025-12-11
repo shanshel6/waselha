@@ -56,7 +56,12 @@ function Login() {
 
   const generateEmailFromPhone = (phone: string): string => {
     const cleanPhone = formatPhoneNumber(phone);
-    return `user${cleanPhone}@waslaha.app`;
+    // Ensure we have a valid 10-digit Iraqi phone number
+    if (cleanPhone.length === 10 && cleanPhone.startsWith('7')) {
+      return `user-${cleanPhone}@waslaha.app`;
+    }
+    // If it's not a standard format, use the cleaned version with prefix
+    return `user-${cleanPhone}@waslaha.app`;
   };
 
   const handleLogin = async () => {
