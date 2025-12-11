@@ -69,11 +69,9 @@ const TravelerLanding = () => {
       let userIdForTrip: string;
       let isNewUser = false;
 
-      // Step 1: Handle user creation if not logged in
+      // Step 1: Handle user session: create or use existing
       if (!user) {
         isNewUser = true;
-        
-        // (A) Create a new Supabase user with a random password
         const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
         const formattedPhone = formatPhoneNumber(values.phone);
         const fullPhone = `+964${formattedPhone}`;
@@ -82,18 +80,19 @@ const TravelerLanding = () => {
         const firstName = fullNameParts[0] || '';
         const lastName = fullNameParts.slice(1).join(' ') || '';
 
+        // Create user
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          phone: fullPhone,
-          password: randomPassword,
-          options: {
-            data: {
-              first_name: firstName,
-              last_name: lastName,
-              phone: values.phone,
-              address: values.traveler_location, // Using traveler_location as address
-              role: 'traveler',
+            phone: fullPhone,
+            password: randomPassword,
+            options: {
+                data: {
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone: values.phone,
+                    address: values.traveler_location,
+                    role: 'traveler',
+                },
             },
-          },
         });
 
         if (signUpError) {
@@ -102,45 +101,38 @@ const TravelerLanding = () => {
           }
           throw signUpError;
         }
-
-        if (!signUpData.user) {
-          throw new Error("فشل في إنشاء حساب المستخدم.");
-        }
+        if (!signUpData.user) throw new Error("فشل في إنشاء حساب المستخدم. يرجى المحاولة مرة أخرى.");
         
         userIdForTrip = signUpData.user.id;
 
-        // (C) Send account details to /admin/makeaccounts by saving the password
+        // Save password for admin page
         const { error: passwordError } = await supabase
-          .from('user_passwords')
-          .insert({
-            id: signUpData.user.id,
-            password: randomPassword,
-          });
-          
-        if (passwordError) {
-          // Log the error but don't block the flow
-          console.error('Error storing password for admin:', passwordError);
-        }
+            .from('user_passwords')
+            .insert({ id: userIdForTrip, password: randomPassword });
+        if (passwordError) console.error('Error storing password:', passwordError);
+
+        // Create a verification request for the admin
+        const { error: verificationError } = await supabase
+          .from('verification_requests')
+          .insert({ user_id: userIdForTrip, status: 'pending' });
+        if (verificationError) console.error('Error creating verification request:', verificationError);
 
       } else {
-        // User is already logged in
+        // Existing user
         const isVerified = verificationInfo?.status === 'approved';
         if (!isVerified) {
-          showError('verificationRequiredTitle');
-          navigate('/verification');
-          setIsSubmitting(false);
-          return;
+            showError('verificationRequiredTitle');
+            navigate('/verification');
+            return; // Exit early
         }
         userIdForTrip = user.id;
       }
 
-      // (B) Save the trip details
+      // Step 2: Upload ticket and save trip
       if (!values.ticket_file) {
         throw new Error('يرجى تحميل تذكرة الطيران');
       }
-      
       const ticketUrl = await uploadTicketAndGetUrl(values.ticket_file, userIdForTrip);
-      
       const { calculateTravelerProfit } = await import('@/lib/pricing');
       const profit = calculateTravelerProfit(values.from_country, values.to_country, values.free_kg);
       const charge_per_kg = profit ? profit.pricePerKgUSD : 0;
@@ -155,28 +147,24 @@ const TravelerLanding = () => {
         notes: values.notes,
         charge_per_kg: charge_per_kg,
         ticket_file_url: ticketUrl,
-        is_approved: false, // Trips always start as not approved
+        is_approved: false,
       });
       
-      if (tripError) {
-        throw tripError;
-      }
-      
-      // Step 2 & 3: Handle redirection
+      if (tripError) throw tripError;
+
+      // Step 3: Redirect based on user type
       if (isNewUser) {
-        // Sign out the newly created user and redirect to login
         await supabase.auth.signOut();
         showSuccess('تم إنشاء الحساب وإضافة الرحلة بنجاح! يمكنك الآن تسجيل الدخول.');
         navigate('/login');
       } else {
-        // For existing users, redirect to their trips page
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
         queryClient.invalidateQueries({ queryKey: ['userTrips', userIdForTrip] });
         queryClient.invalidateQueries({ queryKey: ['trips'] });
         queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
         navigate('/my-flights');
       }
-      
+
     } catch (err: any) {
       console.error('Error in trip submission flow:', err);
       showError(err.message || 'حدث خطأ أثناء إضافة الرحلة');
