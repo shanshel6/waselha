@@ -12,11 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import { Phone, User, MapPin } from 'lucide-react';
+import { Phone, User, MapPin, Lock } from 'lucide-react';
 
 const signUpSchema = z.object({
   full_name: z.string().min(1, { message: 'requiredField' }),
   phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
+  password: z.string().min(6, { message: 'passwordTooShort' }),
   address: z.string().min(1, { message: 'requiredField' }),
 });
 
@@ -28,6 +29,7 @@ const SignUp = () => {
     defaultValues: {
       full_name: '',
       phone: '',
+      password: '',
       address: '',
     },
   });
@@ -46,7 +48,6 @@ const SignUp = () => {
 
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     try {
-      const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
       const formattedPhone = formatPhoneNumber(values.phone);
       const fullPhone = `+964${formattedPhone}`;
       
@@ -56,7 +57,7 @@ const SignUp = () => {
 
       const { data, error } = await supabase.auth.signUp({
         phone: fullPhone,
-        password: randomPassword,
+        password: values.password,
         options: {
           data: {
             first_name: firstName,
@@ -76,7 +77,7 @@ const SignUp = () => {
         // Store password for admin access
         const { error: passwordError } = await supabase
           .from('user_passwords')
-          .insert({ id: data.user.id, password: randomPassword });
+          .insert({ id: data.user.id, password: values.password });
           
         if (passwordError) {
           console.error('Error storing password:', passwordError);
@@ -139,6 +140,22 @@ const SignUp = () => {
                       <p className="text-xs text-muted-foreground">
                         سيتم استخدام هذا الرقم لتسجيل الدخول
                       </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        كلمة المرور
+                      </FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="أدخل كلمة مرور (6 أحرف على الأقل)" {...field} dir="ltr" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
