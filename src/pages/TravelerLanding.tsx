@@ -18,7 +18,6 @@ const TravelerLanding = () => {
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const hasSubmittedRef = useRef(false); // Use ref to persist across re-renders
 
   const ensureBucketExists = async () => {
     const { data, error } = await supabase.functions.invoke('create-trip-tickets-bucket');
@@ -51,133 +50,100 @@ const TravelerLanding = () => {
   };
 
   const formatPhoneNumber = (phone: string): string => {
-    // Remove all non-digit characters
     let cleanPhone = phone.replace(/\D/g, '');
-    
-    // Handle different phone number formats for Iraq
-    if (cleanPhone.startsWith('07')) {
-      // Format: 07XXXXXXXXX (10 digits total)
-      if (cleanPhone.length === 11 && cleanPhone.startsWith('07')) {
-        cleanPhone = cleanPhone.substring(1); // Remove leading 0
-      }
-    } else if (cleanPhone.startsWith('9647')) {
-      // Format: 9647XXXXXXXXX (12 digits total)
-      cleanPhone = cleanPhone.substring(3); // Remove country code 964
-    } else if (cleanPhone.startsWith('+9647')) {
-      // Format: +9647XXXXXXXXX
-      cleanPhone = cleanPhone.substring(4); // Remove country code +964
+    if (cleanPhone.length === 11 && cleanPhone.startsWith('07')) {
+      cleanPhone = cleanPhone.substring(1);
+    } else if (cleanPhone.length === 12 && cleanPhone.startsWith('9647')) {
+      cleanPhone = cleanPhone.substring(3);
+    } else if (cleanPhone.length === 13 && cleanPhone.startsWith('+9647')) {
+      cleanPhone = cleanPhone.substring(4);
     }
-    
     return cleanPhone;
   };
 
-  const createTemporaryUser = async (phone: string, fullName: string) => {
-    // Generate a 6-digit password
+  const createTemporaryUser = async (values: any) => {
     const password = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Format phone number
-    const formattedPhone = formatPhoneNumber(phone);
+    const formattedPhone = formatPhoneNumber(values.phone);
     const fullPhone = `+964${formattedPhone}`;
     
-    try {
-      // Sign up the user with phone and password
-      const { data, error } = await supabase.auth.signUp({
-        phone: fullPhone,
-        password: password,
-        options: {
-          data: {
-            full_name: fullName,
-            phone: phone,
-            role: 'traveler',
-            is_temporary: true
-          },
-          emailRedirectTo: `${window.location.origin}/`
-        }
-      });
+    const fullNameParts = values.full_name.trim().split(/\s+/);
+    const firstName = fullNameParts[0] || '';
+    const lastName = fullNameParts.slice(1).join(' ') || '';
 
-      if (error) {
-        throw new Error(error.message);
+    const { data, error } = await supabase.auth.signUp({
+      phone: fullPhone,
+      password: password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          phone: values.phone,
+          address: values.traveler_location,
+          role: 'traveler',
+        },
+      },
+    });
+
+    if (error) {
+      if (error.message.includes('User already registered')) {
+        throw new Error('رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول.');
       }
-
-      // If user already exists, try to sign in
-      if (data.user && !data.session) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          phone: fullPhone,
-          password: password
-        });
-        if (signInError) {
-          throw new Error(signInError.message);
-        }
-        return signInData;
-      }
-
-      // Store the password in the database for admin access
-      if (data.user) {
-        const { error: passwordError } = await supabase
-          .from('user_passwords')
-          .insert({
-            id: data.user.id,
-            password: password
-          });
-          
-        if (passwordError) {
-          console.error('Error storing password:', passwordError);
-        }
-      }
-
-      // Log password for debugging (in production, send via SMS)
-      console.log(`Temporary password for ${phone}: ${password}`);
-      return data;
-    } catch (error: any) {
-      console.error('Error creating temporary user:', error);
       throw error;
     }
+
+    if (data.user) {
+      const { error: passwordError } = await supabase
+        .from('user_passwords')
+        .insert({
+          id: data.user.id,
+          password: password,
+        });
+        
+      if (passwordError) {
+        console.error('Error storing password:', passwordError);
+      }
+    }
+
+    return data;
   };
 
   const handleSubmit = async (values: any) => {
-    // Prevent multiple submissions
-    if (isSubmitting || hasSubmittedRef.current) return;
+    if (isSubmitting) return;
     setIsSubmitting(true);
-    hasSubmittedRef.current = true;
     
     try {
       let currentUser = user;
+      let isNewUser = false;
       
-      // If user is not logged in, create a temporary user
       if (!currentUser) {
-        const userData = await createTemporaryUser(values.phone, values.full_name);
+        isNewUser = true;
+        const userData = await createTemporaryUser(values);
         currentUser = userData.user;
-        // Show success message about account creation
+        if (!currentUser) {
+            throw new Error("فشل في إنشاء حساب المستخدم.");
+        }
         showSuccess('تم إنشاء حساب مؤقت لك. سيتم إرسال كلمة المرور إلى المسؤول.');
+      } else {
+        const isVerified = verificationInfo?.status === 'approved';
+        if (!isVerified) {
+          showError('verificationRequiredTitle');
+          navigate('/verification');
+          setIsSubmitting(false);
+          return;
+        }
       }
       
-      // Check if user is verified (if logged in)
-      let isVerified = false;
-      if (currentUser) {
-        const { data: verificationData } = await supabase
-          .from('profiles')
-          .select('is_verified')
-          .eq('id', currentUser.id)
-          .single();
-        isVerified = verificationData?.is_verified || false;
-      }
-      
-      // Check if ticket file is provided
       if (!values.ticket_file) {
         throw new Error('يرجى تحميل تذكرة الطيران');
       }
       
-      // Upload ticket and get URL
       const ticketUrl = await uploadTicketAndGetUrl(values.ticket_file, currentUser!.id);
       
-      let charge_per_kg = 0;
       const { calculateTravelerProfit } = await import('@/lib/pricing');
       const profit = calculateTravelerProfit(values.from_country, values.to_country, values.free_kg);
-      if (profit) {
-        charge_per_kg = profit.pricePerKgUSD;
-      }
+      const charge_per_kg = profit ? profit.pricePerKgUSD : 0;
       
-      const { error } = await supabase.from('trips').insert({
+      const { error: tripError } = await supabase.from('trips').insert({
         user_id: currentUser!.id,
         from_country: values.from_country,
         to_country: values.to_country,
@@ -190,133 +156,29 @@ const TravelerLanding = () => {
         is_approved: false,
       });
       
-      if (error) {
-        console.error('Error adding trip:', error);
-        throw new Error(error.message || 'Failed to create trip');
+      if (tripError) {
+        throw tripError;
       }
       
-      showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
+      if (isNewUser) {
+        await supabase.auth.signOut();
+        showSuccess('تمت إضافة الرحلة بنجاح! يمكنك الآن تسجيل الدخول بحسابك الجديد.');
+        navigate('/login');
+      } else {
+        showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
+        queryClient.invalidateQueries({ queryKey: ['userTrips', currentUser!.id] });
+        queryClient.invalidateQueries({ queryKey: ['trips'] });
+        queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+        navigate('/my-flights');
+      }
       
-      // Invalidate queries to refresh the trips list
-      queryClient.invalidateQueries({ queryKey: ['userTrips', currentUser!.id] });
-      queryClient.invalidateQueries({ queryKey: ['trips'] });
-      queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-      
-      // Redirect to my-flights page
-      navigate('/my-flights');
     } catch (err: any) {
       console.error('Error creating trip:', err);
       showError(err.message || 'حدث خطأ أثناء إضافة الرحلة');
-      hasSubmittedRef.current = false; // Reset on error
     } finally {
       setIsSubmitting(false);
-      // Clear pending data
-      localStorage.removeItem('pendingTripData');
-      localStorage.removeItem('pendingTripFile');
     }
   };
-
-  // Submit pending trip after login - run only once
-  useEffect(() => {
-    // Only run if user is logged in and we have pending data
-    if (!user) return;
-    
-    const pendingData = localStorage.getItem('pendingTripData');
-    const pendingFileData = localStorage.getItem('pendingTripFile');
-    
-    // If no pending data, nothing to do
-    if (!pendingData || !pendingFileData) return;
-    
-    // If already submitted, don't run again
-    if (hasSubmittedRef.current) return;
-    
-    // Mark as submitted to prevent multiple runs
-    hasSubmittedRef.current = true;
-    
-    const submitPendingTrip = async () => {
-      try {
-        const data = JSON.parse(pendingData);
-        const fileData = JSON.parse(pendingFileData);
-        
-        // Check if user is verified
-        const { data: verificationData } = await supabase
-          .from('profiles')
-          .select('is_verified')
-          .eq('id', user.id)
-          .single();
-        const isVerified = verificationData?.is_verified;
-        
-        if (!isVerified) {
-          showError('verificationRequiredTitle');
-          navigate('/verification');
-          hasSubmittedRef.current = false; // Reset so user can try again after verification
-          return;
-        }
-        
-        // Reconstruct the file from stored data
-        const blob = await fetch(fileData.data).then(res => res.blob());
-        const file = new File([blob], fileData.name, { type: fileData.type });
-        
-        // Upload ticket and get URL
-        const ticketUrl = await uploadTicketAndGetUrl(file, user.id);
-        
-        let charge_per_kg = 0;
-        const { calculateTravelerProfit } = await import('@/lib/pricing');
-        const profit = calculateTravelerProfit(data.from_country, data.to_country, data.free_kg);
-        if (profit) {
-          charge_per_kg = profit.pricePerKgUSD;
-        }
-        
-        const { error } = await supabase.from('trips').insert({
-          user_id: user.id,
-          from_country: data.from_country,
-          to_country: data.to_country,
-          trip_date: data.trip_date,
-          free_kg: data.free_kg,
-          traveler_location: data.traveler_location,
-          notes: data.notes,
-          charge_per_kg: charge_per_kg,
-          ticket_file_url: ticketUrl,
-          is_approved: false,
-        });
-        
-        if (error) {
-          console.error('Error adding trip:', error);
-          throw new Error(error.message || 'Failed to create trip');
-        }
-        
-        // Clear localStorage after successful submission
-        localStorage.removeItem('pendingTripData');
-        localStorage.removeItem('pendingTripFile');
-        
-        showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
-        
-        // Invalidate queries to refresh the trips list
-        queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['trips'] });
-        queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-        
-        // Redirect to my-flights page after a short delay to show the success message
-        setTimeout(() => {
-          navigate('/my-flights');
-        }, 2000);
-      } catch (err: any) {
-        console.error('Error submitting pending trip:', err);
-        showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
-        // Clear pending data on error to prevent infinite loop
-        localStorage.removeItem('pendingTripData');
-        localStorage.removeItem('pendingTripFile');
-        hasSubmittedRef.current = false; // Reset on error
-      }
-    };
-    
-    submitPendingTrip();
-    
-    // Cleanup function
-    return () => {
-      hasSubmittedRef.current = false;
-    };
-  }, [user, navigate, queryClient]);
 
   if (isSessionLoading || isVerificationStatusLoading) {
     return (
