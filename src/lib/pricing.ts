@@ -14,12 +14,6 @@ const ZONES = {
   // Zone B is implicitly all other countries in the list, defaulting unlisted to B.
 };
 
-const PRICING_TIERS_USD = {
-  A: { "1-2": 5.0, "3-5": 4.5, "6-10": 4.0 },
-  B: { "1-2": 7.0, "3-5": 6.5, "6-10": 6.0 },
-  C: { "1-2": 9.0, "3-5": 8.5, "6-10": 8.0 }
-};
-
 const USD_TO_IQD_RATE = 1400;
 const MAX_TRIP_WEIGHT_KG = 50; // Max weight a traveler can offer/sender can request for a trip
 const MAX_CALCULATOR_WEIGHT_KG = 50; // Max weight for price calculation on the homepage
@@ -55,17 +49,32 @@ const SIZE_ADJUSTMENTS: Record<ItemSize, number> = {
   L: 4,
 };
 
-const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {
+const getZone = (country: string): 'A' | 'B' | 'C' => {
   if (ZONES.A.includes(country)) return 'A';
   if (ZONES.C.includes(country)) return 'C';
   // Default to Zone B if country is not listed in A or C (covers Europe, etc.)
   return 'B'; 
 };
 
-// Base price (1-2kg tier) logic for Traveler profit estimation (used in AddTrip)
-const getBasePricePerKg = (zone: keyof typeof PRICING_TIERS_USD): number => {
-  const tiers = PRICING_TIERS_USD[zone];
-  return tiers["1-2"];
+// New function to determine price per kg based on weight and zone
+const getPricePerKg = (weight: number, zone: 'A' | 'B' | 'C'): number => {
+    const basePrices = { A: 5.0, B: 7.0, C: 9.0 };
+    const basePrice = basePrices[zone];
+
+    if (weight <= 2) {
+        return basePrice;
+    }
+    if (weight <= 4) { // for 3kg and 4kg
+        return basePrice - 0.5;
+    }
+    if (weight <= 6) { // for 5kg and 6kg
+        return basePrice - 1.0;
+    }
+    if (weight <= 8) { // for 7kg and 8kg
+        return basePrice - 1.5;
+    }
+    // For weights 9kg and above
+    return basePrice - 2.0;
 };
 
 // Function for Senders (Price Calculator, Trip Details)
@@ -90,14 +99,14 @@ export const calculateShippingCost = (
 
   const finalZone = getZone(pricingCountry);
 
-  const basePricePerKg = getBasePricePerKg(finalZone);
+  const pricePerKgUSD = getPricePerKg(weight, finalZone);
   const categoryMultiplier = CATEGORY_MULTIPLIERS[itemType];
   const sizeAdjustment = SIZE_ADJUSTMENTS[itemSize];
 
-  const totalPriceUSD = (weight * basePricePerKg) * categoryMultiplier + sizeAdjustment;
+  const totalPriceUSD = (weight * pricePerKgUSD) * categoryMultiplier + sizeAdjustment;
   const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE;
 
-  return { pricePerKgUSD: basePricePerKg, totalPriceUSD, totalPriceIQD, error: null };
+  return { pricePerKgUSD, totalPriceUSD, totalPriceIQD, error: null };
 };
 
 // Function for Travelers (Add Trip) - Calculates potential profit based on base price
@@ -114,7 +123,7 @@ export const calculateTravelerProfit = (originCountry: string, destinationCountr
 
   const finalZone = getZone(pricingCountry);
 
-  const pricePerKgUSD = getBasePricePerKg(finalZone); 
+  const pricePerKgUSD = getPricePerKg(availableWeight, finalZone);
   const totalPriceUSD = availableWeight * pricePerKgUSD;
   const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE;
 
