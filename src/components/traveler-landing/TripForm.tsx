@@ -218,8 +218,8 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
                         onValueChange={(val) => field.onChange(val[0])}
                       />
                       <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                        <span>1 kg</span>
                         <span>50 kg</span>
+                        <span>1 kg</span>
                       </div>
                     </div>
                   </FormControl>
