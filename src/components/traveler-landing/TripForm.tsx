@@ -28,7 +28,7 @@ const MAX_KG = 50;
 // Schema that converts date to string for storage
 const formSchema = z.object({
   full_name: z.string().min(1, { message: 'requiredField' }),
-  phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }),
+  phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
   from_country: z.string().min(1, { message: 'requiredField' }),
   to_country: z.string().min(1, { message: 'requiredField' }),
   trip_date: z.string({ required_error: 'dateRequired' }), // Store as string

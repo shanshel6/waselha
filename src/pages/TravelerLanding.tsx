@@ -55,9 +55,9 @@ const TravelerLanding = () => {
     const password = Math.random().toString(36).slice(-8);
     
     // Create a valid email using the phone number
-    const email = `temp-${phone}@waslaha.app`;
+    const email = `user-${Date.now()}@waslaha.app`;
     
-    // Create the user with phone as email (Supabase requires email)
+    // Create the user with email
     const { data, error } = await supabase.auth.signUp({
       email: email,
       password: password,
@@ -73,6 +73,16 @@ const TravelerLanding = () => {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    // Store phone number in user metadata
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ phone: phone })
+      .eq('id', data.user?.id);
+
+    if (updateError) {
+      console.error('Error updating profile with phone:', updateError);
     }
 
     // Send password to admin dashboard (in a real app, this would be sent via SMS or email)
