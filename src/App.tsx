@@ -35,6 +35,7 @@ import AdminPayments from "./pages/AdminPayments";
 import AdminReports from "./pages/AdminReports";
 import AuthGuard from "./components/AuthGuard";
 import TripDetails from "./pages/TripDetails";
+import TravelerLanding from "./pages/TravelerLanding";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const AppContent = () => {
       <Route path="/contact" element={<Contact />} />
       <Route path="/trips" element={<Trips />} />
       <Route path="/trips/:tripId" element={<TripDetails />} />
+      <Route path="/traveler-landing" element={<TravelerLanding />} />
       
       {/* Auth routes */}
       <Route path="/login" element={<Login />} />
