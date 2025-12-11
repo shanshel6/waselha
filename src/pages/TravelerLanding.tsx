@@ -16,9 +16,10 @@ const TravelerLanding = () => {
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const handleSubmit = async (values: any) => {
-    if (isSubmitting) return;
+    if (isSubmitting || hasSubmitted) return;
     setIsSubmitting(true);
 
     // If user is not logged in, save data and redirect to login
@@ -71,6 +72,7 @@ const TravelerLanding = () => {
         throw new Error(error.message || 'Failed to create trip');
       }
 
+      setHasSubmitted(true);
       showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
 
       // Invalidate queries to refresh the trips list
@@ -90,13 +92,15 @@ const TravelerLanding = () => {
     }
   };
 
-  // Submit pending trip after login
+  // Submit pending trip after login - run only once
   useEffect(() => {
     const submitPendingTrip = async () => {
-      if (user) {
+      if (user && !hasSubmitted) {
         const pendingData = localStorage.getItem('pendingTripData');
         if (pendingData) {
           try {
+            // Mark as submitted immediately to prevent duplicate runs
+            setHasSubmitted(true);
             const data = JSON.parse(pendingData);
             
             // Check if user is verified
@@ -161,7 +165,12 @@ const TravelerLanding = () => {
     };
 
     submitPendingTrip();
-  }, [user, navigate, queryClient]);
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      // Any cleanup if needed
+    };
+  }, [user, navigate, queryClient, hasSubmitted]);
 
   if (isSessionLoading || isVerificationStatusLoading) {
     return (
