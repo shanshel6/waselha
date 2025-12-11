@@ -430,7 +430,9 @@ const AddTrip = () => {
                     <p>
                       {free_kg <= 3
                         ? `$${estimatedProfit.totalPriceUSD.toFixed(2)} USD`
-                        : `$${(estimatedProfit.totalPriceUSD + 10).toFixed(2)} - $${(estimatedProfit.totalPriceUSD + 50).toFixed(2)} USD`}
+                        : free_kg <= 8
+                        ? `$${(estimatedProfit.totalPriceUSD + 10).toFixed(2)} - $${(estimatedProfit.totalPriceUSD + 50).toFixed(2)} USD`
+                        : `$${(estimatedProfit.totalPriceUSD + 20).toFixed(2)} - $${(estimatedProfit.totalPriceUSD + 50).toFixed(2)} USD`}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t('basedOnWeightAndDestination')}
