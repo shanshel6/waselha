@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { LogIn, Mail, Facebook, Loader2, Phone } from 'lucide-react';
+import { showError, showSuccess } from '@/utils/toast';
 
 function Login() {
   const { t } = useTranslation();
@@ -61,32 +62,8 @@ function Login() {
 
     setIsSendingOtp(true);
     try {
-      // Check if user exists with this phone number
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('phone', phone)
-        .single();
-
-      if (profileError || !profileData) {
-        showError('لم يتم العثور على مستخدم بهذا الرقم');
-        return;
-      }
-
-      // Get user email from auth.users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('id', profileData.id)
-        .single();
-
-      if (userError || !userData) {
-        showError('حدث خطأ أثناء جلب معلومات المستخدم');
-        return;
-      }
-
-      // Send OTP to phone number (in a real app, this would be sent via SMS)
-      // For now, we'll just log it
+      // In a real implementation, you would send an SMS with an OTP
+      // For now, we'll simulate this by storing a fake OTP
       const fakeOtp = Math.floor(100000 + Math.random() * 900000).toString();
       console.log(`OTP for ${phone}: ${fakeOtp}`);
       localStorage.setItem(`otp_${phone}`, fakeOtp);
@@ -115,31 +92,7 @@ function Login() {
         return;
       }
 
-      // Get user by phone number
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('phone', phone)
-        .single();
-
-      if (profileError || !profileData) {
-        showError('لم يتم العثور على مستخدم بهذا الرقم');
-        return;
-      }
-
-      // Get user email from auth.users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('id', profileData.id)
-        .single();
-
-      if (userError || !userData) {
-        showError('حدث خطأ أثناء جلب معلومات المستخدم');
-        return;
-      }
-
-      // Sign in with email and password (in a real app, you would use OTP)
+      // In a real implementation, you would verify the OTP with your backend
       // For now, we'll just redirect to home
       showSuccess('تم تسجيل الدخول بنجاح');
       navigate('/');

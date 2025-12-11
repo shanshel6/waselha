@@ -54,42 +54,48 @@ const TravelerLanding = () => {
     // Generate a simple password
     const password = Math.random().toString(36).slice(-8);
     
-    // Create a valid email using a fixed domain
-    const email = `user${Math.random().toString(36).substr(2, 9)}@waslaha.app`;
+    // Create a valid email using phone number
+    const email = `user+${phone.replace(/\+/g, '')}@waslaha.app`;
     
-    // Create the user with email
-    const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          full_name: fullName,
-          phone: phone,
-          role: 'traveler',
-          is_temporary: true
+    try {
+      // Try to sign up the user
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone,
+            role: 'traveler',
+            is_temporary: true
+          }
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Update profile with phone number
+      if (data.user) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ phone: phone })
+          .eq('id', data.user.id);
+
+        if (updateError) {
+          console.error('Error updating profile with phone:', updateError);
         }
       }
-    });
 
-    if (error) {
-      throw new Error(error.message);
+      // Log password for debugging (in production, send via SMS)
+      console.log(`Temporary password for ${phone}: ${password}`);
+      
+      return data;
+    } catch (error: any) {
+      console.error('Error creating temporary user:', error);
+      throw error;
     }
-
-    // Store phone number in user metadata
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ phone: phone })
-      .eq('id', data.user?.id);
-
-    if (updateError) {
-      console.error('Error updating profile with phone:', updateError);
-    }
-
-    // Send password to admin dashboard (in a real app, this would be sent via SMS or email)
-    // For now, we'll just log it
-    console.log(`Temporary password for ${phone}: ${password}`);
-    
-    return data;
   };
 
   const handleSubmit = async (values: any) => {
