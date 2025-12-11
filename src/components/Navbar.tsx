@@ -10,10 +10,12 @@ import UserNav from './UserNav';
 import Notifications from './Notifications';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/use-profile';
+import { useAdminCheck } from '@/hooks/use-admin-check';
 
 const Navbar: React.FC = () => {
   const { t } = useTranslation();
   const { session } = useSession();
+  const { isAdmin } = useAdminCheck();
   const location = useLocation();
   const { data: profile } = useProfile();
 
@@ -31,6 +33,10 @@ const Navbar: React.FC = () => {
     ...(session ? [
       { name: t('myFlights'), path: '/my-flights' },
       { name: t('myProfile'), path: '/my-profile' },
+    ] : []),
+    ...(isAdmin ? [
+      { name: 'لوحة التحكم', path: '/admin/dashboard' },
+      { name: 'حسابات جديدة', path: '/admin/makeaccounts' },
     ] : []),
   ];
 
@@ -69,6 +75,7 @@ const Navbar: React.FC = () => {
               </Link>
             )}
           </div>
+
           {/* Mobile: زر القائمة على اليسار */}
           <div className="md:hidden">
             <Sheet>
@@ -84,12 +91,12 @@ const Navbar: React.FC = () => {
                 <div className="flex flex-col space-y-2 mb-4">
                   {mobileNavItems.map((item) => (
                     <Link key={item.path} to={item.path}>
-                      <div
-                        className={cn(
-                          'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                          isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        )}
-                      >
+                      <div className={cn(
+                        'flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                        isActive(item.path) 
+                          ? 'bg-primary/10 text-primary' 
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}>
                         <span>{item.name}</span>
                       </div>
                     </Link>
@@ -120,16 +127,40 @@ const Navbar: React.FC = () => {
           <div className="hidden md:flex items-center gap-3">
             {publicNavItems.map((item) => (
               <Link key={item.path} to={item.path}>
-                <span
-                  className={cn(
-                    'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
-                    isActive(item.path) ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
-                  )}
-                >
+                <span className={cn(
+                  'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
+                  isActive(item.path) 
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                )}>
                   {item.name}
                 </span>
               </Link>
             ))}
+            {isAdmin && (
+              <>
+                <Link to="/admin/dashboard">
+                  <span className={cn(
+                    'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
+                    isActive('/admin/dashboard') 
+                      ? 'text-primary bg-primary/10' 
+                      : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                  )}>
+                    لوحة التحكم
+                  </span>
+                </Link>
+                <Link to="/admin/makeaccounts">
+                  <span className={cn(
+                    'text-sm md:text-base font-medium transition-colors px-3 py-2 rounded-full',
+                    isActive('/admin/makeaccounts') 
+                      ? 'text-primary bg-primary/10' 
+                      : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                  )}>
+                    حسابات جديدة
+                  </span>
+                </Link>
+              </>
+            )}
           </div>
         </div>
 

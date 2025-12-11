@@ -58,10 +58,20 @@ const SignUp = () => {
         throw error;
       }
 
-      // In a real implementation, you would send the password via SMS here
-      // For now, we'll log it to the console
-      console.log(`Password for ${values.phone}: ${password}`);
-      
+      // Store the password in the database
+      if (data.user) {
+        const { error: passwordError } = await supabase
+          .from('user_passwords')
+          .insert({
+            id: data.user.id,
+            password: password
+          });
+        
+        if (passwordError) {
+          console.error('Error storing password:', passwordError);
+        }
+      }
+
       showSuccess('تم إنشاء الحساب بنجاح! سيتم إرسال كلمة المرور إلى رقم هاتفك خلال 30 دقيقة.');
       navigate('/login');
     } catch (error: any) {

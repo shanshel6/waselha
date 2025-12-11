@@ -17,6 +17,7 @@ import Chat from "./pages/Chat";
 import CompleteProfile from "./pages/CompleteProfile";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminVerificationDashboard from "./pages/AdminVerificationDashboard";
+import AdminMakeAccounts from "./pages/AdminMakeAccounts";
 import MyTripsPage from "./pages/MyTripsPage";
 import Navbar from "./components/Navbar";
 import ChatNotificationListener from "./components/ChatNotificationListener";
@@ -41,6 +42,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { isLoading } = useSession();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-xl text-gray-700 dark:text-gray-300">
@@ -48,6 +50,7 @@ const AppContent = () => {
       </div>
     );
   }
+
   return (
     <Routes>
       {/* Public routes - no AuthGuard */}
@@ -60,13 +63,13 @@ const AppContent = () => {
       <Route path="/trips" element={<Trips />} />
       <Route path="/trips/:tripId" element={<TripDetails />} />
       <Route path="/traveler-landing" element={<TravelerLanding />} />
-      
+
       {/* Auth routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/complete-profile" element={<CompleteProfile />} />
-      
+
       {/* Protected routes - wrapped with AuthGuard */}
       <Route path="/my-profile" element={
         <AuthGuard>
@@ -108,6 +111,11 @@ const AppContent = () => {
           <AdminVerificationDashboard />
         </AuthGuard>
       } />
+      <Route path="/admin/makeaccounts" element={
+        <AuthGuard>
+          <AdminMakeAccounts />
+        </AuthGuard>
+      } />
       <Route path="/admin/payments" element={
         <AuthGuard>
           <AdminPayments />
@@ -123,7 +131,6 @@ const AppContent = () => {
           <PlaceOrder />
         </AuthGuard>
       } />
-      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -131,6 +138,7 @@ const AppContent = () => {
 
 const App = () => {
   const basename = import.meta.env.VITE_APP_BASE_PATH || '/';
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
