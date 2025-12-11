@@ -27,22 +27,43 @@ const AdminMakeAccounts = () => {
   const { data: userPasswords, isLoading, error } = useQuery<UserPassword[], Error>({
     queryKey: ['userPasswords'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Step 1: Fetch all user passwords
+      const { data: passwordsData, error: passwordsError } = await supabase
         .from('user_passwords')
-        .select(`
-          id,
-          password,
-          created_at,
-          profiles (
-            first_name,
-            last_name,
-            phone
-          )
-        `)
+        .select('id, password, created_at')
         .order('created_at', { ascending: false });
-      
-      if (error) throw new Error(error.message);
-      return data as UserPassword[];
+
+      if (passwordsError) throw new Error(passwordsError.message);
+      if (!passwordsData || passwordsData.length === 0) return [];
+
+      // Step 2: Get all user IDs from the passwords table
+      const userIds = passwordsData.map(p => p.id);
+
+      // Step 3: Fetch the corresponding profiles for those user IDs
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, phone')
+        .in('id', userIds);
+
+      if (profilesError) throw new Error(profilesError.message);
+
+      // Step 4: Create a map of profiles for easy lookup
+      const profilesMap = new Map(profilesData.map(p => [p.id, p]));
+
+      // Step 5: Merge the password data with the profile data
+      const mergedData: UserPassword[] = passwordsData.map(passwordEntry => {
+        const profile = profilesMap.get(passwordEntry.id);
+        return {
+          ...passwordEntry,
+          profiles: profile ? {
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            phone: profile.phone,
+          } : null,
+        };
+      });
+
+      return mergedData;
     },
     enabled: isAdmin,
   });
