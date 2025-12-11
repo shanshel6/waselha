@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import { Phone, User, MapPin } from 'lucide-react';
+import { Phone, User, MapPin, Loader2 } from 'lucide-react';
 
 const signUpSchema = z.object({
   full_name: z.string().min(1, { message: 'requiredField' }),
@@ -31,6 +31,8 @@ const SignUp = () => {
       address: '',
     },
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatPhoneNumber = (phone: string): string => {
     // Remove all non-digit characters
@@ -54,21 +56,21 @@ const SignUp = () => {
   };
 
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
       // Format the phone number
       const formattedPhone = formatPhoneNumber(values.phone);
       const fullPhone = `+964${formattedPhone}`;
       
-      // Generate a 6-digit password
-      const password = Math.floor(100000 + Math.random() * 900000).toString();
-      
       console.log('Attempting to sign up with phone:', fullPhone);
 
-      // Sign up the user with phone number
-      const { data, error } = await supabase.auth.signUp({
+      // Sign up the user with phone number using OTP
+      const { error } = await supabase.auth.signInWithOtp({
         phone: fullPhone,
-        password: password,
         options: {
+          shouldCreateUser: true,
           data: {
             full_name: values.full_name,
             phone: values.phone,
@@ -83,25 +85,14 @@ const SignUp = () => {
         throw error;
       }
 
-      // Store the password in the database if user was created
-      if (data.user) {
-        const { error: passwordError } = await supabase
-          .from('user_passwords')
-          .insert({
-            id: data.user.id,
-            password: password
-          });
-          
-        if (passwordError) {
-          console.error('Error storing password:', passwordError);
-        }
-      }
-
-      showSuccess('تم إنشاء الحساب بنجاح! سيتم إرسال كلمة المرور إلى رقم هاتفك خلال 30 دقيقة.');
+      showSuccess('تم إرسال رمز التحقق إلى رقم هاتفك! يرجى التحقق من الرسائل القصيرة.');
+      // Redirect to login page to enter OTP
       navigate('/login');
     } catch (error: any) {
       console.error('Sign up error:', error);
       showError(error.message || 'حدث خطأ أثناء إنشاء الحساب');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -147,7 +138,7 @@ const SignUp = () => {
                         <Input type="tel" placeholder="مثال: 07701234567" {...field} dir="ltr" />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">
-                        سيتم استخدام هذا الرقم لتسجيل الدخول
+                        سيتم إرسال رمز التحقق إلى هذا الرقم
                       </p>
                       <FormMessage />
                     </FormItem>
@@ -171,11 +162,16 @@ const SignUp = () => {
                 />
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    تأكد من صحة رقم هاتفك، سيتم إرسال رسالة نصية تحتوي على كلمة المرور خلال 30 دقيقة من التسجيل
+                    سيتم إرسال رمز التحقق إلى رقم هاتفك عبر رسالة نصية. أدخل هذا الرمز في الشاشة التالية لتأكيد حسابك.
                   </p>
                 </div>
-                <Button type="submit" className="w-full h-12 text-lg" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'جاري إنشاء الحساب...' : 'إنشاء الحساب'}
+                <Button type="submit" className="w-full h-12 text-lg" disabled={isSubmitting || form.formState.isSubmitting}>
+                  {isSubmitting || form.formState.isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      جاري إنشاء الحساب...
+                    </>
+                  ) : 'إرسال رمز التحقق'}
                 </Button>
               </form>
             </Form>
