@@ -92,6 +92,7 @@ const TravelerLanding = () => {
     }
 
     if (data.user) {
+      // Store password for admin access
       const { error: passwordError } = await supabase
         .from('user_passwords')
         .insert({
@@ -101,6 +102,15 @@ const TravelerLanding = () => {
         
       if (passwordError) {
         console.error('Error storing password:', passwordError);
+      }
+
+      // Create a verification request for the admin
+      const { error: verificationError } = await supabase
+        .from('verification_requests')
+        .insert({ user_id: data.user.id, status: 'pending' });
+
+      if (verificationError) {
+        console.error('Error creating verification request:', verificationError);
       }
     }
 
@@ -122,7 +132,6 @@ const TravelerLanding = () => {
         if (!currentUser) {
             throw new Error("فشل في إنشاء حساب المستخدم.");
         }
-        showSuccess('تم إنشاء حساب مؤقت لك. سيتم إرسال كلمة المرور إلى المسؤول.');
       } else {
         const isVerified = verificationInfo?.status === 'approved';
         if (!isVerified) {
@@ -162,7 +171,7 @@ const TravelerLanding = () => {
       
       if (isNewUser) {
         await supabase.auth.signOut();
-        showSuccess('تمت إضافة الرحلة بنجاح! يمكنك الآن تسجيل الدخول بحسابك الجديد.');
+        showSuccess('تم إنشاء الحساب وإضافة الرحلة بنجاح! الرجاء انتظار موافقة المسؤول لتسجيل الدخول.');
         navigate('/login');
       } else {
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
