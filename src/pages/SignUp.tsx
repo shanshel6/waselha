@@ -74,15 +74,6 @@ const SignUp = () => {
       }
 
       if (data.user) {
-        // Create a verification request for the admin
-        const { error: verificationError } = await supabase
-          .from('verification_requests')
-          .insert({ user_id: data.user.id, status: 'pending' });
-
-        if (verificationError) {
-          console.error('Error creating verification request:', verificationError);
-        }
-
         // Store password for admin access
         const { error: passwordError } = await supabase
           .from('user_passwords')
@@ -96,7 +87,7 @@ const SignUp = () => {
       // Sign out the user immediately so they can't access the app
       await supabase.auth.signOut();
 
-      showSuccess('تم إنشاء الحساب بنجاح! الرجاء انتظار موافقة المسؤول لتسجيل الدخول.');
+      showSuccess('تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.');
       navigate('/login');
 
     } catch (error: any) {

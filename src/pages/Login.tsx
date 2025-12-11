@@ -64,33 +64,13 @@ function Login() {
       const formattedPhone = formatPhoneNumber(phone);
       const fullPhone = `+964${formattedPhone}`;
       
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         phone: fullPhone,
         password
       });
 
       if (error) {
         throw error;
-      }
-
-      if (data.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('is_verified')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError) {
-          await supabase.auth.signOut();
-          throw profileError;
-        }
-
-        if (!profile.is_verified) {
-          await supabase.auth.signOut();
-          showError('حسابك قيد المراجعة من قبل المسؤول. يرجى المحاولة مرة أخرى لاحقاً.');
-          setIsLoggingIn(false);
-          return;
-        }
       }
 
       showSuccess('تم تسجيل الدخول بنجاح');

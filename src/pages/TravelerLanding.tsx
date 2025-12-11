@@ -111,12 +111,6 @@ const TravelerLanding = () => {
             .insert({ id: userIdForTrip, password: randomPassword });
         if (passwordError) console.error('Error storing password:', passwordError);
 
-        // Create a verification request for the admin
-        const { error: verificationError } = await supabase
-          .from('verification_requests')
-          .insert({ user_id: userIdForTrip, status: 'pending' });
-        if (verificationError) console.error('Error creating verification request:', verificationError);
-
       } else {
         // Existing user
         const isVerified = verificationInfo?.status === 'approved';
