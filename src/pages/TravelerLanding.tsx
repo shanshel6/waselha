@@ -71,33 +71,18 @@ const TravelerLanding = () => {
     return cleanPhone;
   };
 
-  const generateEmailFromPhone = (phone: string): string => {
-    const cleanPhone = formatPhoneNumber(phone);
-    // Ensure we have a valid 10-digit Iraqi phone number
-    if (cleanPhone.length === 10 && cleanPhone.startsWith('7')) {
-      return `user-${cleanPhone}@waslaha.app`;
-    }
-    // If it's not a standard format, use the cleaned version with prefix
-    return `user-${cleanPhone}@waslaha.app`;
-  };
-
   const createTemporaryUser = async (phone: string, fullName: string) => {
-    // Generate a simple password
-    const password = Math.random().toString(36).slice(-8);
+    // Generate a 6-digit password
+    const password = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // Create a valid email using phone number
-    const email = generateEmailFromPhone(phone);
-    
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw new Error('Invalid email format generated');
-    }
+    // Format phone number
+    const formattedPhone = formatPhoneNumber(phone);
+    const fullPhone = `+964${formattedPhone}`;
     
     try {
-      // Sign up the user without email confirmation
+      // Sign up the user with phone and password
       const { data, error } = await supabase.auth.signUp({
-        email: email,
+        phone: fullPhone,
         password: password,
         options: {
           data: {
@@ -117,7 +102,7 @@ const TravelerLanding = () => {
       // If user already exists, try to sign in
       if (data.user && !data.session) {
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
+          phone: fullPhone,
           password: password
         });
         if (signInError) {
@@ -126,16 +111,17 @@ const TravelerLanding = () => {
         return signInData;
       }
 
-      // Update profile with phone number
+      // Store the password in the database for admin access
       if (data.user) {
-        // Small delay to ensure user is created in profiles table
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ phone: phone })
-          .eq('id', data.user.id);
-        if (updateError) {
-          console.error('Error updating profile with phone:', updateError);
+        const { error: passwordError } = await supabase
+          .from('user_passwords')
+          .insert({
+            id: data.user.id,
+            password: password
+          });
+          
+        if (passwordError) {
+          console.error('Error storing password:', passwordError);
         }
       }
 

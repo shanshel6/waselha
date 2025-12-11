@@ -60,14 +60,14 @@ const SignUp = () => {
       const fullPhone = `+964${formattedPhone}`;
       
       // Generate a 6-digit password
-      const password = Math.floor(100000 + Math.random() * 900000).toString();
+      const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
       
       console.log('Attempting to sign up with phone:', fullPhone);
 
-      // Sign up the user with phone number
+      // Sign up the user with phone number and password
       const { data, error } = await supabase.auth.signUp({
         phone: fullPhone,
-        password: password,
+        password: randomPassword,
         options: {
           data: {
             full_name: values.full_name,
@@ -83,13 +83,13 @@ const SignUp = () => {
         throw error;
       }
 
-      // Store the password in the database if user was created
+      // Store the password in the database for admin access
       if (data.user) {
         const { error: passwordError } = await supabase
           .from('user_passwords')
           .insert({
             id: data.user.id,
-            password: password
+            password: randomPassword
           });
           
         if (passwordError) {
@@ -97,7 +97,7 @@ const SignUp = () => {
         }
       }
 
-      showSuccess('تم إنشاء الحساب بنجاح! سيتم إرسال كلمة المرور إلى رقم هاتفك خلال 30 دقيقة.');
+      showSuccess('تم إنشاء الحساب بنجاح! سيتم إرسال كلمة المرور إلى رقم هاتفك من قبل الإدارة.');
       navigate('/login');
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -171,7 +171,7 @@ const SignUp = () => {
                 />
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    تأكد من صحة رقم هاتفك، سيتم إرسال رسالة نصية تحتوي على كلمة المرور خلال 30 دقيقة من التسجيل
+                    تأكد من صحة رقم هاتفك، سيتم إرسال كلمة المرور إلى رقمك من قبل الإدارة
                   </p>
                 </div>
                 <Button type="submit" className="w-full h-12 text-lg" disabled={form.formState.isSubmitting}>

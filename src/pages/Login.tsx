@@ -54,16 +54,6 @@ function Login() {
     return cleanPhone;
   };
 
-  const generateEmailFromPhone = (phone: string): string => {
-    const cleanPhone = formatPhoneNumber(phone);
-    // Ensure we have a valid 10-digit Iraqi phone number
-    if (cleanPhone.length === 10 && cleanPhone.startsWith('7')) {
-      return `user-${cleanPhone}@waslaha.app`;
-    }
-    // If it's not a standard format, use the cleaned version with prefix
-    return `user-${cleanPhone}@waslaha.app`;
-  };
-
   const handleLogin = async () => {
     if (!phone) {
       showError('يرجى إدخال رقم الهاتف');
@@ -91,18 +81,13 @@ function Login() {
     setIsLoggingIn(true);
     
     try {
-      // Create valid email from phone number
-      const email = generateEmailFromPhone(phone);
+      // Format phone number
+      const formattedPhone = formatPhoneNumber(phone);
+      const fullPhone = `+964${formattedPhone}`;
       
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new Error('Invalid email format generated');
-      }
-
-      // Try to sign in
+      // Sign in with phone and password
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        phone: fullPhone,
         password
       });
 
@@ -163,7 +148,7 @@ function Login() {
                   dir="ltr" 
                 />
                 <p className="text-xs text-muted-foreground mt-2">
-                  أدخل كلمة المرور المكونة من 6 أرقام التي استلمتها عبر رسالة نصية
+                  أدخل كلمة المرور المكونة من 6 أرقام التي استلمتها من الإدارة
                 </p>
               </div>
               <Button onClick={handleLogin} disabled={isLoggingIn} className="w-full h-12 text-lg">
