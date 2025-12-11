@@ -370,7 +370,7 @@ const Verification = () => {
                         {t('phone')}
                       </FormLabel>
                       <FormControl>
-                        <Input {...field} disabled={submitDisabled} placeholder={t('phonePlaceholder')} />
+                        <Input {...field} disabled={true} placeholder={t('phonePlaceholder')} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
