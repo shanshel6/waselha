@@ -1,5 +1,4 @@
 "use client";
-
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -9,64 +8,55 @@ import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
+import { Phone, User } from 'lucide-react';
 
-const signUpSchema = z
-  .object({
-    first_name: z.string().min(1, { message: 'requiredField' }),
-    last_name: z.string().min(1, { message: 'requiredField' }),
-    email: z.string().email({ message: 'invalidEmail' }),
-    password: z.string().min(6, { message: 'passwordTooShort' }),
-    confirm_password: z.string().min(6, { message: 'passwordTooShort' }),
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    path: ['confirm_password'],
-    message: 'Passwords do not match',
-  });
+const signUpSchema = z.object({
+  full_name: z.string().min(1, { message: 'requiredField' }),
+  phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
+});
 
 const SignUp = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-
+  
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
-      first_name: '',
-      last_name: '',
-      email: '',
-      password: '',
-      confirm_password: '',
+      full_name: '',
+      phone: '',
     },
   });
 
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
-    const { error } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-      options: {
-        data: {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          // Default role to 'both' and phone to null/undefined
-          role: 'both',
-        },
-      },
-    });
+    try {
+      // Create email from phone number
+      const email = `user+${values.phone.replace(/\+/g, '')}@waslaha.app`;
+      const password = values.phone; // Use phone as password for simplicity
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: values.full_name,
+            phone: values.phone,
+            role: 'both'
+          }
+        }
+      });
 
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess(t('signUpSuccessCheckEmail'));
+      if (error) {
+        throw error;
+      }
+
+      showSuccess('تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.');
       navigate('/login');
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      showError(error.message || 'حدث خطأ أثناء إنشاء الحساب');
     }
   };
 
@@ -75,100 +65,58 @@ const SignUp = () => {
       <div className="w-full max-w-md">
         <Card className="p-4 rounded-lg shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold">{t('signUp')}</CardTitle>
-            <CardDescription>{t('createAccountToStart')}</CardDescription>
+            <div className="flex justify-center mb-2">
+              <div className="bg-primary/10 p-3 rounded-full">
+                <User className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">إنشاء حساب</CardTitle>
+            <CardDescription>أدخل معلوماتك لإنشاء حساب جديد</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="first_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('firstName')}</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="last_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('lastName')}</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="full_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('email')}</FormLabel>
+                      <FormLabel>الاسم الكامل</FormLabel>
                       <FormControl>
-                        <Input type="email" {...field} />
+                        <Input placeholder="أدخل اسمك الكامل" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
-                  name="password"
+                  name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('password')}</FormLabel>
+                      <FormLabel className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        رقم الهاتف
+                      </FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input type="tel" placeholder="مثال: 07701234567" {...field} dir="ltr" />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        سيتم استخدام هذا الرقم لتسجيل الدخول
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="confirm_password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('confirmPassword')}</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting ? t('signingUp') ?? 'جاري إنشاء الحساب...' : t('signUp')}
+                <Button type="submit" className="w-full h-12 text-lg" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? 'جاري إنشاء الحساب...' : 'إنشاء الحساب'}
                 </Button>
               </form>
             </Form>
-
             <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-300">
-              {t('haveAccount')}{' '}
-              <Link
-                to="/login"
-                className="font-medium text-primary hover:underline"
-              >
-                {t('login')}
+              لديك حساب بالفعل؟{' '}
+              <Link to="/login" className="font-medium text-primary hover:underline">
+                تسجيل الدخول
               </Link>
             </p>
           </CardContent>
