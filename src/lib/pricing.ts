@@ -61,20 +61,17 @@ const getPricePerKg = (weight: number, zone: 'A' | 'B' | 'C'): number => {
     const basePrices = { A: 5.0, B: 7.0, C: 9.0 };
     const basePrice = basePrices[zone];
 
-    if (weight <= 2) {
+    if (weight <= 2) { // For 1kg and 2kg
         return basePrice;
     }
-    if (weight <= 4) { // for 3kg and 4kg
+    if (weight <= 4) { // For 3kg and 4kg
         return basePrice - 0.5;
     }
-    if (weight <= 6) { // for 5kg and 6kg
+    if (weight <= 7) { // For 5kg, 6kg, 7kg
         return basePrice - 1.0;
     }
-    if (weight <= 8) { // for 7kg and 8kg
-        return basePrice - 1.5;
-    }
-    // For weights 9kg and above
-    return basePrice - 2.0;
+    // For weights 8kg and above
+    return basePrice - 1.5;
 };
 
 // Function for Senders (Price Calculator, Trip Details)
