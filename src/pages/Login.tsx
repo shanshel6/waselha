@@ -20,12 +20,7 @@ function Login() {
 
   useEffect(() => {
     if (user) {
-      const pendingData = localStorage.getItem('pendingTripData');
-      if (pendingData) {
-        navigate('/traveler-landing', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      navigate('/', { replace: true });
     }
   }, [user, navigate]);
 
