@@ -120,7 +120,8 @@ const SignUp = () => {
               <div className="bg-primary/10 p-3 rounded-full">
                 <User className="h-8 w-8 text-primary" />
               </div>
-            </CardTitle>
+            </div>
+            <CardTitle className="text-2xl font-bold">إنشاء حساب</CardTitle>
             <CardDescription>أدخل معلوماتك لإنشاء حساب جديد</CardDescription>
           </CardHeader>
           <CardContent>
