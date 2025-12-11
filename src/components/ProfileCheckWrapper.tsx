@@ -23,34 +23,43 @@ const ProfileCheckWrapper: React.FC<ProfileCheckWrapperProps> = ({ children }) =
       return; // Wait for session and profile data
     }
 
-    // Check if profile is incomplete: only check for first_name presence.
-    // We assume if first_name is present, the profile is sufficiently initialized.
+    // Handle incomplete profile (missing name)
     const profileIncomplete = user && profile && !profile.first_name;
-
     if (profileIncomplete && !isCompleteProfileRoute) {
-      // User is logged in but profile is incomplete, redirect to completion page
       navigate('/complete-profile');
+      return;
     } else if (!profileIncomplete && isCompleteProfileRoute) {
-      // User is logged in and profile is complete, but they landed on the completion page, redirect home
       navigate('/');
+      return;
     }
-  }, [user, profile, isSessionLoading, isLoadingProfile, navigate, isCompleteProfileRoute]);
 
-  // If we are loading, or if the user is logged in but profile is incomplete and we are not on the completion page,
-  // we render a loading state or nothing while the redirect happens.
+    // Handle unverified user redirection
+    if (user && profile && !profile.is_verified) {
+      const allowedPaths = [
+        '/',
+        '/login',
+        '/signup',
+        '/complete-profile',
+        '/verification',
+        '/my-profile',
+        '/contact',
+        '/about',
+        '/faq',
+        '/terms',
+        '/privacy',
+        '/traveler-landing',
+      ];
+      
+      const isAdminPath = location.pathname.startsWith('/admin');
+
+      if (!allowedPaths.includes(location.pathname) && !isAdminPath) {
+        navigate('/verification');
+      }
+    }
+  }, [user, profile, isSessionLoading, isLoadingProfile, navigate, location.pathname, isCompleteProfileRoute]);
+
   if (isSessionLoading || isLoadingProfile) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  // Allow access to auth routes regardless of profile status
-  if (isAuthRoute) {
-    return <>{children}</>;
-  }
-
-  // If profile is incomplete, only allow access to the completion page
-  if (user && profile && !profile.first_name && !isCompleteProfileRoute) {
-    // This should be caught by the useEffect, but as a fallback, render nothing while redirecting
-    return <div className="min-h-screen flex items-center justify-center">Redirecting...</div>;
   }
 
   return <>{children}</>;
