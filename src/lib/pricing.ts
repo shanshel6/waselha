@@ -37,7 +37,7 @@ export type ItemSize = keyof typeof ITEM_SIZES;
 
 const CATEGORY_MULTIPLIERS: Record<ItemType, number> = {
   regular: 1.0,
-  document: 1.5,
+  document: 2.0,
   fragile: 1.3,
   urgent: 1.4,
 };
