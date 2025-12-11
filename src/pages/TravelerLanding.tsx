@@ -20,14 +20,15 @@ const TravelerLanding = () => {
 
   const handleSubmit = async (values: any) => {
     if (isSubmitting) return;
-    
     setIsSubmitting(true);
-    
+
     // If user is not logged in, save data and redirect to login
     if (!user) {
       try {
         // Store form data in localStorage
         localStorage.setItem('pendingTripData', JSON.stringify(values));
+        // Store the intended redirect path
+        localStorage.setItem('postLoginRedirect', '/my-flights');
         showSuccess('يرجى تسجيل الدخول لإكمال إضافة الرحلة');
         navigate('/login');
       } catch (err: any) {
@@ -74,12 +75,12 @@ const TravelerLanding = () => {
       }
 
       showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
-      
+
       // Invalidate queries to refresh the trips list
       queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-      
+
       // Redirect to my-flights page
       navigate('/my-flights');
     } catch (err: any) {
@@ -89,6 +90,7 @@ const TravelerLanding = () => {
       setIsSubmitting(false);
       // Clear pending data
       localStorage.removeItem('pendingTripData');
+      localStorage.removeItem('postLoginRedirect');
     }
   };
 
@@ -102,7 +104,6 @@ const TravelerLanding = () => {
           try {
             setHasSubmittedPending(true); // Mark as submitted to prevent multiple runs
             const data = JSON.parse(pendingData);
-            
             const isVerified = verificationInfo?.status === 'approved';
             if (!isVerified) {
               showError('verificationRequiredTitle');
@@ -136,14 +137,14 @@ const TravelerLanding = () => {
 
             // Clear localStorage after successful submission
             localStorage.removeItem('pendingTripData');
-            
+            localStorage.removeItem('postLoginRedirect');
             showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
-            
+
             // Invalidate queries to refresh the trips list
             queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
             queryClient.invalidateQueries({ queryKey: ['trips'] });
             queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-            
+
             // Redirect to my-flights page after a short delay to show the success message
             setTimeout(() => {
               navigate('/my-flights');
@@ -153,11 +154,12 @@ const TravelerLanding = () => {
             showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
             // Clear pending data on error to prevent infinite loop
             localStorage.removeItem('pendingTripData');
+            localStorage.removeItem('postLoginRedirect');
           }
         }
       }
     };
-    
+
     submitPendingTrip();
   }, [user, navigate, queryClient, verificationInfo, hasSubmittedPending]);
 

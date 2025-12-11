@@ -1,7 +1,6 @@
 "use client";
-
-import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,16 +13,28 @@ import { LogIn, Mail, Facebook, Loader2 } from 'lucide-react';
 function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSession();
+  const [redirectTo, setRedirectTo] = useState('');
 
-  // إذا كان المستخدم مسجلاً بالفعل، نعيده للصفحة الرئيسية
+  // If user is already logged in, redirect appropriately
   useEffect(() => {
     if (user) {
-      navigate('/', { replace: true });
+      // Check if there's a post-login redirect path stored
+      const postLoginRedirect = localStorage.getItem('postLoginRedirect');
+      if (postLoginRedirect) {
+        localStorage.removeItem('postLoginRedirect');
+        navigate(postLoginRedirect, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     }
   }, [user, navigate]);
 
-  const redirectTo = `${window.location.origin}/`;
+  // Set redirect URL for OAuth
+  useEffect(() => {
+    setRedirectTo(`${window.location.origin}/`);
+  }, []);
 
   const handleOAuth = async (provider: 'google' | 'facebook') => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -51,8 +62,7 @@ function Login() {
             سجّل دخولك وابدأ بإرسال الطرود أو نشر رحلتك خلال دقائق.
           </h1>
           <p className="text-sm lg:text-base text-muted-foreground leading-relaxed">
-            باستخدام حساب واحد يمكنك أن تكون مرسلاً ومسافراً في نفس الوقت، تتابع طلباتك،
-            تتواصل مع الطرف الآخر داخل التطبيق، وتستفيد من نظام التتبع والاشعارات.
+            باستخدام حساب واحد يمكنك أن تكون مرسلاً ومسافراً في نفس الوقت، تتابع طلباتك، تتواصل مع الطرف الآخر داخل التطبيق، وتستفيد من نظام التتبع والاشعارات.
           </p>
           <ul className="text-xs lg:text-sm text-muted-foreground space-y-1 list-disc pr-4">
             <li>تسجيل آمن عبر البريد أو عبر Google / Facebook.</li>
@@ -60,7 +70,6 @@ function Login() {
             <li>إمكانية توثيق الحساب لزيادة الثقة بين المستخدمين.</li>
           </ul>
         </div>
-
         {/* اللوحة اليمنى: نموذج تسجيل الدخول */}
         <Card className="w-full shadow-md border border-border/80">
           <CardHeader className="text-center space-y-1 pb-4 pt-6">
@@ -74,22 +83,22 @@ function Login() {
           <CardContent className="space-y-4 pb-6">
             {/* أزرار سوشال مخصصة */}
             <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
+              <Button 
+                type="button" 
+                variant="outline" 
                 className="w-full flex items-center justify-center gap-2 text-sm py-2.5"
                 onClick={() => handleOAuth('google')}
               >
-                <img
-                  src="https://www.gstatic.com/images/branding/product/1x/gsa_64dp.png"
-                  alt="Google"
-                  className="h-5 w-5 rounded-sm bg-white"
+                <img 
+                  src="https://www.gstatic.com/images/branding/product/1x/gsa_64dp.png" 
+                  alt="Google" 
+                  className="h-5 w-5 rounded-sm bg-white" 
                 />
                 <span>تسجيل الدخول باستخدام Google</span>
               </Button>
-              <Button
-                type="button"
-                variant="outline"
+              <Button 
+                type="button" 
+                variant="outline" 
                 className="w-full flex items-center justify-center gap-2 text-sm py-2.5 bg-[#1877F2] text-white hover:bg-[#1666d0]"
                 onClick={() => handleOAuth('facebook')}
               >
@@ -97,16 +106,12 @@ function Login() {
                 <span>تسجيل الدخول باستخدام Facebook</span>
               </Button>
             </div>
-
             {/* فاصل */}
             <div className="flex items-center gap-3 py-1">
               <div className="flex-1 h-px bg-border" />
-              <span className="text-[11px] text-muted-foreground">
-                أو سجّل دخولك باستخدام البريد الإلكتروني
-              </span>
+              <span className="text-[11px] text-muted-foreground"> أو سجّل دخولك باستخدام البريد الإلكتروني </span>
               <div className="flex-1 h-px bg-border" />
             </div>
-
             {/* نموذج Supabase Auth للبريد/كلمة المرور */}
             <div className="rounded-lg border bg-muted/30 px-3 sm:px-4 py-3">
               <div className="flex items-center gap-2 mb-2 text-xs font-medium text-muted-foreground">
@@ -137,10 +142,8 @@ function Login() {
                   className: {
                     container: 'space-y-3',
                     label: 'text-xs font-medium text-foreground',
-                    input:
-                      'h-9 rounded-md border border-input bg-background px-3 py-1 text-sm',
-                    button:
-                      'mt-1.5 h-9 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 w-full flex items-center justify-center gap-1',
+                    input: 'h-9 rounded-md border border-input bg-background px-3 py-1 text-sm',
+                    button: 'mt-1.5 h-9 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 w-full flex items-center justify-center gap-1',
                   },
                 }}
                 localization={{
@@ -158,23 +161,16 @@ function Login() {
                 }}
               />
             </div>
-
             {/* روابط ثانوية */}
             <div className="flex flex-col gap-2 mt-3 text-xs sm:text-sm">
               <div className="flex justify-between items-center">
-                <Link
-                  to="/reset-password"
-                  className="text-primary hover:underline"
-                >
+                <Link to="/reset-password" className="text-primary hover:underline">
                   {t('forgotPassword')}
                 </Link>
               </div>
               <p className="text-center text-muted-foreground">
                 {t('noAccount')}{' '}
-                <Link
-                  to="/signup"
-                  className="font-medium text-primary hover:underline"
-                >
+                <Link to="/signup" className="font-medium text-primary hover:underline">
                   {t('signUp')}
                 </Link>
               </p>
@@ -182,7 +178,6 @@ function Login() {
           </CardContent>
         </Card>
       </div>
-
       <div className="mt-6 flex flex-col items-center gap-2 text-xs text-muted-foreground">
         {!user && (
           <div className="inline-flex items-center gap-1">
