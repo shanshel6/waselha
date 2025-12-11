@@ -282,7 +282,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
                 </CardHeader>
                 <CardContent className="text-center space-y-1">
                   <div className="text-3xl font-bold text-primary">
-                    {estimatedProfit.totalPriceUSD.toFixed(2)} <span className="text-lg">USD</span>
+                    ${estimatedProfit.totalPriceUSD.toFixed(2)} - ${(estimatedProfit.totalPriceUSD + 50).toFixed(2)} <span className="text-lg">USD</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {t('basedOnWeightAndDestination')}
