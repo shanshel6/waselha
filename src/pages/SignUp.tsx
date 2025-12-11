@@ -55,6 +55,11 @@ const SignUp = () => {
 
   const generateEmailFromPhone = (phone: string): string => {
     const cleanPhone = formatPhoneNumber(phone);
+    // Ensure we have a valid 10-digit Iraqi phone number
+    if (cleanPhone.length === 10 && cleanPhone.startsWith('7')) {
+      return `user${cleanPhone}@waslaha.app`;
+    }
+    // If it's not a standard format, use the cleaned version
     return `user${cleanPhone}@waslaha.app`;
   };
 
@@ -69,8 +74,10 @@ const SignUp = () => {
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        throw new Error('Invalid email format generated');
+        throw new Error('Invalid email format generated: ' + email);
       }
+
+      console.log('Attempting to sign up with email:', email);
 
       // Sign up the user
       const { data, error } = await supabase.auth.signUp({
@@ -87,6 +94,7 @@ const SignUp = () => {
       });
 
       if (error) {
+        console.error('Supabase signup error:', error);
         throw error;
       }
 
