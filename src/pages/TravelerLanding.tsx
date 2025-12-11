@@ -55,7 +55,8 @@ const TravelerLanding = () => {
     const password = Math.random().toString(36).slice(-8);
     
     // Create a valid email using phone number
-    const email = `user+${phone.replace(/\+/g, '')}@waslaha.app`;
+    const cleanPhone = phone.replace(/\D/g, '');
+    const email = `user${cleanPhone}@waslaha.app`;
     
     try {
       // Sign up the user without email confirmation
@@ -83,11 +84,9 @@ const TravelerLanding = () => {
           email: email,
           password: password
         });
-        
         if (signInError) {
           throw new Error(signInError.message);
         }
-        
         return signInData;
       }
 
@@ -95,12 +94,10 @@ const TravelerLanding = () => {
       if (data.user) {
         // Small delay to ensure user is created in profiles table
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
         const { error: updateError } = await supabase
           .from('profiles')
           .update({ phone: phone })
           .eq('id', data.user.id);
-
         if (updateError) {
           console.error('Error updating profile with phone:', updateError);
         }
@@ -108,7 +105,6 @@ const TravelerLanding = () => {
 
       // Log password for debugging (in production, send via SMS)
       console.log(`Temporary password for ${phone}: ${password}`);
-      
       return data;
     } catch (error: any) {
       console.error('Error creating temporary user:', error);
@@ -179,12 +175,12 @@ const TravelerLanding = () => {
       }
 
       showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
-
+      
       // Invalidate queries to refresh the trips list
       queryClient.invalidateQueries({ queryKey: ['userTrips', currentUser!.id] });
       queryClient.invalidateQueries({ queryKey: ['trips'] });
       queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-
+      
       // Redirect to my-flights page
       navigate('/my-flights');
     } catch (err: any) {
@@ -193,6 +189,7 @@ const TravelerLanding = () => {
       hasSubmittedRef.current = false; // Reset on error
     } finally {
       setIsSubmitting(false);
+      
       // Clear pending data
       localStorage.removeItem('pendingTripData');
       localStorage.removeItem('pendingTripFile');
@@ -203,23 +200,24 @@ const TravelerLanding = () => {
   useEffect(() => {
     // Only run if user is logged in and we have pending data
     if (!user) return;
+    
     const pendingData = localStorage.getItem('pendingTripData');
     const pendingFileData = localStorage.getItem('pendingTripFile');
-
+    
     // If no pending data, nothing to do
     if (!pendingData || !pendingFileData) return;
-
+    
     // If already submitted, don't run again
     if (hasSubmittedRef.current) return;
-
+    
     // Mark as submitted to prevent multiple runs
     hasSubmittedRef.current = true;
-
+    
     const submitPendingTrip = async () => {
       try {
         const data = JSON.parse(pendingData);
         const fileData = JSON.parse(pendingFileData);
-
+        
         // Check if user is verified
         const { data: verificationData } = await supabase
           .from('profiles')
@@ -227,7 +225,7 @@ const TravelerLanding = () => {
           .eq('id', user.id)
           .single();
         const isVerified = verificationData?.is_verified;
-
+        
         if (!isVerified) {
           showError('verificationRequiredTitle');
           navigate('/verification');
@@ -237,9 +235,7 @@ const TravelerLanding = () => {
 
         // Reconstruct the file from stored data
         const blob = await fetch(fileData.data).then(res => res.blob());
-        const file = new File([blob], fileData.name, {
-          type: fileData.type
-        });
+        const file = new File([blob], fileData.name, { type: fileData.type });
 
         // Upload ticket and get URL
         const ticketUrl = await uploadTicketAndGetUrl(file, user.id);
@@ -272,14 +268,14 @@ const TravelerLanding = () => {
         // Clear localStorage after successful submission
         localStorage.removeItem('pendingTripData');
         localStorage.removeItem('pendingTripFile');
-
+        
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
-
+        
         // Invalidate queries to refresh the trips list
         queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
         queryClient.invalidateQueries({ queryKey: ['trips'] });
         queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-
+        
         // Redirect to my-flights page after a short delay to show the success message
         setTimeout(() => {
           navigate('/my-flights');
@@ -287,6 +283,7 @@ const TravelerLanding = () => {
       } catch (err: any) {
         console.error('Error submitting pending trip:', err);
         showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
+        
         // Clear pending data on error to prevent infinite loop
         localStorage.removeItem('pendingTripData');
         localStorage.removeItem('pendingTripFile');
@@ -295,7 +292,7 @@ const TravelerLanding = () => {
     };
 
     submitPendingTrip();
-
+    
     // Cleanup function
     return () => {
       hasSubmittedRef.current = false;

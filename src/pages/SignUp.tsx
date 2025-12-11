@@ -42,6 +42,7 @@ const SignUp = () => {
       const cleanPhone = values.phone.replace(/\D/g, '');
       const email = `user${cleanPhone}@waslaha.app`;
       
+      // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
