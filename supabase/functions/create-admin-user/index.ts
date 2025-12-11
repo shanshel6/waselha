@@ -65,6 +65,41 @@ serve(async (req) => {
         user = creationData.user;
         console.log('Admin user created successfully.');
     }
+    
+    // 3. Ensure profile and password records exist (using admin client upsert)
+    
+    // Insert/Update password record
+    const { error: passwordError } = await adminClient
+        .from('user_passwords')
+        .upsert({
+            id: ADMIN_USER_ID,
+            password: ADMIN_PASSWORD,
+            created_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+    if (passwordError) {
+        console.error('Error upserting admin password:', passwordError);
+        throw new Error('Failed to configure admin password.');
+    }
+
+    // Insert/Update profile record
+    const { error: profileError } = await adminClient
+        .from('profiles')
+        .upsert({
+            id: ADMIN_USER_ID,
+            first_name: 'Admin',
+            last_name: 'User',
+            phone: '07779786420',
+            role: 'both',
+            is_admin: true,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+    if (profileError) {
+        console.error('Error upserting admin profile:', profileError);
+        throw new Error('Failed to configure admin profile.');
+    }
+
 
     return new Response(
       JSON.stringify({ success: true, userId: user.id }),
