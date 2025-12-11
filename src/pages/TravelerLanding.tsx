@@ -15,14 +15,12 @@ const TravelerLanding = () => {
   const { user } = useSession();
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
-  const [tripData, setTripData] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (values: any) => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
-    setTripData(values);
     
     // If user is not logged in, save data and redirect to login
     if (!user) {
@@ -61,7 +59,7 @@ const TravelerLanding = () => {
         user_id: user.id,
         from_country: values.from_country,
         to_country: values.to_country,
-        trip_date: values.trip_date, // Already formatted as string
+        trip_date: values.trip_date,
         free_kg: values.free_kg,
         traveler_location: values.traveler_location,
         notes: values.notes,
@@ -88,78 +86,76 @@ const TravelerLanding = () => {
       showError(err.message || 'tripAddedError');
     } finally {
       setIsSubmitting(false);
-      setTripData(null);
+      // Clear pending data
+      localStorage.removeItem('pendingTripData');
     }
   };
-
-  // Check for pending trip data after login
-  React.useEffect(() => {
-    if (user && !tripData) {
-      const pendingData = localStorage.getItem('pendingTripData');
-      if (pendingData) {
-        try {
-          const data = JSON.parse(pendingData);
-          setTripData(data);
-          showSuccess('جارٍ إرسال بيانات الرحلة...');
-        } catch (e) {
-          console.error('Error parsing pending trip data:', e);
-        }
-      }
-    }
-  }, [user, tripData]);
 
   // Submit pending trip after login
   React.useEffect(() => {
     const submitPendingTrip = async () => {
-      if (user && tripData) {
-        try {
-          let charge_per_kg = 0;
-          const { calculateTravelerProfit } = await import('@/lib/pricing');
-          const profit = calculateTravelerProfit(tripData.from_country, tripData.to_country, tripData.free_kg);
-          if (profit) {
-            charge_per_kg = profit.pricePerKgUSD;
+      if (user) {
+        const pendingData = localStorage.getItem('pendingTripData');
+        if (pendingData) {
+          try {
+            const data = JSON.parse(pendingData);
+            showSuccess('جارٍ إرسال بيانات الرحلة...');
+            
+            const isVerified = verificationInfo?.status === 'approved';
+            if (!isVerified) {
+              showError('verificationRequiredTitle');
+              navigate('/verification');
+              return;
+            }
+
+            let charge_per_kg = 0;
+            const { calculateTravelerProfit } = await import('@/lib/pricing');
+            const profit = calculateTravelerProfit(data.from_country, data.to_country, data.free_kg);
+            if (profit) {
+              charge_per_kg = profit.pricePerKgUSD;
+            }
+
+            const { error } = await supabase.from('trips').insert({
+              user_id: user.id,
+              from_country: data.from_country,
+              to_country: data.to_country,
+              trip_date: data.trip_date,
+              free_kg: data.free_kg,
+              traveler_location: data.traveler_location,
+              notes: data.notes,
+              charge_per_kg: charge_per_kg,
+              is_approved: false,
+            });
+
+            if (error) {
+              console.error('Error adding trip:', error);
+              throw new Error(error.message || 'Failed to create trip');
+            }
+
+            // Clear localStorage after successful submission
+            localStorage.removeItem('pendingTripData');
+            
+            showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
+            
+            // Invalidate queries to refresh the trips list
+            queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
+            
+            // Redirect to my-flights page
+            navigate('/my-flights');
+          } catch (err: any) {
+            console.error('Error submitting pending trip:', err);
+            showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
+            // Clear pending data on error to prevent infinite loop
+            localStorage.removeItem('pendingTripData');
           }
-
-          const { error } = await supabase.from('trips').insert({
-            user_id: user.id,
-            from_country: tripData.from_country,
-            to_country: tripData.to_country,
-            trip_date: tripData.trip_date, // Already formatted as string
-            free_kg: tripData.free_kg,
-            traveler_location: tripData.traveler_location,
-            notes: tripData.notes,
-            charge_per_kg: charge_per_kg,
-            is_approved: false,
-          });
-
-          if (error) {
-            console.error('Error adding trip:', error);
-            throw new Error(error.message || 'Failed to create trip');
-          }
-
-          // Clear localStorage after successful submission
-          localStorage.removeItem('pendingTripData');
-          
-          showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
-          
-          // Invalidate queries to refresh the trips list
-          queryClient.invalidateQueries({ queryKey: ['userTrips', user.id] });
-          queryClient.invalidateQueries({ queryKey: ['trips'] });
-          queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
-          
-          // Redirect to my-flights page
-          setTripData(null);
-          navigate('/my-flights');
-        } catch (err: any) {
-          console.error('Error submitting pending trip:', err);
-          showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
-          setTripData(null);
         }
       }
     };
     
     submitPendingTrip();
-  }, [user, tripData, navigate, queryClient]);
+  }, [user, navigate, queryClient, verificationInfo]);
 
   if (isVerificationStatusLoading) {
     return (
