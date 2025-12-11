@@ -24,10 +24,11 @@ import { arabicCountries } from '@/lib/countries-ar';
 const MIN_KG = 1;
 const MAX_KG = 50;
 
+// Schema that converts date to string for storage
 const formSchema = z.object({
   from_country: z.string().min(1, { message: 'requiredField' }),
   to_country: z.string().min(1, { message: 'requiredField' }),
-  trip_date: z.date({ required_error: 'dateRequired' }),
+  trip_date: z.string({ required_error: 'dateRequired' }), // Store as string
   free_kg: z
     .coerce.number()
     .min(MIN_KG, { message: 'minimumWeight' })
@@ -49,6 +50,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
     defaultValues: {
       from_country: 'Iraq',
       to_country: '',
+      trip_date: '', // Initialize as empty string
       free_kg: MIN_KG,
       traveler_location: '',
       notes: '',
@@ -75,6 +77,17 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
     return null;
   }, [from_country, to_country, free_kg]);
 
+  // Handle form submission with date formatting
+  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    // Format date to YYYY-MM-DD string
+    const formattedDate = format(new Date(values.trip_date), 'yyyy-MM-dd');
+    
+    onSubmit({
+      ...values,
+      trip_date: formattedDate
+    });
+  };
+
   return (
     <Card className="max-w-2xl mx-auto mb-12">
       <CardHeader>
@@ -84,7 +97,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
             {/* From / To countries */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -161,7 +174,7 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
                           )}
                         >
                           {field.value ? (
-                            format(field.value, 'PPP')
+                            format(new Date(field.value), 'PPP')
                           ) : (
                             <span>{t('selectDate')}</span>
                           )}
@@ -172,8 +185,8 @@ export const TripForm: React.FC<TripFormProps> = ({ onSubmit, isSubmitting }) =>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => field.onChange(date ? date.toISOString() : '')}
                         disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                         initialFocus
                       />

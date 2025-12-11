@@ -61,7 +61,7 @@ const TravelerLanding = () => {
         user_id: user.id,
         from_country: values.from_country,
         to_country: values.to_country,
-        trip_date: values.trip_date.toISOString().split('T')[0],
+        trip_date: values.trip_date, // Already formatted as string
         free_kg: values.free_kg,
         traveler_location: values.traveler_location,
         notes: values.notes,
@@ -124,7 +124,7 @@ const TravelerLanding = () => {
             user_id: user.id,
             from_country: tripData.from_country,
             to_country: tripData.to_country,
-            trip_date: tripData.trip_date.toISOString().split('T')[0],
+            trip_date: tripData.trip_date, // Already formatted as string
             free_kg: tripData.free_kg,
             traveler_location: tripData.traveler_location,
             notes: tripData.notes,
