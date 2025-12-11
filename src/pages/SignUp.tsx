@@ -61,6 +61,11 @@ const SignUp = () => {
       const formattedPhone = formatPhoneNumber(values.phone);
       const fullPhone = `+964${formattedPhone}`;
       
+      // Split full name into first and last name (first word is first name, rest is last name)
+      const fullNameParts = values.full_name.trim().split(/\s+/);
+      const firstName = fullNameParts[0] || '';
+      const lastName = fullNameParts.slice(1).join(' ') || '';
+
       console.log('Attempting to sign up with phone:', fullPhone);
 
       // Sign up the user with phone number and password (no auto-login)
@@ -69,7 +74,8 @@ const SignUp = () => {
         password: values.password,
         options: {
           data: {
-            full_name: values.full_name,
+            first_name: firstName, // Pass first_name
+            last_name: lastName,   // Pass last_name
             phone: values.phone,
             address: values.address,
             role: 'both'
@@ -114,8 +120,7 @@ const SignUp = () => {
               <div className="bg-primary/10 p-3 rounded-full">
                 <User className="h-8 w-8 text-primary" />
               </div>
-            </div>
-            <CardTitle className="text-2xl font-bold">إنشاء حساب</CardTitle>
+            </CardTitle>
             <CardDescription>أدخل معلوماتك لإنشاء حساب جديد</CardDescription>
           </CardHeader>
           <CardContent>

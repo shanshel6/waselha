@@ -2,132 +2,67 @@
 
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useProfile } from '@/hooks/use-profile';
-import { showSuccess, showError } from '@/utils/toast';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
-
-const profileSchema = z.object({
-  first_name: z.string().min(1, { message: "requiredField" }),
-  last_name: z.string().min(1, { message: "requiredField" }),
-});
+import { User, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { showError } from '@/utils/toast';
 
 const CompleteProfile = () => {
   const { t } = useTranslation();
-  const { user } = useSession();
+  const { isLoading: isSessionLoading } = useSession();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  const form = useForm<z.infer<typeof profileSchema>>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      first_name: profile?.first_name || "",
-      last_name: profile?.last_name || "",
-    },
-    values: {
-      first_name: profile?.first_name || "",
-      last_name: profile?.last_name || "",
-    },
-  });
+  const isProfileComplete = profile && profile.first_name;
 
   useEffect(() => {
-    if (!isLoadingProfile && profile && profile.first_name && profile.last_name) {
-      // If profile is complete, redirect to home
-      navigate('/');
+    if (!isLoadingProfile && !isSessionLoading) {
+      if (isProfileComplete) {
+        // If profile is complete, redirect to home
+        navigate('/', { replace: true });
+      } else if (!profile) {
+        // If profile data is missing entirely (e.g., brand new user, trigger hasn't run yet)
+        // We show an error and prompt them to check their profile.
+        showError(t('profileUpdatedError'));
+      }
     }
-  }, [profile, isLoadingProfile, navigate]);
+  }, [profile, isLoadingProfile, isSessionLoading, navigate, isProfileComplete, t]);
 
-  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
-    if (!user) {
-      showError(t('mustBeLoggedIn'));
-      return;
-    }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        first_name: values.first_name,
-        last_name: values.last_name,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
-
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess(t('profileUpdatedSuccess'));
-      // Invalidate profile query to refresh data and trigger redirect in useEffect
-      queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
-      navigate('/');
-    }
-  };
-
-  if (isLoadingProfile) {
-    return <div className="min-h-screen flex items-center justify-center">{t('loading')}...</div>;
+  if (isSessionLoading || isLoadingProfile || isProfileComplete) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background dark:bg-gray-900">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="mr-2">{t('loading')}...</span>
+      </div>
+    );
   }
 
-  // If profile is already complete, the useEffect handles redirection.
-  // If we reach here and profile is null or incomplete, show the form.
-
+  // If we reach here, the user is logged in, profile is loaded, but first_name is missing.
+  // This serves as a fallback/error screen.
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background dark:bg-gray-900">
       <div className="w-full max-w-md">
-        <Card className="p-4 rounded-lg shadow-lg">
-          <CardHeader className="text-center">
+        <Card className="p-4 rounded-lg shadow-lg text-center">
+          <CardHeader>
             <User className="h-10 w-10 text-primary mx-auto mb-2" />
             <CardTitle className="text-2xl font-bold">{t('completeProfileTitle')}</CardTitle>
-            <CardDescription>{t('completeProfileDescription')}</CardDescription>
+            <CardDescription>
+              {t('completeProfileDescription')}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="first_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('firstName')}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="last_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('lastName')}</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                  {t('saveAndContinue')}
-                </Button>
-              </form>
-            </Form>
+            <p className="text-sm text-destructive mb-4">
+              {t('profileUpdatedError')}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {t('mustBeLoggedIn')}
+            </p>
+            <Button onClick={() => navigate('/my-profile')} className="w-full mt-4">
+              {t('myProfile')}
+            </Button>
           </CardContent>
         </Card>
       </div>

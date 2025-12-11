@@ -23,7 +23,9 @@ const ProfileCheckWrapper: React.FC<ProfileCheckWrapperProps> = ({ children }) =
       return; // Wait for session and profile data
     }
 
-    const profileIncomplete = user && profile && (!profile.first_name || !profile.last_name);
+    // Check if profile is incomplete: only check for first_name presence.
+    // We assume if first_name is present, the profile is sufficiently initialized.
+    const profileIncomplete = user && profile && !profile.first_name;
 
     if (profileIncomplete && !isCompleteProfileRoute) {
       // User is logged in but profile is incomplete, redirect to completion page
@@ -46,7 +48,7 @@ const ProfileCheckWrapper: React.FC<ProfileCheckWrapperProps> = ({ children }) =
   }
 
   // If profile is incomplete, only allow access to the completion page
-  if (user && profile && (!profile.first_name || !profile.last_name) && !isCompleteProfileRoute) {
+  if (user && profile && !profile.first_name && !isCompleteProfileRoute) {
     // This should be caught by the useEffect, but as a fallback, render nothing while redirecting
     return <div className="min-h-screen flex items-center justify-center">Redirecting...</div>;
   }
