@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import CountryFlag from '@/components/CountryFlag';
-import { calculateShippingCost } from '@/lib/pricing';
+import { calculateShippingCost, ITEM_TYPES, ITEM_SIZES, ItemType, ItemSize } from '@/lib/pricing';
 import { DollarSign, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
@@ -32,6 +32,8 @@ const orderSchema = z.object({
     .coerce.number()
     .min(1, { message: 'minimumWeight' })
     .max(50, { message: 'maxWeight' }),
+  item_type: z.nativeEnum(ITEM_TYPES),
+  item_size: z.nativeEnum(ITEM_SIZES),
 });
 
 const PlaceOrder = () => {
@@ -64,10 +66,12 @@ const PlaceOrder = () => {
       to_country: '',
       description: '',
       weight_kg: 1,
+      item_type: 'regular',
+      item_size: 'S',
     },
   });
 
-  const { from_country, to_country, weight_kg } = form.watch();
+  const { from_country, to_country, weight_kg, item_type, item_size } = form.watch();
 
   // Ensure exactly one side is Iraq (like Trips/AddTrip)
   useEffect(() => {
@@ -83,11 +87,11 @@ const PlaceOrder = () => {
   }, [from_country, to_country, form]);
 
   const baseCost = useMemo(() => {
-    if (from_country && to_country) {
-      return calculateShippingCost(from_country, to_country, weight_kg);
+    if (from_country && to_country && item_type && item_size) {
+      return calculateShippingCost(from_country, to_country, weight_kg, item_type, item_size);
     }
     return null;
-  }, [from_country, to_country, weight_kg]);
+  }, [from_country, to_country, weight_kg, item_type, item_size]);
 
   const onSubmit = async (values: z.infer<typeof orderSchema>) => {
     if (!user) {
@@ -110,6 +114,8 @@ const PlaceOrder = () => {
         to_country: values.to_country,
         description: values.description,
         weight_kg: values.weight_kg,
+        item_type: values.item_type,
+        item_size: values.item_size,
         is_valuable: false,
         insurance_requested: false,
         insurance_percentage: 0,
@@ -280,6 +286,58 @@ const PlaceOrder = () => {
                     </FormItem>
                   )}
                 />
+
+                {/* Item Type and Size */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="item_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('itemType')}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('itemType')} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.keys(ITEM_TYPES).map((key) => (
+                              <SelectItem key={key} value={key}>
+                                {t(`itemType${key.charAt(0).toUpperCase() + key.slice(1)}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="item_size"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('itemSize')}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('itemSize')} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.keys(ITEM_SIZES).map((key) => (
+                              <SelectItem key={key} value={key}>
+                                {t(`itemSize${key}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 {/* ملخص التكلفة */}
                 <Card className="bg-primary/5 border-primary/20">

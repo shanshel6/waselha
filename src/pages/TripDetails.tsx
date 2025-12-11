@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
-import { calculateShippingCost } from '@/lib/pricing';
+import { calculateShippingCost, ITEM_TYPES, ITEM_SIZES, ItemType, ItemSize } from '@/lib/pricing';
 import { arabicCountries } from '@/lib/countries-ar';
 import {
   Card,
@@ -47,6 +47,7 @@ import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface TripData {
   id: string;
@@ -107,6 +108,8 @@ const TripDetails = () => {
       description: z.string().min(10, { message: t('descriptionTooShort') }),
       destination_city: z.string().min(2, { message: t('requiredField') }),
       receiver_details: z.string().min(10, { message: t('requiredField') }),
+      item_type: z.nativeEnum(ITEM_TYPES),
+      item_size: z.nativeEnum(ITEM_SIZES),
     });
   }, [trip, t]);
 
@@ -117,24 +120,28 @@ const TripDetails = () => {
       description: '',
       destination_city: '',
       receiver_details: '',
+      item_type: 'regular',
+      item_size: 'S',
     },
   });
 
-  const weight = form.watch('weight_kg');
+  const { weight_kg, item_type, item_size } = form.watch();
 
   const priceCalculation = useMemo(() => {
-    if (!trip) return null;
+    if (!trip || !item_type || !item_size) return null;
     const result = calculateShippingCost(
       trip.from_country,
       trip.to_country,
-      weight || 0,
+      weight_kg || 0,
+      item_type,
+      item_size
     );
     return {
       pricePerKgUSD: result.pricePerKgUSD,
       totalPriceUSD: result.totalPriceUSD,
       error: result.error,
     };
-  }, [weight, trip]);
+  }, [weight_kg, item_type, item_size, trip]);
 
   const isVerified = verificationInfo?.status === 'approved';
   const isPendingVerification = verificationInfo?.status === 'pending';
@@ -358,6 +365,57 @@ const TripDetails = () => {
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="item_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('itemType')}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!isVerified}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('itemType')} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.keys(ITEM_TYPES).map((key) => (
+                                <SelectItem key={key} value={key}>
+                                  {t(`itemType${key.charAt(0).toUpperCase() + key.slice(1)}`)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="item_size"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('itemSize')}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!isVerified}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={t('itemSize')} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.keys(ITEM_SIZES).map((key) => (
+                                <SelectItem key={key} value={key}>
+                                  {t(`itemSize${key}`)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   {priceCalculation &&
                     !priceCalculation.error &&

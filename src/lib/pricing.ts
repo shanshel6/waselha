@@ -24,21 +24,42 @@ const USD_TO_IQD_RATE = 1400;
 const MAX_TRIP_WEIGHT_KG = 50; // Max weight a traveler can offer/sender can request for a trip
 const MAX_CALCULATOR_WEIGHT_KG = 50; // Max weight for price calculation on the homepage
 
+// New constants for pricing model
+export const ITEM_TYPES = {
+  regular: 'regular',
+  document: 'document',
+  fragile: 'fragile',
+  urgent: 'urgent',
+} as const;
+export type ItemType = keyof typeof ITEM_TYPES;
+
+export const ITEM_SIZES = {
+  XS: 'XS',
+  S: 'S',
+  M: 'M',
+  L: 'L',
+} as const;
+export type ItemSize = keyof typeof ITEM_SIZES;
+
+const CATEGORY_MULTIPLIERS: Record<ItemType, number> = {
+  regular: 1.0,
+  document: 1.5,
+  fragile: 1.3,
+  urgent: 1.4,
+};
+
+const SIZE_ADJUSTMENTS: Record<ItemSize, number> = {
+  XS: 0,
+  S: 0,
+  M: 2,
+  L: 4,
+};
+
 const getZone = (country: string): keyof typeof PRICING_TIERS_USD => {
   if (ZONES.A.includes(country)) return 'A';
   if (ZONES.C.includes(country)) return 'C';
   // Default to Zone B if country is not listed in A or C (covers Europe, etc.)
   return 'B'; 
-};
-
-// Tiered pricing logic for Senders (used in TripDetails and PriceCalculator)
-const getTieredPricePerKg = (zone: keyof typeof PRICING_TIERS_USD, weight: number): number => {
-  const tiers = PRICING_TIERS_USD[zone];
-  if (weight >= 1 && weight <= 2) return tiers["1-2"];
-  if (weight >= 3 && weight <= 5) return tiers["3-5"];
-  // For weights 6kg and above (up to 50kg), use the 6-10kg tier rate.
-  if (weight >= 6) return tiers["6-10"]; 
-  return 0; 
 };
 
 // Base price (1-2kg tier) logic for Traveler profit estimation (used in AddTrip)
@@ -48,28 +69,35 @@ const getBasePricePerKg = (zone: keyof typeof PRICING_TIERS_USD): number => {
 };
 
 // Function for Senders (Price Calculator, Trip Details)
-export const calculateShippingCost = (originCountry: string, destinationCountry: string, weight: number) => {
-  // We use MAX_CALCULATOR_WEIGHT_KG here, relying on Zod validation in TripDetails to enforce MAX_TRIP_WEIGHT_KG.
+export const calculateShippingCost = (
+  originCountry: string,
+  destinationCountry: string,
+  weight: number,
+  itemType: ItemType,
+  itemSize: ItemSize
+) => {
   if (weight <= 0 || weight > MAX_CALCULATOR_WEIGHT_KG) {
     return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: "Invalid weight" };
   }
 
-  // Pricing is based ONLY on the non-Iraq country involved in the trip.
   const pricingCountry = (originCountry === 'Iraq' && destinationCountry !== 'Iraq') 
     ? destinationCountry 
     : (destinationCountry === 'Iraq' && originCountry !== 'Iraq') 
     ? originCountry 
     : (originCountry === destinationCountry) 
-    ? originCountry // Should only happen if Iraq is selected for both, which is prevented in UI
-    : destinationCountry; // Fallback
+    ? originCountry
+    : destinationCountry;
 
   const finalZone = getZone(pricingCountry);
 
-  const pricePerKgUSD = getTieredPricePerKg(finalZone, weight);
-  const totalPriceUSD = weight * pricePerKgUSD;
+  const basePricePerKg = getBasePricePerKg(finalZone);
+  const categoryMultiplier = CATEGORY_MULTIPLIERS[itemType];
+  const sizeAdjustment = SIZE_ADJUSTMENTS[itemSize];
+
+  const totalPriceUSD = (weight * basePricePerKg) * categoryMultiplier + sizeAdjustment;
   const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE;
 
-  return { pricePerKgUSD, totalPriceUSD, totalPriceIQD, error: null };
+  return { pricePerKgUSD: basePricePerKg, totalPriceUSD, totalPriceIQD, error: null };
 };
 
 // Function for Travelers (Add Trip) - Calculates potential profit based on base price
@@ -78,7 +106,6 @@ export const calculateTravelerProfit = (originCountry: string, destinationCountr
     return { pricePerKgUSD: 0, totalPriceUSD: 0, totalPriceIQD: 0, error: "Invalid weight" };
   }
 
-  // Pricing is based ONLY on the non-Iraq country involved in the trip.
   const pricingCountry = (originCountry === 'Iraq' && destinationCountry !== 'Iraq') 
     ? destinationCountry 
     : (destinationCountry === 'Iraq' && originCountry !== 'Iraq') 
@@ -87,7 +114,6 @@ export const calculateTravelerProfit = (originCountry: string, destinationCountr
 
   const finalZone = getZone(pricingCountry);
 
-  // Use the base price (1-2kg tier) for profit estimation
   const pricePerKgUSD = getBasePricePerKg(finalZone); 
   const totalPriceUSD = availableWeight * pricePerKgUSD;
   const totalPriceIQD = totalPriceUSD * USD_TO_IQD_RATE;
@@ -95,11 +121,8 @@ export const calculateTravelerProfit = (originCountry: string, destinationCountr
   return { pricePerKgUSD, totalPriceUSD, totalPriceIQD, error: null };
 };
 
-// Re-generate zonedCountries list based on new ZONES definition
-// This list should contain all countries available in the UI selectors.
 export const zonedCountries = [...new Set([
   ...ZONES.A, 
   ...ZONES.C, 
-  // Include all countries from src/lib/countries.ts that are not explicitly A or C (these are Zone B)
   ...countries.filter((c: string) => !ZONES.A.includes(c) && !ZONES.C.includes(c))
 ])].sort();

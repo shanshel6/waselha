@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { calculateShippingCost, zonedCountries } from '@/lib/pricing';
+import { calculateShippingCost, zonedCountries, ITEM_TYPES, ITEM_SIZES, ItemType, ItemSize } from '@/lib/pricing';
 import { DollarSign } from 'lucide-react';
 import CountryFlag from '@/components/CountryFlag';
 
@@ -13,18 +13,20 @@ const PriceCalculator = () => {
   const [origin, setOrigin] = useState<string>('Iraq');
   const [destination, setDestination] = useState<string>('Turkey');
   const [weight, setWeight] = useState<number>(1);
+  const [itemType, setItemType] = useState<ItemType>('regular');
+  const [itemSize, setItemSize] = useState<ItemSize>('S');
 
   const calculation = useMemo(() => {
     if (origin !== 'Iraq' && destination !== 'Iraq') {
       return { pricePerKgUSD: 0, totalPriceUSD: 0, error: t('eitherFromOrToIraq') };
     }
-    const result = calculateShippingCost(origin, destination, weight);
+    const result = calculateShippingCost(origin, destination, weight, itemType, itemSize);
     return {
       pricePerKgUSD: result.pricePerKgUSD,
       totalPriceUSD: result.totalPriceUSD,
       error: result.error,
     };
-  }, [origin, destination, weight, t]);
+  }, [origin, destination, weight, itemType, itemSize, t]);
 
   const handleWeightChange = (value: number[]) => {
     setWeight(value[0]);
@@ -83,6 +85,36 @@ const PriceCalculator = () => {
                 onValueChange={handleWeightChange}
                 className="mt-4"
               />
+            </div>
+            <div>
+              <Label htmlFor="item-type" className="font-semibold">{t('itemType')}</Label>
+              <Select onValueChange={(v) => setItemType(v as ItemType)} value={itemType}>
+                <SelectTrigger id="item-type" className="mt-2">
+                  <SelectValue placeholder={t('itemType')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(ITEM_TYPES).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {t(`itemType${key.charAt(0).toUpperCase() + key.slice(1)}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="item-size" className="font-semibold">{t('itemSize')}</Label>
+              <Select onValueChange={(v) => setItemSize(v as ItemSize)} value={itemSize}>
+                <SelectTrigger id="item-size" className="mt-2">
+                  <SelectValue placeholder={t('itemSize')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(ITEM_SIZES).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {t(`itemSize${key}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           

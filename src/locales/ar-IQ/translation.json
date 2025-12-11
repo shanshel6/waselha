@@ -317,7 +317,7 @@
   "pendingTrips": "الرحلات المعلقة",
   "tripsReviewedSection": "الرحلات التي تمت مراجعتها",
   "pendingTripApprovals": "موافقات الرحلات المعلقة",
-  "noPendingTrips": "لا توجد رحلات معلقة حاليًا",
+  "noPendingTrips": "لا توجد رحلات معلقة حاليًا.",
   "noReviewedRequests": "لا توجد طلبات تمت مراجعتها",
   "deletedByUser": "تم حذفه من قبل المستخدم",
   "alreadyRequestedCancellation": "لقد طلبت الإلغاء بالفعل",
@@ -433,5 +433,15 @@
   "contactInfoUpdateCooldownError": "لا يمكنك تحديث معلومات الاتصال الآن. يمكنك التحديث مرة واحدة فقط كل شهر.",
   "contactInfoUpdateCooldownMessage": "يمكنك تحديث معلومات الاتصال مرة أخرى بعد تاريخ: {{date}}.",
   "passwordMustBe6Digits": "كلمة المرور يجب أن تكون 6 أرقام",
-  "passwordMustBeNumbers": "كلمة المرور يجب أن تحتوي على أرقام فقط"
+  "passwordMustBeNumbers": "كلمة المرور يجب أن تحتوي على أرقام فقط",
+  "itemSize": "حجم القطعة (تقريباً)",
+  "itemSizeXS": "XS – صغير جداً (مثل تلفون/أوراق خفيفة/شاحن صغير)",
+  "itemSizeS": "S – صغير (مثل تيشيرت/كتاب/مكياج صغير)",
+  "itemSizeM": "M – متوسط (بحجم صندوق أحذية)",
+  "itemSizeL": "L – كبير (صندوق كبير/شيء ياخذ مساحة)",
+  "itemType": "نوع القطعة",
+  "itemTypeRegular": "عادي",
+  "itemTypeDocument": "مستندات",
+  "itemTypeFragile": "قابل للكسر",
+  "itemTypeUrgent": "مستعجل"
 }

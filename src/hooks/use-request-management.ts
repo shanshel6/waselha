@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { showSuccess, showError } from '@/utils/toast';
 import { RequestTrackingStatus, TRACKING_STAGES } from '@/lib/tracking-stages';
+import { ItemSize, ItemType } from '@/lib/pricing';
 
 interface Trip {
   id: string;
@@ -27,6 +28,8 @@ export interface ManagedRequest {
   sender_id: string;
   description: string;
   weight_kg: number;
+  item_type: ItemType | null;
+  item_size: ItemSize | null;
   destination_city: string;
   receiver_details: string;
   handover_location: string | null;
@@ -56,6 +59,9 @@ export interface ManagedGeneralOrder {
   from_country: string;
   to_country: string;
   description: string;
+  weight_kg: number;
+  item_type: ItemType | null;
+  item_size: ItemSize | null;
   is_valuable: boolean;
   insurance_requested: boolean;
   status: 'new' | 'matched' | 'claimed' | 'completed' | 'cancelled';
@@ -63,7 +69,6 @@ export interface ManagedGeneralOrder {
   created_at: string;
   updated_at: string;
   insurance_percentage: number;
-  weight_kg: number;
   type: 'general_order';
 }
 
