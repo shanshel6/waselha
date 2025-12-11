@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
-import { LogIn, Phone, Loader2 } from 'lucide-react';
+import { LogIn, Phone, Loader2, Lock } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { Input } from '@/components/ui/input';
 
@@ -72,9 +72,9 @@ function Login() {
       return;
     }
 
-    // Validate password format (6 digits)
-    if (!/^\d{6}$/.test(password)) {
-      showError('كلمة المرور يجب أن تكون 6 أرقام');
+    // Validate password format (min 6 chars)
+    if (password.length < 6) {
+      showError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
     }
 
@@ -138,18 +138,17 @@ function Login() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">كلمة المرور</label>
-                <Input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  className="w-full h-12 text-lg" 
-                  placeholder="6 أرقام" 
-                  maxLength={6} 
-                  dir="ltr" 
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  أدخل كلمة المرور المكونة من 6 أرقام التي استلمتها من الإدارة
-                </p>
+                <div className="relative">
+                  <Input 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    className="w-full h-12 text-lg pr-10" 
+                    placeholder="كلمة المرور" 
+                    dir="ltr" 
+                  />
+                  <Lock className="absolute right-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                </div>
               </div>
               <Button onClick={handleLogin} disabled={isLoggingIn} className="w-full h-12 text-lg">
                 {isLoggingIn ? (

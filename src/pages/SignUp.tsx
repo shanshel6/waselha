@@ -12,11 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import { Phone, User, MapPin } from 'lucide-react';
+import { Phone, User, MapPin, Lock } from 'lucide-react';
 
 const signUpSchema = z.object({
   full_name: z.string().min(1, { message: 'requiredField' }),
   phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
+  password: z.string().min(6, { message: 'passwordTooShort' }),
   address: z.string().min(1, { message: 'requiredField' }),
 });
 
@@ -28,6 +29,7 @@ const SignUp = () => {
     defaultValues: {
       full_name: '',
       phone: '',
+      password: '',
       address: '',
     },
   });
@@ -59,15 +61,12 @@ const SignUp = () => {
       const formattedPhone = formatPhoneNumber(values.phone);
       const fullPhone = `+964${formattedPhone}`;
       
-      // Generate a 6-digit password
-      const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
-      
       console.log('Attempting to sign up with phone:', fullPhone);
 
       // Sign up the user with phone number and password (no auto-login)
       const { data, error } = await supabase.auth.signUp({
         phone: fullPhone,
-        password: randomPassword,
+        password: values.password,
         options: {
           data: {
             full_name: values.full_name,
@@ -89,7 +88,7 @@ const SignUp = () => {
           .from('user_passwords')
           .insert({
             id: data.user.id,
-            password: randomPassword
+            password: values.password
           });
           
         if (passwordError) {
@@ -97,9 +96,9 @@ const SignUp = () => {
         }
       }
 
-      showSuccess('تم إنشاء الحساب بنجاح! سيتم إرسال كلمة المرور إلى رقم هاتفك من قبل الإدارة.');
-      // Redirect to login page instead of auto-logging in
-      navigate('/login');
+      showSuccess('تم إنشاء الحساب بنجاح!');
+      // Redirect to home page (auto-login usually happens with signUp)
+      navigate('/');
     } catch (error: any) {
       console.error('Sign up error:', error);
       showError(error.message || 'حدث خطأ أثناء إنشاء الحساب');
@@ -156,6 +155,22 @@ const SignUp = () => {
                 />
                 <FormField
                   control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        كلمة المرور
+                      </FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="أدخل كلمة مرور (6 أحرف على الأقل)" {...field} dir="ltr" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
@@ -170,11 +185,6 @@ const SignUp = () => {
                     </FormItem>
                   )}
                 />
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    تأكد من صحة رقم هاتفك، سيتم إرسال كلمة المرور إلى رقمك من قبل الإدارة
-                  </p>
-                </div>
                 <Button type="submit" className="w-full h-12 text-lg" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'جاري إنشاء الحساب...' : 'إنشاء الحساب'}
                 </Button>
