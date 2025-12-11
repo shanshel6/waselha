@@ -38,8 +38,9 @@ const SignUp = () => {
       // Generate a 6-digit password
       const password = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Create email from phone number
-      const email = `user+${values.phone.replace(/\+/g, '')}@waslaha.app`;
+      // Create valid email from phone number by removing special characters
+      const cleanPhone = values.phone.replace(/\D/g, '');
+      const email = `user${cleanPhone}@waslaha.app`;
       
       const { data, error } = await supabase.auth.signUp({
         email,

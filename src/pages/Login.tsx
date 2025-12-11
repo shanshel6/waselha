@@ -45,7 +45,7 @@ function Login() {
     }
 
     // Validate phone number format (Iraqi phone numbers)
-    const phoneRegex = /^(07\d{9}|\\+9647\d{9})$/;
+    const phoneRegex = /^(07\d{9}|\+9647\d{9}|9647\d{9})$/;
     if (!phoneRegex.test(phone)) {
       showError('يرجى إدخال رقم هاتف عراقي صحيح');
       return;
@@ -59,8 +59,9 @@ function Login() {
 
     setIsLoggingIn(true);
     try {
-      // Create email from phone number
-      const email = `user+${phone.replace(/\+/g, '')}@waslaha.app`;
+      // Create valid email from phone number by removing special characters
+      const cleanPhone = phone.replace(/\D/g, '');
+      const email = `user${cleanPhone}@waslaha.app`;
       
       // Try to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
