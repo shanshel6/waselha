@@ -50,13 +50,38 @@ const TravelerLanding = () => {
     return publicUrlData.publicUrl;
   };
 
+  const formatPhoneNumber = (phone: string): string => {
+    // Remove all non-digit characters
+    let cleanPhone = phone.replace(/\D/g, '');
+    
+    // Handle different phone number formats for Iraq
+    if (cleanPhone.startsWith('07')) {
+      // Format: 07XXXXXXXXX (10 digits total)
+      if (cleanPhone.length === 11 && cleanPhone.startsWith('07')) {
+        cleanPhone = cleanPhone.substring(1); // Remove leading 0
+      }
+    } else if (cleanPhone.startsWith('9647')) {
+      // Format: 9647XXXXXXXXX (12 digits total)
+      cleanPhone = cleanPhone.substring(3); // Remove country code 964
+    } else if (cleanPhone.startsWith('+9647')) {
+      // Format: +9647XXXXXXXXX
+      cleanPhone = cleanPhone.substring(4); // Remove country code +964
+    }
+    
+    return cleanPhone;
+  };
+
+  const generateEmailFromPhone = (phone: string): string => {
+    const cleanPhone = formatPhoneNumber(phone);
+    return `user${cleanPhone}@waslaha.app`;
+  };
+
   const createTemporaryUser = async (phone: string, fullName: string) => {
     // Generate a simple password
     const password = Math.random().toString(36).slice(-8);
     
     // Create a valid email using phone number
-    const cleanPhone = phone.replace(/\D/g, '');
-    const email = `user${cleanPhone}@waslaha.app`;
+    const email = generateEmailFromPhone(phone);
     
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
