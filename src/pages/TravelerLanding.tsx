@@ -54,8 +54,8 @@ const TravelerLanding = () => {
     // Generate a simple password
     const password = Math.random().toString(36).slice(-8);
     
-    // Create a valid email using the phone number
-    const email = `user-${Date.now()}@waslaha.app`;
+    // Create a valid email using a fixed domain
+    const email = `user${Math.random().toString(36).substr(2, 9)}@waslaha.app`;
     
     // Create the user with email
     const { data, error } = await supabase.auth.signUp({
