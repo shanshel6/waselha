@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
@@ -17,10 +17,19 @@ const TravelerLanding = () => {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const lastSubmissionTime = useRef(0);
 
   const handleSubmit = async (values: any) => {
+    // Rate limiting - prevent submission if less than 10 seconds since last submission
+    const now = Date.now();
+    if (now - lastSubmissionTime.current < 10000) {
+      showError('يرجى الانتظار قبل إرسال رحلة جديدة');
+      return;
+    }
+    
     if (isSubmitting || hasSubmitted) return;
     setIsSubmitting(true);
+    lastSubmissionTime.current = now;
 
     // If user is not logged in, save data and redirect to login
     if (!user) {
@@ -95,12 +104,19 @@ const TravelerLanding = () => {
   // Submit pending trip after login - run only once
   useEffect(() => {
     const submitPendingTrip = async () => {
+      // Rate limiting check
+      const now = Date.now();
+      if (now - lastSubmissionTime.current < 10000) {
+        return;
+      }
+      
       if (user && !hasSubmitted) {
         const pendingData = localStorage.getItem('pendingTripData');
         if (pendingData) {
           try {
             // Mark as submitted immediately to prevent duplicate runs
             setHasSubmitted(true);
+            lastSubmissionTime.current = now;
             const data = JSON.parse(pendingData);
             
             // Check if user is verified
@@ -165,11 +181,6 @@ const TravelerLanding = () => {
     };
 
     submitPendingTrip();
-    
-    // Cleanup function to prevent memory leaks
-    return () => {
-      // Any cleanup if needed
-    };
   }, [user, navigate, queryClient, hasSubmitted]);
 
   if (isSessionLoading || isVerificationStatusLoading) {
