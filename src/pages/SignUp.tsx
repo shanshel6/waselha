@@ -16,6 +16,11 @@ import { Phone, User } from 'lucide-react';
 const signUpSchema = z.object({
   full_name: z.string().min(1, { message: 'requiredField' }),
   phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
+  password: z.string().min(6, { message: 'passwordMustBe6Digits' }).max(6, { message: 'passwordMustBe6Digits' }).regex(/^\d+$/, { message: 'passwordMustBeNumbers' }),
+  confirm_password: z.string()
+}).refine((data) => data.password === data.confirm_password, {
+  message: "كلمات المرور غير متطابقة",
+  path: ["confirm_password"],
 });
 
 const SignUp = () => {
@@ -27,6 +32,8 @@ const SignUp = () => {
     defaultValues: {
       full_name: '',
       phone: '',
+      password: '',
+      confirm_password: '',
     },
   });
 
@@ -34,11 +41,10 @@ const SignUp = () => {
     try {
       // Create email from phone number
       const email = `user+${values.phone.replace(/\+/g, '')}@waslaha.app`;
-      const password = values.phone; // Use phone as password for simplicity
       
       const { data, error } = await supabase.auth.signUp({
         email,
-        password,
+        password: values.password,
         options: {
           data: {
             full_name: values.full_name,
@@ -104,6 +110,35 @@ const SignUp = () => {
                       <p className="text-xs text-muted-foreground">
                         سيتم استخدام هذا الرقم لتسجيل الدخول
                       </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>كلمة المرور</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="6 أرقام" {...field} maxLength={6} dir="ltr" />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        يجب أن تكون كلمة المرور مكونة من 6 أرقام
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="confirm_password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>تأكيد كلمة المرور</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="6 أرقام" {...field} maxLength={6} dir="ltr" />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

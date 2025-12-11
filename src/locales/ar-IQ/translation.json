@@ -431,5 +431,7 @@
   "paymentRequestReviewSubmitted": "تم إرسال مراجعة طلب الدفع بنجاح",
   "paymentRequestReviewError": "حدث خطأ أثناء إرسال مراجعة طلب الدفع",
   "contactInfoUpdateCooldownError": "لا يمكنك تحديث معلومات الاتصال الآن. يمكنك التحديث مرة واحدة فقط كل شهر.",
-  "contactInfoUpdateCooldownMessage": "يمكنك تحديث معلومات الاتصال مرة أخرى بعد تاريخ: {{date}}."
+  "contactInfoUpdateCooldownMessage": "يمكنك تحديث معلومات الاتصال مرة أخرى بعد تاريخ: {{date}}.",
+  "passwordMustBe6Digits": "كلمة المرور يجب أن تكون 6 أرقام",
+  "passwordMustBeNumbers": "كلمة المرور يجب أن تحتوي على أرقام فقط"
 }
