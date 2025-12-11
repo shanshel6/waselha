@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
@@ -12,10 +12,11 @@ import { Loader2 } from 'lucide-react';
 
 const TravelerLanding = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isLoading: isSessionLoading } = useSession();
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmittedPending, setHasSubmittedPending] = useState(false);
 
   const handleSubmit = async (values: any) => {
     if (isSubmitting) return;
@@ -91,15 +92,16 @@ const TravelerLanding = () => {
     }
   };
 
-  // Submit pending trip after login
-  React.useEffect(() => {
+  // Submit pending trip after login - run only once
+  useEffect(() => {
     const submitPendingTrip = async () => {
-      if (user) {
+      // Only run if user is logged in, hasn't submitted yet, and there's pending data
+      if (user && !hasSubmittedPending) {
         const pendingData = localStorage.getItem('pendingTripData');
         if (pendingData) {
           try {
+            setHasSubmittedPending(true); // Mark as submitted to prevent multiple runs
             const data = JSON.parse(pendingData);
-            showSuccess('جارٍ إرسال بيانات الرحلة...');
             
             const isVerified = verificationInfo?.status === 'approved';
             if (!isVerified) {
@@ -142,8 +144,10 @@ const TravelerLanding = () => {
             queryClient.invalidateQueries({ queryKey: ['trips'] });
             queryClient.invalidateQueries({ queryKey: ['pendingTrips'] });
             
-            // Redirect to my-flights page
-            navigate('/my-flights');
+            // Redirect to my-flights page after a short delay to show the success message
+            setTimeout(() => {
+              navigate('/my-flights');
+            }, 2000);
           } catch (err: any) {
             console.error('Error submitting pending trip:', err);
             showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
@@ -155,9 +159,9 @@ const TravelerLanding = () => {
     };
     
     submitPendingTrip();
-  }, [user, navigate, queryClient, verificationInfo]);
+  }, [user, navigate, queryClient, verificationInfo, hasSubmittedPending]);
 
-  if (isVerificationStatusLoading) {
+  if (isSessionLoading || isVerificationStatusLoading) {
     return (
       <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
