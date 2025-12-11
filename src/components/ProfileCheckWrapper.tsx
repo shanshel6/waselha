@@ -36,7 +36,6 @@ const ProfileCheckWrapper: React.FC<ProfileCheckWrapperProps> = ({ children }) =
     // Handle unverified user redirection
     if (user && profile && !profile.is_verified) {
       const allowedPaths = [
-        '/',
         '/login',
         '/signup',
         '/complete-profile',
