@@ -23,7 +23,7 @@ interface UserPassword {
 const AdminMakeAccounts = () => {
   const { t } = useTranslation();
   const { isAdmin, isLoading: isAdminLoading } = useAdminCheck();
-
+  
   const { data: userPasswords, isLoading, error } = useQuery<UserPassword[], Error>({
     queryKey: ['userPasswords'],
     queryFn: async () => {
@@ -40,7 +40,7 @@ const AdminMakeAccounts = () => {
           )
         `)
         .order('created_at', { ascending: false });
-
+      
       if (error) throw new Error(error.message);
       return data as UserPassword[];
     },
@@ -71,6 +71,34 @@ const AdminMakeAccounts = () => {
     <div className="container mx-auto p-4 min-h-[calc(100vh-64px)]">
       <h1 className="text-3xl font-bold mb-6">معلومات الحسابات المنشأة</h1>
       
+      {/* Fixed Admin Account Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>حساب المسؤول الثابت</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-right">
+              <thead>
+                <tr className="border-b">
+                  <th className="p-3">رقم الهاتف</th>
+                  <th className="p-3">كلمة المرور</th>
+                  <th className="p-3">ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b hover:bg-muted/50">
+                  <td className="p-3" dir="ltr">07779786420</td>
+                  <td className="p-3 font-mono text-lg" dir="ltr">199806</td>
+                  <td className="p-3">حساب المسؤول الرئيسي</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* User Accounts Section */}
       <Card>
         <CardHeader>
           <CardTitle>قائمة الحسابات الجديدة</CardTitle>
