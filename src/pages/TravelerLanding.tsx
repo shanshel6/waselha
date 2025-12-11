@@ -58,6 +58,12 @@ const TravelerLanding = () => {
     const cleanPhone = phone.replace(/\D/g, '');
     const email = `user${cleanPhone}@waslaha.app`;
     
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Invalid email format generated');
+    }
+    
     try {
       // Sign up the user without email confirmation
       const { data, error } = await supabase.auth.signUp({
@@ -117,7 +123,7 @@ const TravelerLanding = () => {
     if (isSubmitting || hasSubmittedRef.current) return;
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
-
+    
     try {
       let currentUser = user;
       
@@ -125,11 +131,10 @@ const TravelerLanding = () => {
       if (!currentUser) {
         const userData = await createTemporaryUser(values.phone, values.full_name);
         currentUser = userData.user;
-        
         // Show success message about account creation
         showSuccess('تم إنشاء حساب مؤقت لك. سيتم إرسال كلمة المرور إلى المسؤول.');
       }
-
+      
       // Check if user is verified (if logged in)
       let isVerified = false;
       if (currentUser) {
@@ -140,22 +145,22 @@ const TravelerLanding = () => {
           .single();
         isVerified = verificationData?.is_verified || false;
       }
-
+      
       // Check if ticket file is provided
       if (!values.ticket_file) {
         throw new Error('يرجى تحميل تذكرة الطيران');
       }
-
+      
       // Upload ticket and get URL
       const ticketUrl = await uploadTicketAndGetUrl(values.ticket_file, currentUser!.id);
-
+      
       let charge_per_kg = 0;
       const { calculateTravelerProfit } = await import('@/lib/pricing');
       const profit = calculateTravelerProfit(values.from_country, values.to_country, values.free_kg);
       if (profit) {
         charge_per_kg = profit.pricePerKgUSD;
       }
-
+      
       const { error } = await supabase.from('trips').insert({
         user_id: currentUser!.id,
         from_country: values.from_country,
@@ -168,12 +173,12 @@ const TravelerLanding = () => {
         ticket_file_url: ticketUrl,
         is_approved: false,
       });
-
+      
       if (error) {
         console.error('Error adding trip:', error);
         throw new Error(error.message || 'Failed to create trip');
       }
-
+      
       showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
       
       // Invalidate queries to refresh the trips list
@@ -189,7 +194,6 @@ const TravelerLanding = () => {
       hasSubmittedRef.current = false; // Reset on error
     } finally {
       setIsSubmitting(false);
-      
       // Clear pending data
       localStorage.removeItem('pendingTripData');
       localStorage.removeItem('pendingTripFile');
@@ -232,21 +236,21 @@ const TravelerLanding = () => {
           hasSubmittedRef.current = false; // Reset so user can try again after verification
           return;
         }
-
+        
         // Reconstruct the file from stored data
         const blob = await fetch(fileData.data).then(res => res.blob());
         const file = new File([blob], fileData.name, { type: fileData.type });
-
+        
         // Upload ticket and get URL
         const ticketUrl = await uploadTicketAndGetUrl(file, user.id);
-
+        
         let charge_per_kg = 0;
         const { calculateTravelerProfit } = await import('@/lib/pricing');
         const profit = calculateTravelerProfit(data.from_country, data.to_country, data.free_kg);
         if (profit) {
           charge_per_kg = profit.pricePerKgUSD;
         }
-
+        
         const { error } = await supabase.from('trips').insert({
           user_id: user.id,
           from_country: data.from_country,
@@ -259,12 +263,12 @@ const TravelerLanding = () => {
           ticket_file_url: ticketUrl,
           is_approved: false,
         });
-
+        
         if (error) {
           console.error('Error adding trip:', error);
           throw new Error(error.message || 'Failed to create trip');
         }
-
+        
         // Clear localStorage after successful submission
         localStorage.removeItem('pendingTripData');
         localStorage.removeItem('pendingTripFile');
@@ -283,14 +287,13 @@ const TravelerLanding = () => {
       } catch (err: any) {
         console.error('Error submitting pending trip:', err);
         showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
-        
         // Clear pending data on error to prevent infinite loop
         localStorage.removeItem('pendingTripData');
         localStorage.removeItem('pendingTripFile');
         hasSubmittedRef.current = false; // Reset on error
       }
     };
-
+    
     submitPendingTrip();
     
     // Cleanup function

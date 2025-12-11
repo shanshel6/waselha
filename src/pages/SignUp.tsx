@@ -23,7 +23,6 @@ const signUpSchema = z.object({
 const SignUp = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -42,6 +41,12 @@ const SignUp = () => {
       const cleanPhone = values.phone.replace(/\D/g, '');
       const email = `user${cleanPhone}@waslaha.app`;
       
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Invalid email format generated');
+      }
+
       // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -60,7 +65,7 @@ const SignUp = () => {
         throw error;
       }
 
-      // Store the password in the database
+      // Store the password in the database if user was created
       if (data.user) {
         const { error: passwordError } = await supabase
           .from('user_passwords')
@@ -68,7 +73,7 @@ const SignUp = () => {
             id: data.user.id,
             password: password
           });
-        
+          
         if (passwordError) {
           console.error('Error storing password:', passwordError);
         }

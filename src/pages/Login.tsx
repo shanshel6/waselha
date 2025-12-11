@@ -58,11 +58,18 @@ function Login() {
     }
 
     setIsLoggingIn(true);
+    
     try {
       // Create valid email from phone number by removing special characters
       const cleanPhone = phone.replace(/\D/g, '');
       const email = `user${cleanPhone}@waslaha.app`;
       
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Invalid email format generated');
+      }
+
       // Try to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -74,7 +81,6 @@ function Login() {
       }
 
       showSuccess('تم تسجيل الدخول بنجاح');
-      
       // Redirect to home
       navigate('/');
     } catch (error: any) {
@@ -106,42 +112,37 @@ function Login() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">رقم الهاتف</label>
-                <Input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full h-12 text-lg"
-                  placeholder="مثال: 07701234567"
-                  dir="ltr"
+                <Input 
+                  type="tel" 
+                  value={phone} 
+                  onChange={(e) => setPhone(e.target.value)} 
+                  className="w-full h-12 text-lg" 
+                  placeholder="مثال: 07701234567" 
+                  dir="ltr" 
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">كلمة المرور</label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-12 text-lg"
-                  placeholder="6 أرقام"
-                  maxLength={6}
-                  dir="ltr"
+                <Input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  className="w-full h-12 text-lg" 
+                  placeholder="6 أرقام" 
+                  maxLength={6} 
+                  dir="ltr" 
                 />
                 <p className="text-xs text-muted-foreground mt-2">
                   أدخل كلمة المرور المكونة من 6 أرقام التي استلمتها عبر رسالة نصية
                 </p>
               </div>
-              <Button
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="w-full h-12 text-lg"
-              >
+              <Button onClick={handleLogin} disabled={isLoggingIn} className="w-full h-12 text-lg">
                 {isLoggingIn ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 ) : null}
                 {isLoggingIn ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
               </Button>
             </div>
-
             {/* روابط ثانوية */}
             <div className="flex flex-col gap-2 mt-4 text-sm">
               <p className="text-center text-muted-foreground">
