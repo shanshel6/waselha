@@ -16,20 +16,15 @@ const TravelerLanding = () => {
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
-  const lastSubmissionTime = useRef(0);
+  const hasSubmittedRef = useRef(false); // Use ref to persist across re-renders
+  const submissionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSubmit = async (values: any) => {
-    // Rate limiting - prevent submission if less than 10 seconds since last submission
-    const now = Date.now();
-    if (now - lastSubmissionTime.current < 10000) {
-      showError('يرجى الانتظار قبل إرسال رحلة جديدة');
-      return;
-    }
+    // Prevent multiple submissions
+    if (isSubmitting || hasSubmittedRef.current) return;
     
-    if (isSubmitting || hasSubmitted) return;
     setIsSubmitting(true);
-    lastSubmissionTime.current = now;
+    hasSubmittedRef.current = true;
 
     // If user is not logged in, save data and redirect to login
     if (!user) {
@@ -43,6 +38,7 @@ const TravelerLanding = () => {
         showError('حدث خطأ أثناء حفظ بيانات الرحلة');
       } finally {
         setIsSubmitting(false);
+        hasSubmittedRef.current = false; // Reset on error
       }
       return;
     }
@@ -53,6 +49,7 @@ const TravelerLanding = () => {
       showError('verificationRequiredTitle');
       navigate('/verification');
       setIsSubmitting(false);
+      hasSubmittedRef.current = false; // Reset so user can try again after verification
       return;
     }
 
@@ -81,7 +78,6 @@ const TravelerLanding = () => {
         throw new Error(error.message || 'Failed to create trip');
       }
 
-      setHasSubmitted(true);
       showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
 
       // Invalidate queries to refresh the trips list
@@ -94,6 +90,7 @@ const TravelerLanding = () => {
     } catch (err: any) {
       console.error('Error creating trip:', err);
       showError(err.message || 'tripAddedError');
+      hasSubmittedRef.current = false; // Reset on error
     } finally {
       setIsSubmitting(false);
       // Clear pending data
@@ -104,19 +101,16 @@ const TravelerLanding = () => {
   // Submit pending trip after login - run only once
   useEffect(() => {
     const submitPendingTrip = async () => {
-      // Rate limiting check
-      const now = Date.now();
-      if (now - lastSubmissionTime.current < 10000) {
-        return;
-      }
+      // Prevent multiple submissions
+      if (hasSubmittedRef.current) return;
       
-      if (user && !hasSubmitted) {
+      if (user && !hasSubmittedRef.current) {
         const pendingData = localStorage.getItem('pendingTripData');
         if (pendingData) {
+          // Mark as submitted immediately to prevent duplicate runs
+          hasSubmittedRef.current = true;
+          
           try {
-            // Mark as submitted immediately to prevent duplicate runs
-            setHasSubmitted(true);
-            lastSubmissionTime.current = now;
             const data = JSON.parse(pendingData);
             
             // Check if user is verified
@@ -130,6 +124,7 @@ const TravelerLanding = () => {
             if (!isVerified) {
               showError('verificationRequiredTitle');
               navigate('/verification');
+              hasSubmittedRef.current = false; // Reset so user can try again after verification
               return;
             }
 
@@ -175,13 +170,21 @@ const TravelerLanding = () => {
             showError(err.message || 'حدث خطأ أثناء إرسال الرحلة');
             // Clear pending data on error to prevent infinite loop
             localStorage.removeItem('pendingTripData');
+            hasSubmittedRef.current = false; // Reset on error
           }
         }
       }
     };
 
     submitPendingTrip();
-  }, [user, navigate, queryClient, hasSubmitted]);
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (submissionTimeoutRef.current) {
+        clearTimeout(submissionTimeoutRef.current);
+      }
+    };
+  }, [user, navigate, queryClient]);
 
   if (isSessionLoading || isVerificationStatusLoading) {
     return (
