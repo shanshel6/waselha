@@ -18,61 +18,41 @@ function Login() {
   const [password, setPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Handle post-login redirection
   useEffect(() => {
     if (user) {
-      // Check if there's pending trip data to submit
       const pendingData = localStorage.getItem('pendingTripData');
       if (pendingData) {
-        // Redirect to traveler landing page to handle the submission
         navigate('/traveler-landing', { replace: true });
       } else {
-        // No pending data, go to home
         navigate('/', { replace: true });
       }
     }
   }, [user, navigate]);
 
   const formatPhoneNumber = (phone: string): string => {
-    // Remove all non-digit characters
     let cleanPhone = phone.replace(/\D/g, '');
-    
-    // Handle different phone number formats for Iraq
-    if (cleanPhone.startsWith('07')) {
-      // Format: 07XXXXXXXXX (10 digits total)
-      if (cleanPhone.length === 11 && cleanPhone.startsWith('07')) {
-        cleanPhone = cleanPhone.substring(1); // Remove leading 0
-      }
-    } else if (cleanPhone.startsWith('9647')) {
-      // Format: 9647XXXXXXXXX (12 digits total)
-      cleanPhone = cleanPhone.substring(3); // Remove country code 964
-    } else if (cleanPhone.startsWith('+9647')) {
-      // Format: +9647XXXXXXXXX
-      cleanPhone = cleanPhone.substring(4); // Remove country code +964
+    if (cleanPhone.length === 11 && cleanPhone.startsWith('07')) {
+      cleanPhone = cleanPhone.substring(1);
+    } else if (cleanPhone.length === 12 && cleanPhone.startsWith('9647')) {
+      cleanPhone = cleanPhone.substring(3);
+    } else if (cleanPhone.length === 13 && cleanPhone.startsWith('+9647')) {
+      cleanPhone = cleanPhone.substring(4);
     }
-    
     return cleanPhone;
   };
 
   const handleLogin = async () => {
-    if (!phone) {
-      showError('يرجى إدخال رقم الهاتف');
+    if (!phone || !password) {
+      showError('يرجى إدخال رقم الهاتف وكلمة المرور');
       return;
     }
 
-    if (!password) {
-      showError('يرجى إدخال كلمة المرور');
-      return;
-    }
-
-    // Validate phone number format (Iraqi phone numbers)
     const phoneRegex = /^(07\d{9}|\+9647\d{9}|9647\d{9})$/;
     if (!phoneRegex.test(phone)) {
       showError('يرجى إدخال رقم هاتف عراقي صحيح');
       return;
     }
 
-    // Validate password format (min 6 chars)
     if (password.length < 6) {
       showError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
@@ -81,11 +61,9 @@ function Login() {
     setIsLoggingIn(true);
     
     try {
-      // Format phone number
       const formattedPhone = formatPhoneNumber(phone);
       const fullPhone = `+964${formattedPhone}`;
       
-      // Sign in with phone and password
       const { data, error } = await supabase.auth.signInWithPassword({
         phone: fullPhone,
         password
@@ -95,12 +73,30 @@ function Login() {
         throw error;
       }
 
+      if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_verified')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          await supabase.auth.signOut();
+          throw profileError;
+        }
+
+        if (!profile.is_verified) {
+          await supabase.auth.signOut();
+          showError('حسابك قيد المراجعة من قبل المسؤول. يرجى المحاولة مرة أخرى لاحقاً.');
+          setIsLoggingIn(false);
+          return;
+        }
+      }
+
       showSuccess('تم تسجيل الدخول بنجاح');
-      // Redirect to home
-      navigate('/');
     } catch (error: any) {
       console.error('Login error:', error);
-      showError(error.message || 'حدث خطأ أثناء تسجيل الدخول');
+      showError(error.message || 'فشل تسجيل الدخول. تحقق من رقم الهاتف وكلمة المرور.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -157,7 +153,6 @@ function Login() {
                 {isLoggingIn ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
               </Button>
             </div>
-            {/* روابط ثانوية */}
             <div className="flex flex-col gap-2 mt-4 text-sm">
               <p className="text-center text-muted-foreground">
                 ليس لديك حساب؟{' '}

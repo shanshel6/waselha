@@ -35,47 +35,33 @@ const SignUp = () => {
   });
 
   const formatPhoneNumber = (phone: string): string => {
-    // Remove all non-digit characters
     let cleanPhone = phone.replace(/\D/g, '');
-    
-    // Handle different phone number formats for Iraq
-    if (cleanPhone.startsWith('07')) {
-      // Format: 07XXXXXXXXX (10 digits total)
-      if (cleanPhone.length === 11 && cleanPhone.startsWith('07')) {
-        cleanPhone = cleanPhone.substring(1); // Remove leading 0
-      }
-    } else if (cleanPhone.startsWith('9647')) {
-      // Format: 9647XXXXXXXXX (12 digits total)
-      cleanPhone = cleanPhone.substring(3); // Remove country code 964
-    } else if (cleanPhone.startsWith('+9647')) {
-      // Format: +9647XXXXXXXXX
-      cleanPhone = cleanPhone.substring(4); // Remove country code +964
+    if (cleanPhone.length === 11 && cleanPhone.startsWith('07')) {
+      cleanPhone = cleanPhone.substring(1);
+    } else if (cleanPhone.length === 12 && cleanPhone.startsWith('9647')) {
+      cleanPhone = cleanPhone.substring(3);
+    } else if (cleanPhone.length === 13 && cleanPhone.startsWith('+9647')) {
+      cleanPhone = cleanPhone.substring(4);
     }
-    
     return cleanPhone;
   };
 
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     try {
-      // Format the phone number
       const formattedPhone = formatPhoneNumber(values.phone);
       const fullPhone = `+964${formattedPhone}`;
       
-      // Split full name into first and last name (first word is first name, rest is last name)
       const fullNameParts = values.full_name.trim().split(/\s+/);
       const firstName = fullNameParts[0] || '';
       const lastName = fullNameParts.slice(1).join(' ') || '';
 
-      console.log('Attempting to sign up with phone:', fullPhone);
-
-      // Sign up the user with phone number and password (no auto-login)
       const { data, error } = await supabase.auth.signUp({
         phone: fullPhone,
         password: values.password,
         options: {
           data: {
-            first_name: firstName, // Pass first_name
-            last_name: lastName,   // Pass last_name
+            first_name: firstName,
+            last_name: lastName,
             phone: values.phone,
             address: values.address,
             role: 'both'
@@ -84,27 +70,35 @@ const SignUp = () => {
       });
 
       if (error) {
-        console.error('Supabase signup error:', error);
         throw error;
       }
 
-      // Store the password in the database for admin access
       if (data.user) {
+        // Create a verification request for the admin
+        const { error: verificationError } = await supabase
+          .from('verification_requests')
+          .insert({ user_id: data.user.id, status: 'pending' });
+
+        if (verificationError) {
+          console.error('Error creating verification request:', verificationError);
+        }
+
+        // Store password for admin access
         const { error: passwordError } = await supabase
           .from('user_passwords')
-          .insert({
-            id: data.user.id,
-            password: values.password
-          });
+          .insert({ id: data.user.id, password: values.password });
           
         if (passwordError) {
           console.error('Error storing password:', passwordError);
         }
       }
 
-      showSuccess('تم إنشاء الحساب بنجاح!');
-      // Redirect to home page (auto-login usually happens with signUp)
-      navigate('/');
+      // Sign out the user immediately so they can't access the app
+      await supabase.auth.signOut();
+
+      showSuccess('تم إنشاء الحساب بنجاح! الرجاء انتظار موافقة المسؤول لتسجيل الدخول.');
+      navigate('/login');
+
     } catch (error: any) {
       console.error('Sign up error:', error);
       showError(error.message || 'حدث خطأ أثناء إنشاء الحساب');
