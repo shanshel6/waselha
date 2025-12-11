@@ -36,6 +36,7 @@ const ProfileCheckWrapper: React.FC<ProfileCheckWrapperProps> = ({ children }) =
     // Handle unverified user redirection
     if (user && profile && !profile.is_verified) {
       const allowedPaths = [
+        '/',
         '/login',
         '/signup',
         '/complete-profile',
@@ -47,11 +48,20 @@ const ProfileCheckWrapper: React.FC<ProfileCheckWrapperProps> = ({ children }) =
         '/terms',
         '/privacy',
         '/traveler-landing',
+        '/trips',
+        '/my-flights',
+        '/my-requests',
       ];
       
       const isAdminPath = location.pathname.startsWith('/admin');
 
-      if (!allowedPaths.includes(location.pathname) && !isAdminPath) {
+      // Check if the current path starts with any of the allowed paths
+      const isAllowed = allowedPaths.some(path => {
+        if (path === '/') return location.pathname === '/'; // Exact match for root
+        return location.pathname.startsWith(path);
+      });
+
+      if (!isAllowed && !isAdminPath) {
         navigate('/verification');
       }
     }
