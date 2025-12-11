@@ -151,11 +151,6 @@ function Login() {
                   إنشاء حساب جديد
                 </Link>
               </p>
-              <p className="text-center text-muted-foreground">
-                <Link to="/reset-password" className="font-medium text-primary hover:underline">
-                  نسيت كلمة المرور؟
-                </Link>
-              </p>
             </div>
           </CardContent>
         </Card>

@@ -31,7 +31,6 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
-import ResetPassword from "./pages/ResetPassword";
 import AdminPayments from "./pages/AdminPayments";
 import AdminReports from "./pages/AdminReports";
 import AuthGuard from "./components/AuthGuard";
@@ -63,13 +62,12 @@ const AppContent = () => {
       <Route path="/trips" element={<Trips />} />
       <Route path="/trips/:tripId" element={<TripDetails />} />
       <Route path="/traveler-landing" element={<TravelerLanding />} />
-
+      
       {/* Auth routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/complete-profile" element={<CompleteProfile />} />
-
+      
       {/* Protected routes - wrapped with AuthGuard */}
       <Route path="/my-profile" element={
         <AuthGuard>
