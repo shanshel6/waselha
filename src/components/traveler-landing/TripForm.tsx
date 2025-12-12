@@ -156,7 +156,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {t('freeKg')} ({field.value} kg)
+                    {t('freeKg')} ({free_kg} kg)
                   </FormLabel>
                   <FormControl>
                     <div className="mt-2">
@@ -309,5 +309,5 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
     }
   };
 
-  return <div>{renderStepContent()}</div>;
+  return <div key={currentStep} className="animate-fade-in">{renderStepContent()}</div>;
 };
