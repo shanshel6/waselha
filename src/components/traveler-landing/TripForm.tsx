@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import { CalendarIcon, DollarSign, MapPin, StickyNote, FileText, User, Phone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -124,7 +125,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                         )}
                       >
                         {field.value ? (
-                          format(new Date(field.value), 'PPP')
+                          format(new Date(field.value), 'PPP', { locale: ar })
                         ) : (
                           <span>{t('selectDate')}</span>
                         )}
@@ -168,8 +169,8 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                         onValueChange={(val) => field.onChange(val[0])}
                       />
                       <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                        <span>1 kg</span>
                         <span>50 kg</span>
+                        <span>1 kg</span>
                       </div>
                     </div>
                   </FormControl>
