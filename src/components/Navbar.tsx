@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,17 @@ const Navbar: React.FC = () => {
   const { isAdmin } = useAdminCheck();
   const location = useLocation();
   const { data: profile } = useProfile();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Public navigation (top center) - in Arabic
   const publicNavItems = [
@@ -56,7 +67,12 @@ const Navbar: React.FC = () => {
   );
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <nav className={cn(
+      "sticky top-0 z-50 w-full border-b transition-all duration-300",
+      isScrolled 
+        ? "border-border/60 bg-background/95 backdrop-blur-lg shadow-sm" 
+        : "border-transparent bg-background/80 backdrop-blur-md"
+    )}>
       <div className="container mx-auto flex h-16 items-center px-3 sm:px-4">
         {/* يسار: الأفاتار + الإشعارات (ديسكتوب) + زر القائمة (موبايل) */}
         <div className="flex items-center gap-3">
