@@ -178,7 +178,7 @@ const SenderLanding = () => {
 
       if (isNewUser) {
         await supabase.auth.signOut();
-        showSuccess('تم إنشاء الحساب وإضافة الطلب بنجاح! يمكنك الآن تسجيل الدخول.');
+        showSuccess('تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.');
         navigate('/login');
       } else {
         showSuccess('تم إرسال طلب الشحن العام بنجاح!');

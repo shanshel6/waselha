@@ -187,7 +187,7 @@ const TravelerLanding = () => {
 
       if (isNewUser) {
         await supabase.auth.signOut();
-        showSuccess('تم إنشاء الحساب وإضافة الرحلة بنجاح! يمكنك الآن تسجيل الدخول.');
+        showSuccess('تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.');
         navigate('/login');
       } else {
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
