@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import { CalendarIcon, DollarSign, Loader2, MapPin, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -311,7 +312,7 @@ const AddTrip = () => {
                             )}
                           >
                             {field.value ? (
-                              format(field.value, 'PPP')
+                              format(field.value, 'PPP', { locale: ar })
                             ) : (
                               <span>{t('selectDate')}</span>
                             )}
@@ -326,6 +327,7 @@ const AddTrip = () => {
                           onSelect={field.onChange}
                           disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                           initialFocus
+                          locale={ar}
                         />
                       </PopoverContent>
                     </Popover>

@@ -140,6 +140,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                       onSelect={(date) => field.onChange(date ? date.toISOString() : '')}
                       disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                       initialFocus
+                      locale={ar}
                     />
                   </PopoverContent>
                 </Popover>

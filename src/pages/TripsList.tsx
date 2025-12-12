@@ -25,6 +25,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import { CalendarIcon, Loader2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import CountryFlag from '@/components/CountryFlag';
@@ -191,7 +192,7 @@ const TripsList = () => {
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {filters.trip_date ? (
-                  format(filters.trip_date, 'PPP')
+                  format(filters.trip_date, 'PPP', { locale: ar })
                 ) : (
                   <span>{t('selectDate')}</span>
                 )}
@@ -203,6 +204,7 @@ const TripsList = () => {
                 selected={filters.trip_date}
                 onSelect={(date) => handleFilterChange('trip_date', date)}
                 initialFocus
+                locale={ar}
               />
             </PopoverContent>
           </Popover>
