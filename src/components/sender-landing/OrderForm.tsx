@@ -13,11 +13,14 @@ import { Slider } from '@/components/ui/slider';
 import { countries } from '@/lib/countries';
 import CountryFlag from '@/components/CountryFlag';
 import { calculateShippingCost, ITEM_TYPES, ITEM_SIZES, ItemType, ItemSize } from '@/lib/pricing';
-import { DollarSign, Loader2 } from 'lucide-react';
+import { DollarSign, Loader2, User, Phone } from 'lucide-react';
 import { arabicCountries } from '@/lib/countries-ar';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
+import { Input } from '@/components/ui/input';
 
 const orderSchema = z.object({
+  full_name: z.string().min(1, { message: 'requiredField' }),
+  phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
   from_country: z.string().min(1, { message: 'requiredField' }),
   to_country: z.string().min(1, { message: 'requiredField' }),
   description: z.string().min(10, { message: 'descriptionTooShort' }),
@@ -38,6 +41,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, isSubmitting }) 
   const form = useForm<z.infer<typeof orderSchema>>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
+      full_name: '',
+      phone: '',
       from_country: 'Iraq',
       to_country: '',
       description: '',
@@ -88,6 +93,41 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, isSubmitting }) 
         <CardContent>
           <Form {...form}>
             <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="full_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      الاسم الكامل
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="أدخل اسمك الكامل" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      رقم الهاتف
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="مثال: 07701234567" {...field} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      سيتم استخدام هذا الرقم لإنشاء حسابك إذا لم تكن مسجلاً.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
