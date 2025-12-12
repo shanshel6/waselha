@@ -93,41 +93,6 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, isSubmitting }) 
         <CardContent>
           <Form {...form}>
             <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      الاسم الكامل
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="أدخل اسمك الكامل" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      رقم الهاتف
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder="مثال: 07701234567" {...field} />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      سيتم استخدام هذا الرقم لإنشاء حسابك إذا لم تكن مسجلاً.
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -299,6 +264,41 @@ export const OrderForm: React.FC<OrderFormProps> = ({ onSubmit, isSubmitting }) 
                   </CardContent>
                 </Card>
               )}
+              <FormField
+                control={form.control}
+                name="full_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      الاسم الكامل
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="أدخل اسمك الكامل" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      رقم الهاتف
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="مثال: 07701234567" {...field} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      سيتم استخدام هذا الرقم لإنشاء حسابك إذا لم تكن مسجلاً.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <p className="text-xs text-muted-foreground">
                 لا تقم بطلب شحن لبضائع ممنوعة أو خطرة.{' '}
                 <button
