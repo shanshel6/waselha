@@ -20,17 +20,29 @@ import { Progress } from '@/components/ui/progress';
 
 const BUCKET_NAME = 'trip-tickets';
 
-const formSchema = z.object({
-  full_name: z.string().optional(),
-  phone: z.string().optional(),
-  from_country: z.string().min(1, { message: 'requiredField' }),
-  to_country: z.string().min(1, { message: 'requiredField' }),
-  trip_date: z.string({ required_error: 'dateRequired' }),
-  free_kg: z.coerce.number().min(1).max(50),
-  traveler_location: z.string().min(1, { message: 'requiredField' }),
-  notes: z.string().optional(),
-  ticket_file: z.instanceof(File).nullable(),
-});
+const getFormSchema = (isLoggedIn: boolean) => {
+  const baseSchema = z.object({
+    from_country: z.string().min(1, { message: 'requiredField' }),
+    to_country: z.string().min(1, { message: 'requiredField' }),
+    trip_date: z.string({ required_error: 'dateRequired' }),
+    free_kg: z.coerce.number().min(1).max(50),
+    traveler_location: z.string().min(1, { message: 'requiredField' }),
+    notes: z.string().optional(),
+    ticket_file: z.instanceof(File).nullable(),
+    full_name: z.string().optional(),
+    phone: z.string().optional(),
+  });
+
+  if (!isLoggedIn) {
+    return baseSchema.extend({
+      full_name: z.string().min(1, { message: 'requiredField' }),
+      phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
+    });
+  }
+
+  return baseSchema;
+};
+
 
 const TravelerLanding = () => {
   const navigate = useNavigate();
@@ -39,6 +51,8 @@ const TravelerLanding = () => {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+
+  const formSchema = useMemo(() => getFormSchema(!!user), [user]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -57,17 +71,17 @@ const TravelerLanding = () => {
   const progress = useMemo(() => (currentStep / totalSteps) * 100, [currentStep, totalSteps]);
 
   const stepFields: (keyof z.infer<typeof formSchema>)[][] = useMemo(() => {
-    const baseSteps: (keyof z.infer<typeof formSchema>)[][] = [
-      ['from_country', 'to_country'],
-      ['trip_date'],
-      ['free_kg'],
-      ['traveler_location'],
+    const steps: (keyof z.infer<typeof formSchema>)[][] = [
+      ['from_country', 'to_country'], // 1
+      ['trip_date'], // 2
+      ['free_kg'], // 3
     ];
     if (!user) {
-      baseSteps.push(['full_name', 'phone']);
+      steps.push(['full_name', 'phone']); // 4 (guest)
     }
-    baseSteps.push(['ticket_file']);
-    return baseSteps;
+    steps.push(['traveler_location', 'notes']); // 4 (user) or 5 (guest)
+    steps.push(['ticket_file']); // 5 (user) or 6 (guest)
+    return steps;
   }, [user]);
 
   const handleNextStep = async () => {

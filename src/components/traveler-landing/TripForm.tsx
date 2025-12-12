@@ -156,7 +156,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {t('freeKg')} ({free_kg} kg)
+                    {t('freeKg')} ({field.value} kg)
                   </FormLabel>
                   <FormControl>
                     <div className="mt-2">
@@ -200,48 +200,50 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
             )}
           </>
         );
-      case 4: // Location & Notes
-        return (
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="traveler_location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    {t('travelerLocation')}
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('travelerLocationPlaceholder')} {...field} />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">
-                    {t('travelerLocationDescription')}
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <StickyNote className="h-4 w-4" />
-                    {t('notes')}
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea rows={3} placeholder={t('notes')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        );
-      case 5: // Personal Details (if not logged in) or Ticket Upload (if logged in)
-        if (!isLoggedIn) {
+      case 4:
+        if (isLoggedIn) {
+          // Location & Notes for logged-in user
+          return (
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="traveler_location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {t('travelerLocation')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('travelerLocationPlaceholder')} {...field} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t('travelerLocationDescription')}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <StickyNote className="h-4 w-4" />
+                      {t('notes')}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea rows={3} placeholder={t('notes')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          );
+        } else {
+          // Personal Details for guest
           return (
             <div className="space-y-4">
               <FormField
@@ -282,28 +284,96 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
             </div>
           );
         }
-        // Fallthrough for logged-in user to show ticket upload
-      case 6: // Ticket Upload (if not logged in)
-        return (
-          <FormField
-            control={form.control}
-            name="ticket_file"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  تحميل تذكرة الطيران
-                </FormLabel>
-                <FormControl>
-                  <TicketUpload 
-                    onFileSelected={handleTicketFileSelected} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
+      case 5:
+        if (isLoggedIn) {
+          // Ticket Upload for logged-in user
+          return (
+            <FormField
+              control={form.control}
+              name="ticket_file"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    تحميل تذكرة الطيران
+                  </FormLabel>
+                  <FormControl>
+                    <TicketUpload 
+                      onFileSelected={handleTicketFileSelected} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        } else {
+          // Location & Notes for guest
+          return (
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="traveler_location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      {t('travelerLocation')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('travelerLocationPlaceholder')} {...field} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t('travelerLocationDescription')}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <StickyNote className="h-4 w-4" />
+                      {t('notes')}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea rows={3} placeholder={t('notes')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          );
+        }
+      case 6:
+        if (!isLoggedIn) {
+          // Ticket Upload for guest
+          return (
+            <FormField
+              control={form.control}
+              name="ticket_file"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    تحميل تذكرة الطيران
+                  </FormLabel>
+                  <FormControl>
+                    <TicketUpload 
+                      onFileSelected={handleTicketFileSelected} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        }
+        return null;
       default:
         return null;
     }
