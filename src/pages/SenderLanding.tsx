@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '@/integrations/supabase/SessionContextProvider';
 import { useVerificationStatus } from '@/hooks/use-verification-status';
@@ -9,6 +9,37 @@ import { useQueryClient } from '@tanstack/react-query';
 import { OrderForm } from '@/components/sender-landing/OrderForm';
 import { BenefitsSection } from '@/components/sender-landing/BenefitsSection';
 import { Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form } from '@/components/ui/form';
+import { Progress } from '@/components/ui/progress';
+import { ITEM_SIZES, ITEM_TYPES } from '@/lib/pricing';
+import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
+
+const getFormSchema = (isLoggedIn: boolean) => {
+  const baseSchema = z.object({
+    from_country: z.string().min(1, { message: 'requiredField' }),
+    to_country: z.string().min(1, { message: 'requiredField' }),
+    description: z.string().min(10, { message: 'descriptionTooShort' }),
+    weight_kg: z.coerce.number().min(1, { message: 'minimumWeight' }).max(50, { message: 'maxWeight' }),
+    item_type: z.nativeEnum(ITEM_TYPES),
+    item_size: z.nativeEnum(ITEM_SIZES),
+    full_name: z.string().optional(),
+    phone: z.string().optional(),
+  });
+
+  if (!isLoggedIn) {
+    return baseSchema.extend({
+      full_name: z.string().min(1, { message: 'requiredField' }),
+      phone: z.string().min(10, { message: 'phoneMustBe10To12Digits' }).max(12, { message: 'phoneMustBe10To12Digits' }).regex(/^\d+$/, { message: 'phoneMustBeNumbers' }),
+    });
+  }
+
+  return baseSchema;
+};
 
 const SenderLanding = () => {
   const navigate = useNavigate();
@@ -16,6 +47,49 @@ const SenderLanding = () => {
   const { data: verificationInfo, isLoading: isVerificationStatusLoading } = useVerificationStatus();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
+
+  const formSchema = useMemo(() => getFormSchema(!!user), [user]);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      from_country: 'Iraq',
+      to_country: '',
+      description: '',
+      weight_kg: 1,
+      item_type: 'regular',
+      item_size: 'S',
+    },
+  });
+
+  const totalSteps = useMemo(() => (user ? 3 : 4), [user]);
+  const progress = useMemo(() => (currentStep / totalSteps) * 100, [currentStep, totalSteps]);
+
+  const stepFields: (keyof z.infer<typeof formSchema>)[][] = useMemo(() => {
+    const steps: (keyof z.infer<typeof formSchema>)[][] = [
+      ['from_country', 'to_country'],
+      ['description', 'weight_kg'],
+      ['item_type', 'item_size'],
+    ];
+    if (!user) {
+      steps.push(['full_name', 'phone']);
+    }
+    return steps;
+  }, [user]);
+
+  const handleNextStep = async () => {
+    const fieldsToValidate = stepFields[currentStep - 1];
+    const isValid = await form.trigger(fieldsToValidate);
+    if (isValid) {
+      setCurrentStep((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    setCurrentStep((prev) => prev - 1);
+  };
 
   const formatPhoneNumber = (phone: string): string => {
     let cleanPhone = phone.replace(/\D/g, '');
@@ -29,7 +103,7 @@ const SenderLanding = () => {
     return cleanPhone;
   };
 
-  const handleSubmit = async (values: any) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
@@ -40,10 +114,10 @@ const SenderLanding = () => {
       if (!user) {
         isNewUser = true;
         const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
-        const formattedPhone = formatPhoneNumber(values.phone);
+        const formattedPhone = formatPhoneNumber(values.phone!);
         const fullPhone = `+964${formattedPhone}`;
         
-        const fullNameParts = values.full_name.trim().split(/\s+/);
+        const fullNameParts = values.full_name!.trim().split(/\s+/);
         const firstName = fullNameParts[0] || '';
         const lastName = fullNameParts.slice(1).join(' ') || '';
 
@@ -120,6 +194,13 @@ const SenderLanding = () => {
     }
   };
 
+  const handleFinalSubmit = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      setIsForbiddenOpen(true);
+    }
+  };
+
   if (isSessionLoading || isVerificationStatusLoading) {
     return (
       <div className="container p-4 flex items-center justify-center min-h-[calc(100vh-64px)]">
@@ -129,10 +210,49 @@ const SenderLanding = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
-      <OrderForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-      <BenefitsSection />
-    </div>
+    <>
+      <div className="container mx-auto p-4 min-h-[calc(100vh-64px)] bg-background dark:bg-gray-900">
+        <Card className="max-w-2xl mx-auto mb-12">
+          <CardHeader>
+            <CardTitle className="text-2xl md:text-3xl font-bold text-center">
+              أرسل أغراضك الآن
+            </CardTitle>
+            <Progress value={progress} className="mt-4" />
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                <OrderForm form={form} currentStep={currentStep} isLoggedIn={!!user} />
+                <div className="flex gap-4 justify-between mt-8">
+                  {currentStep > 1 && (
+                    <Button type="button" variant="outline" onClick={handlePrevStep}>
+                      السابق
+                    </Button>
+                  )}
+                  {currentStep < totalSteps && (
+                    <Button type="button" onClick={handleNextStep} className="ml-auto">
+                      التالي
+                    </Button>
+                  )}
+                  {currentStep === totalSteps && (
+                    <Button type="button" onClick={handleFinalSubmit} className="w-full" disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      إرسال الطلب
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+        <BenefitsSection />
+      </div>
+      <ForbiddenItemsDialog
+        isOpen={isForbiddenOpen}
+        onOpenChange={setIsForbiddenOpen}
+        onConfirm={() => form.handleSubmit(onSubmit)()}
+      />
+    </>
   );
 };
 
