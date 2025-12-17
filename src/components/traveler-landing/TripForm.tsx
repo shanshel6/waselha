@@ -106,6 +106,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
             />
           </div>
         );
+
       case 2: // Travel Date
         return (
           <FormField
@@ -149,6 +150,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
             )}
           />
         );
+
       case 3: // Luggage Capacity
         return (
           <>
@@ -189,9 +191,9 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                 </CardHeader>
                 <CardContent className="text-center space-y-1">
                   <div className="text-3xl font-bold text-primary">
-                    {free_kg <= 3
-                      ? `$${estimatedProfit.totalPriceUSD.toFixed(2)}`
-                      : `$${(estimatedProfit.totalPriceUSD + 10).toFixed(2)} - $${(estimatedProfit.totalPriceUSD + 50).toFixed(2)}`}
+                    {free_kg <= 3 
+                      ? `$${estimatedProfit.totalPriceUSD.toFixed(2)}` 
+                      : `$${((estimatedProfit.totalPriceUSD + 10) + (estimatedProfit.totalPriceUSD + 50)) / 2.toFixed(2)}`}
                     <span className="text-lg"> USD</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -202,6 +204,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
             )}
           </>
         );
+
       case 4:
         if (isLoggedIn) {
           // Location & Notes for logged-in user
@@ -286,6 +289,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
             </div>
           );
         }
+
       case 5:
         if (isLoggedIn) {
           // Ticket Upload for logged-in user
@@ -349,6 +353,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
             </div>
           );
         }
+
       case 6:
         if (!isLoggedIn) {
           // Ticket Upload for guest
@@ -372,6 +377,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
           );
         }
         return null;
+
       default:
         return null;
     }
