@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form } from '@/components/ui/form';
 import { Progress } from '@/components/ui/progress';
+import { SuccessModal } from '@/components/traveler-landing/SuccessModal';
 
 const BUCKET_NAME = 'trip-tickets';
 
@@ -43,7 +44,6 @@ const getFormSchema = (isLoggedIn: boolean) => {
   return baseSchema;
 };
 
-
 const TravelerLanding = () => {
   const navigate = useNavigate();
   const { user, isLoading: isSessionLoading } = useSession();
@@ -51,9 +51,8 @@ const TravelerLanding = () => {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const formSchema = useMemo(() => getFormSchema(!!user), [user]);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -76,11 +75,14 @@ const TravelerLanding = () => {
       ['trip_date'], // 2
       ['free_kg'], // 3
     ];
+
     if (!user) {
       steps.push(['full_name', 'phone']); // 4 (guest)
     }
+
     steps.push(['traveler_location', 'notes']); // 4 (user) or 5 (guest)
     steps.push(['ticket_file']); // 5 (user) or 6 (guest)
+
     return steps;
   }, [user]);
 
@@ -123,7 +125,6 @@ const TravelerLanding = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
     try {
       let userIdForTrip: string;
       let isNewUser = false;
@@ -133,43 +134,54 @@ const TravelerLanding = () => {
         const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
         const formattedPhone = formatPhoneNumber(values.phone!);
         const fullPhone = `+964${formattedPhone}`;
-        
         const fullNameParts = values.full_name!.trim().split(/\s+/);
         const firstName = fullNameParts[0] || '';
         const lastName = fullNameParts.slice(1).join(' ') || '';
 
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            phone: fullPhone,
-            password: randomPassword,
-            options: { data: { first_name: firstName, last_name: lastName, phone: values.phone, address: values.traveler_location, role: 'traveler' } },
+          phone: fullPhone,
+          password: randomPassword,
+          options: {
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              phone: values.phone,
+              address: values.traveler_location,
+              role: 'traveler'
+            }
+          },
         });
 
         if (signUpError) {
           if (signUpError.message.includes('User already registered')) throw new Error('رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول.');
           throw signUpError;
         }
+
         if (!signUpData.user) throw new Error("فشل في إنشاء حساب المستخدم. يرجى المحاولة مرة أخرى.");
-        
         userIdForTrip = signUpData.user.id;
 
-        const { error: passwordError } = await supabase.from('user_passwords').insert({ id: userIdForTrip, password: randomPassword });
+        const { error: passwordError } = await supabase
+          .from('user_passwords')
+          .insert({ id: userIdForTrip, password: randomPassword });
+
         if (passwordError) console.error('Error storing password:', passwordError);
       } else {
         const isVerified = verificationInfo?.status === 'approved';
         if (!isVerified) {
-            showError('verificationRequiredTitle');
-            navigate('/verification');
-            return;
+          showError('verificationRequiredTitle');
+          navigate('/verification');
+          return;
         }
         userIdForTrip = user.id;
       }
 
       if (!values.ticket_file) throw new Error('يرجى تحميل تذكرة الطيران');
       const ticketUrl = await uploadTicketAndGetUrl(values.ticket_file, userIdForTrip);
+
       const { calculateTravelerProfit } = await import('@/lib/pricing');
       const profit = calculateTravelerProfit(values.from_country, values.to_country, values.free_kg);
       const charge_per_kg = profit ? profit.pricePerKgUSD : 0;
-      
+
       const { error: tripError } = await supabase.from('trips').insert({
         user_id: userIdForTrip,
         from_country: values.from_country,
@@ -182,13 +194,12 @@ const TravelerLanding = () => {
         ticket_file_url: ticketUrl,
         is_approved: false,
       });
-      
+
       if (tripError) throw tripError;
 
       if (isNewUser) {
         await supabase.auth.signOut();
-        showSuccess('تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.');
-        navigate('/login');
+        setShowSuccessModal(true);
       } else {
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
         queryClient.invalidateQueries({ queryKey: ['userTrips', userIdForTrip] });
@@ -247,6 +258,11 @@ const TravelerLanding = () => {
         </CardContent>
       </Card>
       <BenefitsSection />
+      <SuccessModal 
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        message="تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة."
+      />
     </div>
   );
 };

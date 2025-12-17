@@ -18,6 +18,7 @@ import { Form } from '@/components/ui/form';
 import { Progress } from '@/components/ui/progress';
 import { ITEM_SIZES, ITEM_TYPES } from '@/lib/pricing';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
+import { SuccessModal } from '@/components/sender-landing/SuccessModal';
 
 const getFormSchema = (isLoggedIn: boolean) => {
   const baseSchema = z.object({
@@ -49,9 +50,8 @@ const SenderLanding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
-
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const formSchema = useMemo(() => getFormSchema(!!user), [user]);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -73,9 +73,11 @@ const SenderLanding = () => {
       ['description', 'weight_kg'],
       ['item_type', 'item_size'],
     ];
+
     if (!user) {
       steps.push(['full_name', 'phone']);
     }
+
     return steps;
   }, [user]);
 
@@ -106,7 +108,6 @@ const SenderLanding = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
     try {
       let userIdForOrder: string;
       let isNewUser = false;
@@ -116,23 +117,22 @@ const SenderLanding = () => {
         const randomPassword = Math.floor(100000 + Math.random() * 900000).toString();
         const formattedPhone = formatPhoneNumber(values.phone!);
         const fullPhone = `+964${formattedPhone}`;
-        
         const fullNameParts = values.full_name!.trim().split(/\s+/);
         const firstName = fullNameParts[0] || '';
         const lastName = fullNameParts.slice(1).join(' ') || '';
 
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            phone: fullPhone,
-            password: randomPassword,
-            options: {
-                data: {
-                    first_name: firstName,
-                    last_name: lastName,
-                    phone: values.phone,
-                    address: 'N/A',
-                    role: 'sender',
-                },
+          phone: fullPhone,
+          password: randomPassword,
+          options: {
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              phone: values.phone,
+              address: 'N/A',
+              role: 'sender',
             },
+          },
         });
 
         if (signUpError) {
@@ -141,21 +141,21 @@ const SenderLanding = () => {
           }
           throw signUpError;
         }
+
         if (!signUpData.user) throw new Error("فشل في إنشاء حساب المستخدم. يرجى المحاولة مرة أخرى.");
-        
         userIdForOrder = signUpData.user.id;
 
         const { error: passwordError } = await supabase
-            .from('user_passwords')
-            .insert({ id: userIdForOrder, password: randomPassword });
-        if (passwordError) console.error('Error storing password:', passwordError);
+          .from('user_passwords')
+          .insert({ id: userIdForOrder, password: randomPassword });
 
+        if (passwordError) console.error('Error storing password:', passwordError);
       } else {
         const isVerified = verificationInfo?.status === 'approved';
         if (!isVerified) {
-            showError('verificationRequiredTitle');
-            navigate('/verification');
-            return;
+          showError('verificationRequiredTitle');
+          navigate('/verification');
+          return;
         }
         userIdForOrder = user.id;
       }
@@ -173,19 +173,17 @@ const SenderLanding = () => {
         insurance_percentage: 0,
         status: 'new',
       });
-      
+
       if (orderError) throw orderError;
 
       if (isNewUser) {
         await supabase.auth.signOut();
-        showSuccess('تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.');
-        navigate('/login');
+        setShowSuccessModal(true);
       } else {
         showSuccess('تم إرسال طلب الشحن العام بنجاح!');
         queryClient.invalidateQueries({ queryKey: ['sentRequests', userIdForOrder] });
         navigate('/my-requests');
       }
-
     } catch (err: any) {
       console.error('Error in order submission flow:', err);
       showError(err.message || 'حدث خطأ أثناء إرسال الطلب');
@@ -247,10 +245,15 @@ const SenderLanding = () => {
         </Card>
         <BenefitsSection />
       </div>
-      <ForbiddenItemsDialog
-        isOpen={isForbiddenOpen}
-        onOpenChange={setIsForbiddenOpen}
-        onConfirm={() => form.handleSubmit(onSubmit)()}
+      <ForbiddenItemsDialog 
+        isOpen={isForbiddenOpen} 
+        onOpenChange={setIsForbiddenOpen} 
+        onConfirm={() => form.handleSubmit(onSubmit)()} 
+      />
+      <SuccessModal 
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        message="تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة."
       />
     </>
   );
