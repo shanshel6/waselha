@@ -37,6 +37,7 @@ import AuthGuard from "./components/AuthGuard";
 import TripDetails from "./pages/TripDetails";
 import TravelerLanding from "./pages/TravelerLanding";
 import SenderLanding from "./pages/SenderLanding";
+import SuccessPage from "./pages/SuccessPage";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const AppContent = () => {
       <Route path="/trips/:tripId" element={<TripDetails />} />
       <Route path="/traveler-landing" element={<TravelerLanding />} />
       <Route path="/send-item" element={<SenderLanding />} />
+      <Route path="/success" element={<SuccessPage />} />
       
       {/* Auth routes */}
       <Route path="/login" element={<Login />} />

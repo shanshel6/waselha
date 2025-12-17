@@ -18,7 +18,6 @@ import { Form } from '@/components/ui/form';
 import { Progress } from '@/components/ui/progress';
 import { ITEM_SIZES, ITEM_TYPES } from '@/lib/pricing';
 import ForbiddenItemsDialog from '@/components/ForbiddenItemsDialog';
-import { SuccessModal } from '@/components/sender-landing/SuccessModal';
 
 const getFormSchema = (isLoggedIn: boolean) => {
   const baseSchema = z.object({
@@ -50,8 +49,6 @@ const SenderLanding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
   const formSchema = useMemo(() => getFormSchema(!!user), [user]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -190,8 +187,12 @@ const SenderLanding = () => {
 
       if (isNewUser) {
         await supabase.auth.signOut();
-        setSuccessMessage("تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.");
-        setShowSuccessModal(true);
+        // Redirect to success page with message
+        navigate('/success', { 
+          state: { 
+            message: "تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة." 
+          } 
+        });
       } else {
         showSuccess('تم إرسال طلب الشحن العام بنجاح!');
         queryClient.invalidateQueries({ queryKey: ['sentRequests', userIdForOrder] });
@@ -261,11 +262,6 @@ const SenderLanding = () => {
         isOpen={isForbiddenOpen} 
         onOpenChange={setIsForbiddenOpen} 
         onConfirm={() => onSubmit(form.getValues())} 
-      />
-      <SuccessModal 
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        message={successMessage}
       />
     </>
   );

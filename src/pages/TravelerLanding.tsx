@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form } from '@/components/ui/form';
 import { Progress } from '@/components/ui/progress';
-import { SuccessModal } from '@/components/traveler-landing/SuccessModal';
 
 const BUCKET_NAME = 'trip-tickets';
 
@@ -51,8 +50,6 @@ const TravelerLanding = () => {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
   const formSchema = useMemo(() => getFormSchema(!!user), [user]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -200,8 +197,12 @@ const TravelerLanding = () => {
 
       if (isNewUser) {
         await supabase.auth.signOut();
-        setSuccessMessage("تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.");
-        setShowSuccessModal(true);
+        // Redirect to success page with message
+        navigate('/success', { 
+          state: { 
+            message: "تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة." 
+          } 
+        });
       } else {
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
         queryClient.invalidateQueries({ queryKey: ['userTrips', userIdForTrip] });
@@ -259,11 +260,6 @@ const TravelerLanding = () => {
         </CardContent>
       </Card>
       <BenefitsSection />
-      <SuccessModal 
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        message={successMessage}
-      />
     </div>
   );
 };
