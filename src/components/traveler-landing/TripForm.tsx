@@ -271,7 +271,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
-                      رقم الهاتف
+                      رقم الواتساب
                     </FormLabel>
                     <FormControl>
                       <Input placeholder="مثال: 07701234567" {...field} />
@@ -300,9 +300,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                     تحميل تذكرة الطيران
                   </FormLabel>
                   <FormControl>
-                    <TicketUpload 
-                      onFileSelected={handleTicketFileSelected} 
-                    />
+                    <TicketUpload onFileSelected={handleTicketFileSelected} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -365,9 +363,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                     تحميل تذكرة الطيران
                   </FormLabel>
                   <FormControl>
-                    <TicketUpload 
-                      onFileSelected={handleTicketFileSelected} 
-                    />
+                    <TicketUpload onFileSelected={handleTicketFileSelected} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

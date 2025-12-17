@@ -103,11 +103,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ form, currentStep, isLogge
                 <FormItem>
                   <FormLabel>{t('orderDescription')}</FormLabel>
                   <FormControl>
-                    <Textarea
-                      rows={4}
-                      placeholder={t('orderDescriptionPlaceholder')}
-                      {...field}
-                    />
+                    <Textarea rows={4} placeholder={t('orderDescriptionPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -245,7 +241,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ form, currentStep, isLogge
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
-                      رقم الهاتف
+                      رقم الواتساب
                     </FormLabel>
                     <FormControl>
                       <Input placeholder="مثال: 07701234567" {...field} />
