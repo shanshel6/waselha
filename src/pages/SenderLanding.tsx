@@ -51,6 +51,7 @@ const SenderLanding = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isForbiddenOpen, setIsForbiddenOpen] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const formSchema = useMemo(() => getFormSchema(!!user), [user]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -107,6 +108,17 @@ const SenderLanding = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isSubmitting) return;
+    
+    // First validate forbidden items
+    if (!isForbiddenOpen) {
+      const isValid = await form.trigger();
+      if (isValid) {
+        setIsForbiddenOpen(true);
+        return;
+      }
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       let userIdForOrder: string;
@@ -178,6 +190,7 @@ const SenderLanding = () => {
 
       if (isNewUser) {
         await supabase.auth.signOut();
+        setSuccessMessage("تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.");
         setShowSuccessModal(true);
       } else {
         showSuccess('تم إرسال طلب الشحن العام بنجاح!');
@@ -189,13 +202,7 @@ const SenderLanding = () => {
       showError(err.message || 'حدث خطأ أثناء إرسال الطلب');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleFinalSubmit = async () => {
-    const isValid = await form.trigger();
-    if (isValid) {
-      setIsForbiddenOpen(true);
+      setIsForbiddenOpen(false);
     }
   };
 
@@ -233,7 +240,12 @@ const SenderLanding = () => {
                     </Button>
                   )}
                   {currentStep === totalSteps && (
-                    <Button type="button" onClick={handleFinalSubmit} className="w-full" disabled={isSubmitting}>
+                    <Button 
+                      type="button" 
+                      onClick={() => form.handleSubmit(onSubmit)()} 
+                      className="w-full" 
+                      disabled={isSubmitting}
+                    >
                       {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       إرسال الطلب
                     </Button>
@@ -248,12 +260,12 @@ const SenderLanding = () => {
       <ForbiddenItemsDialog 
         isOpen={isForbiddenOpen} 
         onOpenChange={setIsForbiddenOpen} 
-        onConfirm={() => form.handleSubmit(onSubmit)()} 
+        onConfirm={() => onSubmit(form.getValues())} 
       />
       <SuccessModal 
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        message="تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة."
+        message={successMessage}
       />
     </>
   );

@@ -52,6 +52,7 @@ const TravelerLanding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const formSchema = useMemo(() => getFormSchema(!!user), [user]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -199,6 +200,7 @@ const TravelerLanding = () => {
 
       if (isNewUser) {
         await supabase.auth.signOut();
+        setSuccessMessage("تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة.");
         setShowSuccessModal(true);
       } else {
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
@@ -209,7 +211,6 @@ const TravelerLanding = () => {
       }
     } catch (err: any) {
       showError(err.message || 'حدث خطأ أثناء إضافة الرحلة');
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -261,7 +262,7 @@ const TravelerLanding = () => {
       <SuccessModal 
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        message="تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة."
+        message={successMessage}
       />
     </div>
   );
