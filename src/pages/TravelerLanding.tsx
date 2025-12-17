@@ -50,6 +50,7 @@ const TravelerLanding = () => {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+
   const formSchema = useMemo(() => getFormSchema(!!user), [user]);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -123,6 +124,7 @@ const TravelerLanding = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+
     try {
       let userIdForTrip: string;
       let isNewUser = false;
@@ -160,7 +162,10 @@ const TravelerLanding = () => {
 
         const { error: passwordError } = await supabase
           .from('user_passwords')
-          .insert({ id: userIdForTrip, password: randomPassword });
+          .insert({
+            id: userIdForTrip,
+            password: randomPassword
+          });
 
         if (passwordError) console.error('Error storing password:', passwordError);
       } else {
@@ -198,11 +203,7 @@ const TravelerLanding = () => {
       if (isNewUser) {
         await supabase.auth.signOut();
         // Redirect to success page with message
-        navigate('/success', { 
-          state: { 
-            message: "تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة." 
-          } 
-        });
+        navigate('/success', { state: { message: "تم إنشاء حسابك بنجاح! ستصلك رسالة نصية بكلمة المرور خلال ساعة." } });
       } else {
         showSuccess('تمت إضافة الرحلة بنجاح! في انتظار موافقة المسؤول.');
         queryClient.invalidateQueries({ queryKey: ['userTrips', userIdForTrip] });
