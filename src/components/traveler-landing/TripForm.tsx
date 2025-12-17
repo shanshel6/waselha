@@ -153,7 +153,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
 
       case 3: // Luggage Capacity
         return (
-          <>
+          <div>
             <FormField
               control={form.control}
               name="free_kg"
@@ -191,9 +191,17 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                 </CardHeader>
                 <CardContent className="text-center space-y-1">
                   <div className="text-3xl font-bold text-primary">
-                    {free_kg <= 3 
-                      ? `$${estimatedProfit.totalPriceUSD.toFixed(2)}` 
-                      : `$${((estimatedProfit.totalPriceUSD + 10) + (estimatedProfit.totalPriceUSD + 50)) / 2.toFixed(2)}`}
+                    {(() => {
+                      if (free_kg <= 3) {
+                        return `$${estimatedProfit.totalPriceUSD.toFixed(2)}`;
+                      } else {
+                        // Calculate average of the range
+                        const min = estimatedProfit.totalPriceUSD + 10;
+                        const max = estimatedProfit.totalPriceUSD + 50;
+                        const average = (min + max) / 2;
+                        return `$${average.toFixed(2)}`;
+                      }
+                    })()}
                     <span className="text-lg"> USD</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -202,7 +210,7 @@ export const TripForm: React.FC<TripFormProps> = ({ form, currentStep, isLoggedI
                 </CardContent>
               </Card>
             )}
-          </>
+          </div>
         );
 
       case 4:
